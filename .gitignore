@@ -50,6 +50,9 @@ validation-test/
 validation-test-*/
 *.sh
 
+# Agent state
+.ralph/
+
 # Temporary files
 *.tmp
 *.bak
