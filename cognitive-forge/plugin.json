@@ -1,0 +1,60 @@
+{
+  "name": "cognitive-forge",
+  "version": "2.0.0",
+  "description": "Multi-agent concept evaluation through structured debate and interactive exploration",
+  "commands": [
+    {
+      "name": "debate",
+      "path": "commands/debate.md",
+      "description": "Deep concept evaluation through multi-agent debate",
+      "usage": "/cognitive-forge:debate <concept> [--quiet]"
+    },
+    {
+      "name": "explore",
+      "path": "commands/explore.md",
+      "description": "Interactive concept exploration through iterative dialogue",
+      "usage": "/cognitive-forge:explore <concept>"
+    }
+  ],
+  "agents": [
+    {
+      "name": "forge-challenger",
+      "path": "agents/forge-challenger.md",
+      "description": "Adversarial analyst building steel opposition and mapping failure boundaries"
+    },
+    {
+      "name": "forge-decomposer",
+      "path": "agents/forge-decomposer.md",
+      "description": "Structural analyst mapping components and dependencies"
+    },
+    {
+      "name": "forge-evaluator",
+      "path": "agents/forge-evaluator.md",
+      "description": "Evidence specialist grounding claims in verifiable reality"
+    },
+    {
+      "name": "forge-explorer",
+      "path": "agents/forge-explorer.md",
+      "description": "Creative expansion specialist exploring adjacent possibilities"
+    },
+    {
+      "name": "forge-synthesizer",
+      "path": "agents/forge-synthesizer.md",
+      "description": "Integration analyst mapping convergence and quality calibration"
+    }
+  ],
+  "skills": [
+    {
+      "name": "cognitive-techniques",
+      "path": "skills/cognitive-techniques/SKILL.md",
+      "description": "Foundation knowledge providing 10 structured cognitive techniques for concept evaluation",
+      "user_invocable": false
+    }
+  ],
+  "references": [
+    {
+      "path": "skills/cognitive-techniques/references/techniques.md",
+      "description": "Detailed specifications for all 10 cognitive techniques"
+    }
+  ]
+}

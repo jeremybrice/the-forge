@@ -1,0 +1,58 @@
+{
+  "name": "rovo-forge",
+  "displayName": "Rovo Forge",
+  "version": "2.0.0",
+  "description": "Interactive builder for Atlassian Rovo agents. Guides through Jira and Confluence agent creation with pattern detection, TCREI framework, and copy-ready Rovo Studio configurations.",
+  "author": "The Forge",
+  "commands": [
+    {
+      "name": "rovo-jira",
+      "file": "commands/jira-agent.md",
+      "description": "Interactive builder for Jira Rovo agents with pattern detection and guided configuration",
+      "tags": ["rovo", "jira", "agent-builder"]
+    },
+    {
+      "name": "rovo-confluence",
+      "file": "commands/confluence-agent.md",
+      "description": "Interactive builder for Confluence Rovo agents with use case templates and validation",
+      "tags": ["rovo", "confluence", "agent-builder"]
+    }
+  ],
+  "skills": [
+    {
+      "name": "rovo-foundation",
+      "directory": "skills/rovo-foundation",
+      "description": "Core Rovo platform knowledge: TCREI framework, validation rules, knowledge sources, and agent architecture principles",
+      "references": [
+        "references/instruction-framework.md",
+        "references/knowledge-sources.md",
+        "references/validation-rules.md"
+      ],
+      "tags": ["rovo", "platform", "framework"]
+    },
+    {
+      "name": "jira-specialist",
+      "directory": "skills/jira-specialist",
+      "description": "Jira-specific agent knowledge: design patterns, skills catalog, issue types, and workflow best practices",
+      "references": [
+        "references/jira-patterns.md",
+        "references/jira-skills-catalog.md"
+      ],
+      "tags": ["rovo", "jira", "patterns"]
+    },
+    {
+      "name": "confluence-specialist",
+      "directory": "skills/confluence-specialist",
+      "description": "Confluence-specific agent knowledge: design patterns, skills catalog, content types, and collaboration workflows",
+      "references": [
+        "references/confluence-patterns.md",
+        "references/confluence-skills-catalog.md"
+      ],
+      "tags": ["rovo", "confluence", "patterns"]
+    }
+  ],
+  "sampleConfigs": [
+    "sample-configs/ticket-triage-agent.md",
+    "sample-configs/documentation-specialist.md"
+  ]
+}

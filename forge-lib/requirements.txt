@@ -1,0 +1,12 @@
+# Core dependencies for forge-lib
+pyyaml>=6.0
+jinja2>=3.1.2
+jsonschema>=4.17.0
+
+# Testing dependencies
+pytest>=7.3.0
+pytest-cov>=4.0.0
+
+# Development dependencies (optional)
+# Install with: pip3 install -r requirements.txt
+# For linting/formatting: pip3 install flake8 black mypy pytest-watch

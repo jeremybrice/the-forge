@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/decision.json",
+  "title": "Decision Card Schema",
+  "description": "JSON Schema for architectural and strategic decision records",
+  "type": "object",
+  "required": ["title", "type", "status", "product", "decision_date", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the decision",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "decision",
+      "description": "Card type identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Proposed", "Under Review", "Approved", "Rejected", "Superseded"],
+      "description": "Current status of the decision"
+    },
+    "product": {
+      "type": "string",
+      "description": "Product from taxonomy",
+      "minLength": 1
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy",
+      "default": null
+    },
+    "client": {
+      "type": ["string", "null"],
+      "description": "Client from taxonomy",
+      "default": null
+    },
+    "team": {
+      "type": ["string", "null"],
+      "description": "Team responsible for the decision",
+      "default": null
+    },
+    "decision_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the decision was made in YYYY-MM-DD format"
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

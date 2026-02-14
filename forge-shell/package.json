@@ -1,0 +1,24 @@
+{
+  "name": "forge-shell",
+  "version": "1.0.0",
+  "description": "Unified dashboard for Forge plugins - Desktop Application",
+  "scripts": {
+    "tauri:dev": "cd src-tauri && cargo tauri dev",
+    "tauri:build": "cd src-tauri && cargo tauri build",
+    "tauri:build:mac": "cd src-tauri && cargo tauri build --target universal-apple-darwin",
+    "tauri:build:debug": "cd src-tauri && cargo tauri build --debug",
+    "test": "echo \"No tests configured yet\"",
+    "lint": "echo \"No linting configured yet\""
+  },
+  "keywords": [
+    "forge",
+    "dashboard",
+    "tauri",
+    "desktop-app",
+    "product-management"
+  ],
+  "author": "Forge Marketplace",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

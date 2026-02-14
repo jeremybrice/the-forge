@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/intake.json",
+  "title": "Intake Card Schema",
+  "description": "JSON Schema for intake request and requirements gathering cards",
+  "type": "object",
+  "required": ["title", "type", "status", "product", "source", "requested_by", "priority", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the intake request",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "intake",
+      "description": "Card type identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Submitted", "Under Review", "Approved", "Rejected", "Handed Off", "Completed"],
+      "description": "Current status of the intake"
+    },
+    "product": {
+      "type": "string",
+      "description": "Product from taxonomy",
+      "minLength": 1
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy",
+      "default": null
+    },
+    "client": {
+      "type": ["string", "null"],
+      "description": "Client from taxonomy",
+      "default": null
+    },
+    "team": {
+      "type": ["string", "null"],
+      "description": "Team responsible for the intake",
+      "default": null
+    },
+    "source": {
+      "type": "string",
+      "description": "Source of the intake request (e.g., Product Strategy Review, Customer Request)",
+      "minLength": 1
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Person or role who submitted the intake",
+      "minLength": 1
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["High", "Medium", "Low"],
+      "description": "Priority level of the request"
+    },
+    "generated_initiatives": {
+      "type": "array",
+      "description": "List of generated initiative filenames (without extension)",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "generated_epics": {
+      "type": "array",
+      "description": "List of generated epic filenames (without extension)",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "source_conversation": {
+      "type": ["string", "null"],
+      "description": "Link to intake conversation",
+      "default": null
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

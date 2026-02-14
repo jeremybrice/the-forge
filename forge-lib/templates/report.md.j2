@@ -1,0 +1,65 @@
+---
+title: "{{ title }}"
+type: report
+report_type: {{ report_type }}
+topic: "{{ topic }}"
+status: {{ status }}
+product: {{ product if product else 'null' }}
+module: {{ module if module else 'null' }}
+authors:
+{%- if authors and authors|length > 0 %}
+{% for author in authors %}
+  - {{ author }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+agents:
+{%- if agents and agents|length > 0 %}
+{% for agent in agents %}
+  - {{ agent }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Executive Summary
+
+{{ executive_summary if executive_summary else 'TODO: Provide a high-level summary of the report findings and recommendations.' }}
+
+## Analysis
+
+{{ analysis if analysis else 'TODO: Provide detailed analysis based on the report type.' }}
+
+{% if findings and findings|length > 0 -%}
+## Key Findings
+
+{%- for finding in findings %}
+- {{ finding }}
+{%- endfor %}
+{% endif %}
+
+{% if recommendations and recommendations|length > 0 -%}
+## Recommendations
+
+{%- for recommendation in recommendations %}
+- {{ recommendation }}
+{%- endfor %}
+{% endif %}
+
+{% if next_steps and next_steps|length > 0 -%}
+## Next Steps
+
+{%- for step in next_steps %}
+- {{ step }}
+{%- endfor %}
+{% endif %}
+
+{% if appendix -%}
+## Appendix
+
+{{ appendix }}
+{% endif %}

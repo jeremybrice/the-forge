@@ -1,0 +1,11 @@
+{
+  "name": "product-forge",
+  "description": "Product management plugin for structured card generation with forge-lib integration. Automates Initiative, Epic, Story, Intake, Checkpoint, Decision, and Release Notes workflows.",
+  "version": "2.0.0-alpha",
+  "author": {
+    "name": "Jeremy Brice"
+  },
+  "requires": {
+    "forge-lib": ">=2.0.0-alpha"
+  }
+}

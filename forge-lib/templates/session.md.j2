@@ -1,0 +1,48 @@
+---
+title: "{{ title }}"
+type: session
+session_type: {{ session_type }}
+topic: "{{ topic }}"
+agents:
+{%- if agents and agents|length > 0 %}
+{% for agent in agents %}
+  - {{ agent }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+status: {{ status }}
+rounds: {{ rounds if rounds else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Topic
+
+{{ topic }}
+
+## Session Log
+
+{{ session_log if session_log else 'TODO: Document the session conversation and outcomes.' }}
+
+{% if synthesis -%}
+## Synthesis
+
+{{ synthesis }}
+{% endif %}
+
+{% if key_insights and key_insights|length > 0 -%}
+## Key Insights
+
+{%- for insight in key_insights %}
+- {{ insight }}
+{%- endfor %}
+{% endif %}
+
+{% if next_steps and next_steps|length > 0 -%}
+## Next Steps
+
+{%- for step in next_steps %}
+- {{ step }}
+{%- endfor %}
+{% endif %}

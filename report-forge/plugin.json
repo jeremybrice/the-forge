@@ -1,0 +1,57 @@
+{
+  "name": "report-forge",
+  "version": "2.0.0",
+  "description": "Multi-agent report generation system. Orchestrates investigator, analyst, and synthesizer agents to research topics and produce structured markdown reports through forge-lib.",
+  "commands": [
+    {
+      "name": "generate",
+      "path": "commands/generate.md",
+      "description": "Generate a new report through multi-agent investigation",
+      "invocation_pattern": "/report-forge:generate <topic> [--type <type>] [--category <category>] [options]"
+    },
+    {
+      "name": "list",
+      "path": "commands/list.md",
+      "description": "List and filter existing reports",
+      "invocation_pattern": "/report-forge:list [--type <type>] [--category <category>] [--status <status>] [options]"
+    },
+    {
+      "name": "update",
+      "path": "commands/update.md",
+      "description": "Update an existing report with new findings",
+      "invocation_pattern": "/report-forge:update [filename]"
+    }
+  ],
+  "agents": [
+    {
+      "name": "forge-investigator",
+      "path": "agents/forge-investigator.md",
+      "description": "Primary research agent. Gathers data, examines codebases, collects metrics, and assembles raw findings without interpretation."
+    },
+    {
+      "name": "forge-analyst",
+      "path": "agents/forge-analyst.md",
+      "description": "Analysis agent. Interprets findings from the Investigator, identifies patterns and anomalies, assesses risks and opportunities."
+    },
+    {
+      "name": "forge-synthesizer",
+      "path": "agents/forge-synthesizer.md",
+      "description": "Assembly agent. Receives findings and analysis, assembles the final narrative report following appropriate structure."
+    }
+  ],
+  "skills": [
+    {
+      "name": "report-methodology",
+      "path": "skills/report-methodology/SKILL.md",
+      "description": "Defines report types, audience guidance, tone standards, and agent recruitment logic."
+    }
+  ],
+  "requires_forge_lib": true,
+  "forge_lib_commands": [
+    "forge report init",
+    "forge report create",
+    "forge report get",
+    "forge report query",
+    "forge report update"
+  ]
+}

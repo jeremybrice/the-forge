@@ -1,0 +1,39 @@
+---
+title: "{{ title }}"
+type: release-notes
+product: {{ product }}
+version: "{{ version }}"
+release_date: {{ release_date }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+{% if whats_new and whats_new|length > 0 -%}
+## What's New
+
+{{ whats_new }}
+{% endif %}
+
+{% if improvements and improvements|length > 0 -%}
+## Improvements
+
+{{ improvements }}
+{% endif %}
+
+{% if bug_fixes and bug_fixes|length > 0 -%}
+## Bug Fixes
+
+{{ bug_fixes }}
+{% endif %}
+
+{% if breaking_changes and breaking_changes|length > 0 -%}
+## Breaking Changes
+
+{{ breaking_changes }}
+{% endif %}
+
+{% if known_issues and known_issues|length > 0 -%}
+## Known Issues
+
+{{ known_issues }}
+{% endif %}

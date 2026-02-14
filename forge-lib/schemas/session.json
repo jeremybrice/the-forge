@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/session.json",
+  "title": "Session Card Schema",
+  "description": "JSON Schema for cognitive forge session cards (debates, explorations)",
+  "type": "object",
+  "required": ["title", "type", "session_type", "topic", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Session title",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "session",
+      "description": "Card type identifier"
+    },
+    "session_type": {
+      "type": "string",
+      "enum": ["debate", "exploration"],
+      "description": "Type of cognitive forge session"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Main topic or question being explored",
+      "minLength": 1
+    },
+    "agents": {
+      "type": "array",
+      "description": "List of agents participating in the session",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Active", "Paused", "Completed"],
+      "description": "Current status of the session",
+      "default": "Active"
+    },
+    "rounds": {
+      "type": ["integer", "null"],
+      "description": "Number of rounds completed",
+      "minimum": 0,
+      "default": null
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

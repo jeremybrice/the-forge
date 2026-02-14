@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/checkpoint.json",
+  "title": "Checkpoint Card Schema",
+  "description": "JSON Schema for checkpoint meeting notes and decision records",
+  "type": "object",
+  "required": ["title", "type", "source", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the checkpoint meeting or session",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "checkpoint",
+      "description": "Card type identifier"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source of the checkpoint (e.g., Architecture Review Meeting, Sprint Retro)",
+      "minLength": 1
+    },
+    "participants": {
+      "type": "array",
+      "description": "List of participant roles or names",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

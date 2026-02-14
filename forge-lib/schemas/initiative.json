@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/initiative.json",
+  "title": "Initiative Card Schema",
+  "description": "JSON Schema for Initiative-level ROM estimation and strategic scoping cards",
+  "type": "object",
+  "required": ["title", "type", "status", "product", "description", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Concise name for the Initiative",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "initiative",
+      "description": "Card type identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "Planning", "Approved", "In Progress", "On Hold", "Completed", "Cancelled"],
+      "description": "Current status of the initiative"
+    },
+    "product": {
+      "type": "string",
+      "description": "Product from taxonomy (e.g., WebApp, MobileApp, API Platform)",
+      "minLength": 1
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy (e.g., Notifications, Authentication, Billing)",
+      "default": null
+    },
+    "client": {
+      "type": ["string", "null"],
+      "description": "Client from taxonomy (e.g., Acme Corp, Multi-Client, Internal)",
+      "default": null
+    },
+    "team": {
+      "type": ["string", "null"],
+      "description": "Team responsible for the initiative",
+      "default": null
+    },
+    "confidence": {
+      "type": ["string", "null"],
+      "enum": ["High", "Medium", "Low", null],
+      "description": "Confidence level in the estimate",
+      "default": null
+    },
+    "estimate_hours": {
+      "type": ["integer", "null"],
+      "description": "Estimated hours from engineering estimation session",
+      "minimum": 0,
+      "default": null
+    },
+    "jira_card": {
+      "type": ["string", "null"],
+      "description": "Link to Jira epic or initiative",
+      "default": null
+    },
+    "source_intake": {
+      "type": ["string", "null"],
+      "description": "Reference to intake form filename (without extension)",
+      "default": null
+    },
+    "source_conversation": {
+      "type": ["string", "null"],
+      "description": "Link to intake document or planning conversation",
+      "default": null
+    },
+    "children": {
+      "type": "array",
+      "description": "List of child epic filenames (without extension)",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "description": {
+      "type": "string",
+      "description": "Condensed version of Background + Proposed Solution (2-3 sentences max)",
+      "minLength": 1
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

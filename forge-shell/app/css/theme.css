@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════════════
+   Theme — CSS Custom Properties (Light + Dark)
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --bg-hover: #f0f1f3;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #495057;
+  --text-muted: #868e96;
+  --border-color: #dee2e6;
+  --border-light: #e9ecef;
+  --accent: #4a6cf7;
+  --accent-hover: #3b5de7;
+  --accent-light: #eef0ff;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --transition: 0.2s ease;
+  --sidebar-width: 56px;
+  --toolbar-height: 48px;
+
+  /* Cognitive Forge type colors */
+  --type-debate: #e74c3c;
+  --type-explore: #27ae60;
+  --cat-business: #3498db;
+  --cat-philosophical: #8b5cf6;
+  --cat-framework: #f59e0b;
+  --cat-creative: #ec4899;
+  --status-complete: #27ae60;
+  --status-partial: #e67e22;
+
+  /* Product Forge card type colors */
+  --type-initiative: #8b5cf6;
+  --type-epic: #3b82f6;
+  --type-story: #10b981;
+  --type-intake: #f59e0b;
+  --type-checkpoint: #14b8a6;
+  --type-decision: #ef4444;
+  --type-release-note: #ec4899;
+
+  /* Roadmap bucket colors */
+  --rm-bucket-1: #8b5cf6;
+  --rm-bucket-2: #3b82f6;
+  --rm-bucket-3: #10b981;
+  --rm-bucket-4: #f59e0b;
+  --rm-bucket-5: #ec4899;
+  --rm-bucket-6: #ef4444;
+
+  /* Report Forge category colors */
+  --rf-cat-architecture: #8b5cf6;
+  --rf-cat-performance: #10b981;
+  --rf-cat-security: #ef4444;
+  --rf-cat-integration: #3b82f6;
+  --rf-cat-feature: #14b8a6;
+  --rf-cat-operations: #f59e0b;
+  --rf-cat-debt: #e67e22;
+  --rf-cat-competitive: #ec4899;
+  --rf-cat-user: #6366f1;
+  --rf-cat-business: #3498db;
+
+  /* Product Forge status colors */
+  --status-draft: #e67e22;
+  --status-blue: #3498db;
+  --status-green: #27ae60;
+  --status-teal: #1abc9c;
+  --status-gray: #95a5a6;
+  --status-yellow: #f39c12;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #262625;
+  --bg-secondary: #2e2e2e;
+  --bg-tertiary: #2e2e2e;
+  --bg-hover: #c76140;
+  --bg-card: #201e1d;
+  --text-primary: #e0e0e8;
+  --text-secondary: #b6b5b1;
+  --text-muted: #8a8983;
+  --border-color: #565551;
+  --border-light: #2b2a28;
+  --accent: #c76140;
+  --accent-hover: #c76140;
+  --accent-light: #2e2e2e;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+
+  /* Report Forge category colors (dark theme) */
+  --rf-cat-architecture: #a78bfa;
+  --rf-cat-performance: #34d399;
+  --rf-cat-security: #f87171;
+  --rf-cat-integration: #60a5fa;
+  --rf-cat-feature: #2dd4bf;
+  --rf-cat-operations: #fbbf24;
+  --rf-cat-debt: #f97316;
+  --rf-cat-competitive: #f472b6;
+  --rf-cat-user: #818cf8;
+  --rf-cat-business: #38bdf8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Base Reset & Typography
+   ═══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: background var(--transition), color var(--transition);
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button {
+  font-family: inherit; font-size: inherit; cursor: pointer;
+  border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+  background: var(--bg-secondary); color: var(--text-primary);
+  padding: 6px 12px; transition: all var(--transition);
+}
+button:hover { background: var(--bg-tertiary); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.primary:hover { background: var(--accent-hover); }
+button.danger { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+button.danger:hover { background: #c0392b; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+input, select, textarea {
+  font-family: inherit; font-size: inherit;
+  padding: 6px 10px; border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); background: var(--bg-primary);
+  color: var(--text-primary); transition: border-color var(--transition);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74,108,247,0.15);
+}
+textarea { resize: vertical; min-height: 200px; }
+.hidden { display: none !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

@@ -1,0 +1,95 @@
+{
+  "name": "product-forge",
+  "version": "2.0.0",
+  "description": "Product management workflows for Initiatives, Epics, Stories, and planning artifacts. Delegates all file operations to forge-lib.",
+  "author": "Jeremy Brice",
+  "commands": [
+    {
+      "name": "init",
+      "description": "Initialize Product Forge directory structure",
+      "file": "commands/init.md"
+    },
+    {
+      "name": "intake",
+      "description": "Create intake cards from product ideas",
+      "file": "commands/intake.md"
+    },
+    {
+      "name": "initiative",
+      "description": "Create Initiative cards for large projects",
+      "file": "commands/initiative.md"
+    },
+    {
+      "name": "epic",
+      "description": "Create Epic cards for team-level features",
+      "file": "commands/epic.md"
+    },
+    {
+      "name": "story",
+      "description": "Create Story cards for implementation work",
+      "file": "commands/story.md"
+    },
+    {
+      "name": "decision",
+      "description": "Document architectural and product decisions",
+      "file": "commands/decision.md"
+    },
+    {
+      "name": "checkpoint",
+      "description": "Create periodic checkpoints for tracking progress",
+      "file": "commands/checkpoint.md"
+    },
+    {
+      "name": "release-notes",
+      "description": "Generate release notes from completed stories",
+      "file": "commands/release-notes.md"
+    },
+    {
+      "name": "link-to-jira",
+      "description": "Create Jira issues from Product Forge cards",
+      "file": "commands/link-to-jira.md"
+    },
+    {
+      "name": "pull-from-jira",
+      "description": "Pull updates from Jira to Product Forge cards",
+      "file": "commands/pull-from-jira.md"
+    },
+    {
+      "name": "push-to-jira",
+      "description": "Push updates from Product Forge cards to Jira",
+      "file": "commands/push-to-jira.md"
+    }
+  ],
+  "skills": [
+    {
+      "name": "pm-methodology",
+      "description": "PM reasoning guidance and tone recommendations",
+      "file": "skills/pm-methodology/SKILL.md",
+      "auto_invoke": true
+    },
+    {
+      "name": "product-context",
+      "description": "Organization's product ecosystem knowledge",
+      "file": "skills/product-context/SKILL.md",
+      "auto_invoke": true
+    },
+    {
+      "name": "jira-sync",
+      "description": "Jira sync reasoning and conflict resolution",
+      "file": "skills/jira-sync/SKILL.md",
+      "auto_invoke": false
+    }
+  ],
+  "dependencies": {
+    "forge-lib": "^2.0.0"
+  },
+  "directory_structure": {
+    "cards/initiatives": "Initiative cards",
+    "cards/epics": "Epic cards",
+    "cards/stories": "Story cards",
+    "cards/intakes": "Intake cards",
+    "cards/decisions": "Decision records",
+    "cards/checkpoints": "Progress checkpoints",
+    "cards/release-notes": "Release documentation"
+  }
+}

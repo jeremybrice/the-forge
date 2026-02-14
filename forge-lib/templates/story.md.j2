@@ -1,0 +1,33 @@
+---
+title: "{{ title }}"
+type: story
+status: {{ status }}
+product: {{ product }}
+module: {{ module if module else 'null' }}
+client: {{ client if client else 'null' }}
+team: {{ team if team else 'null' }}
+parent: {{ parent if parent else 'null' }}
+story_points: {{ story_points if story_points else 'null' }}
+jira_card: {{ jira_card if jira_card else 'null' }}
+source_conversation: {{ source_conversation if source_conversation else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Background / Context
+
+{{ background if background else 'TODO: Describe why this Story is needed, what parent Epic it belongs to, and the problem it solves.' }}
+
+## Feature Requirements / Functional Behavior
+
+{{ requirements if requirements else 'TODO: Describe the UI behavior, business rules, and functional requirements for this Story.' }}
+
+## Acceptance Tests
+
+{{ acceptance_tests if acceptance_tests else 'TODO: Define testable acceptance criteria with steps and expected results.' }}
+
+{% if implementation_context and implementation_context|length > 0 -%}
+## Implementation Context
+
+{{ implementation_context }}
+{% endif %}

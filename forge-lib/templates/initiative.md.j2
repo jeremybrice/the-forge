@@ -1,0 +1,85 @@
+---
+title: "{{ title }}"
+type: initiative
+status: {{ status }}
+product: {{ product }}
+module: {{ module if module else 'null' }}
+client: {{ client if client else 'null' }}
+team: {{ team if team else 'null' }}
+confidence: {{ confidence if confidence else 'null' }}
+estimate_hours: {{ estimate_hours if estimate_hours else 'null' }}
+jira_card: {{ jira_card if jira_card else 'null' }}
+source_intake: {{ source_intake if source_intake else 'null' }}
+children:
+{%- if children and children|length > 0 %}
+{% for child in children %}
+  - {{ child }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+description: "{{ description }}"
+source_conversation: {{ source_conversation if source_conversation else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Background
+
+{{ background if background else 'TODO: Describe the current state and problem. Include market context, user pain points, or business drivers that make this Initiative relevant now.' }}
+
+## Proposed Solution
+
+{{ proposed_solution if proposed_solution else 'TODO: Describe the high-level solution. What are we building? How does it solve the problem?' }}
+
+## Affected Systems
+
+{%- if affected_systems and affected_systems|length > 0 %}
+{% for system in affected_systems %}
+- {{ system }}
+{%- endfor %}
+{%- else %}
+
+TODO: List systems impacted by this Initiative (both primary and secondary systems).
+{%- endif %}
+
+## Potential Requirements
+
+{%- if potential_requirements and potential_requirements|length > 0 %}
+{% for requirement in potential_requirements %}
+- {{ requirement }}
+{%- endfor %}
+{%- else %}
+
+TODO: List 4-6 high-level capabilities that need to be built for engineering estimation.
+{%- endif %}
+
+## Additional Considerations
+
+{%- if additional_considerations and additional_considerations|length > 0 %}
+{% for consideration in additional_considerations %}
+- {{ consideration }}
+{%- endfor %}
+{%- else %}
+
+TODO: List cross-cutting concerns, migration needs, or constraints that affect estimation.
+{%- endif %}
+
+## Open Questions
+
+{%- if open_questions and open_questions|length > 0 %}
+{% for question in open_questions %}
+- {{ question }}
+{%- endfor %}
+{%- else %}
+
+TODO: List unknowns or decisions that haven't been made.
+{%- endif %}
+
+{% if out_of_scope and out_of_scope|length > 0 -%}
+## Out of Scope
+
+{% for item in out_of_scope %}
+- {{ item }}
+{%- endfor %}
+{% endif %}

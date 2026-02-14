@@ -1,0 +1,98 @@
+---
+title: "{{ title }}"
+type: intake
+status: {{ status }}
+product: {{ product }}
+module: {{ module if module else 'null' }}
+client: {{ client if client else 'null' }}
+team: {{ team if team else 'null' }}
+source: {{ source if source else 'null' }}
+requested_by: {{ requested_by if requested_by else 'null' }}
+priority: {{ priority if priority else 'null' }}
+generated_initiatives:
+{%- if generated_initiatives and generated_initiatives|length > 0 %}
+{% for initiative in generated_initiatives %}
+  - {{ initiative }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+generated_epics:
+{%- if generated_epics and generated_epics|length > 0 %}
+{% for epic in generated_epics %}
+  - {{ epic }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+source_conversation: {{ source_conversation if source_conversation else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Intake Summary
+
+{{ intake_summary if intake_summary else 'TODO: Provide a concise summary of the intake request and its strategic context.' }}
+
+## Problem Statement
+
+{{ problem_statement if problem_statement else 'TODO: Describe the problems this intake addresses. Break down into specific, measurable issues.' }}
+
+## Proposed Solution
+
+{{ proposed_solution if proposed_solution else 'TODO: Describe the high-level solution approach for addressing the problems.' }}
+
+## In Scope
+
+{%- if in_scope and in_scope|length > 0 %}
+{% for item in in_scope %}
+- {{ item }}
+{%- endfor %}
+{%- else %}
+
+TODO: List what is included in scope for this intake.
+{%- endif %}
+
+## Out of Scope
+
+{%- if out_of_scope and out_of_scope|length > 0 %}
+{% for item in out_of_scope %}
+- {{ item }}
+{%- endfor %}
+{%- else %}
+
+TODO: List what is explicitly excluded from scope.
+{%- endif %}
+
+## Affected Systems
+
+{%- if affected_systems and affected_systems|length > 0 %}
+{% for system in affected_systems %}
+- {{ system }}
+{%- endfor %}
+{%- else %}
+
+TODO: List all systems affected by this work.
+{%- endif %}
+
+## User Impact
+
+{{ user_impact if user_impact else 'TODO: Describe how this work impacts users, customers, or stakeholders.' }}
+
+{% if estimated_scope -%}
+## Estimated Scope
+
+{{ estimated_scope }}
+{% endif %}
+
+{% if risks_dependencies and risks_dependencies|length > 0 -%}
+## Risks and Dependencies
+
+{{ risks_dependencies }}
+{% endif %}
+
+{% if interview_notes -%}
+## Interview Notes
+
+{{ interview_notes }}
+{% endif %}

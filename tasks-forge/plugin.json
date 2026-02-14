@@ -1,0 +1,30 @@
+{
+  "name": "tasks-forge",
+  "version": "2.0.0",
+  "description": "Folder-based task management with rich metadata, status workflows, and external system sync",
+  "commands": [
+    {
+      "name": "start",
+      "path": "commands/start.md",
+      "description": "Initialize the task management system in the current directory"
+    },
+    {
+      "name": "add",
+      "path": "commands/add.md",
+      "description": "Quickly add a new task with an interactive prompt"
+    },
+    {
+      "name": "update",
+      "path": "commands/update.md",
+      "description": "Update task status or sync from external sources",
+      "argument_hint": "[task-id] [--status STATUS] [--priority PRIORITY]"
+    }
+  ],
+  "skills": [
+    {
+      "name": "task-management",
+      "path": "skills/task-management/SKILL.md",
+      "description": "Task workflow guidance for status transitions, priority assignment, and triage reasoning"
+    }
+  ]
+}

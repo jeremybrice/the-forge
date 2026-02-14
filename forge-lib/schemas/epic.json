@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/epic.json",
+  "title": "Epic Card Schema",
+  "description": "JSON Schema for Epic-level feature delivery cards",
+  "type": "object",
+  "required": ["title", "type", "status", "product", "description", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Concise name for the Epic",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "epic",
+      "description": "Card type identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "Planning", "Ready", "In Progress", "In Review", "Completed", "Cancelled"],
+      "description": "Current status of the epic"
+    },
+    "product": {
+      "type": "string",
+      "description": "Product from taxonomy",
+      "minLength": 1
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy",
+      "default": null
+    },
+    "client": {
+      "type": ["string", "null"],
+      "description": "Client from taxonomy",
+      "default": null
+    },
+    "team": {
+      "type": ["string", "null"],
+      "description": "Team responsible for the epic",
+      "default": null
+    },
+    "parent": {
+      "type": ["string", "null"],
+      "description": "Parent initiative filename (without extension)",
+      "default": null
+    },
+    "children": {
+      "type": "array",
+      "description": "List of child story filenames (without extension)",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief summary of epic scope and goals",
+      "minLength": 1
+    },
+    "source_intake": {
+      "type": ["string", "null"],
+      "description": "Reference to intake form filename (without extension)",
+      "default": null
+    },
+    "source_conversation": {
+      "type": ["string", "null"],
+      "description": "Link to planning conversation",
+      "default": null
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

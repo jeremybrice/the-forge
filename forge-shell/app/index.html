@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forge Shell</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='4' fill='%234a6cf7'/%3E%3Crect x='5' y='8' width='8' height='18' rx='2' fill='%23ffffff' opacity='0.9'/%3E%3Crect x='16' y='8' width='11' height='18' rx='2' fill='%23ffffff' opacity='0.6'/%3E%3Crect x='5' y='3' width='22' height='4' rx='2' fill='%23ffffff' opacity='0.3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/cognitive-forge.css">
+  <link rel="stylesheet" href="css/product-forge.css">
+  <link rel="stylesheet" href="css/productivity.css">
+  <link rel="stylesheet" href="css/roadmap.css">
+  <link rel="stylesheet" href="css/rovo-agent-forge.css">
+  <link rel="stylesheet" href="css/report-forge.css">
+</head>
+<body>
+
+  <!-- Welcome Screen Overlay -->
+  <div id="welcome-screen">
+    <div class="welcome-content">
+      <div class="logo"><i class="fa-solid fa-terminal" style="color: var(--accent);"></i></div>
+      <h1>Forge Shell</h1>
+      <p>Unified dashboard for all your Forge plugins. Select your project root directory to get started.</p>
+      <button class="btn-select" id="btn-welcome-select">Select Project Folder</button>
+      <p class="note">Choose your <strong>project root</strong> directory (the one containing <code>sessions/</code>, <code>cards/</code>, <code>rovo-agents/</code>, <code>TASKS.md</code>, <code>memory/</code>, etc.).</p>
+    </div>
+  </div>
+
+  <!-- Main Shell -->
+  <div id="shell" style="display: none;">
+
+    <!-- Sidebar Nav -->
+    <nav id="shell-sidebar">
+      <ul id="shell-nav">
+        <!-- Populated by shell.js -->
+      </ul>
+      <div id="shell-sidebar-bottom">
+        <button class="btn-icon" id="btn-edit-mode" title="Edit plugins"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-icon" id="btn-theme" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+        <button class="btn-icon" id="btn-change-dir" title="Change directory"><i class="fa-solid fa-folder-open"></i></button>
+      </div>
+    </nav>
+
+    <!-- Content Area -->
+    <div id="shell-content">
+
+      <!-- Forge Shell Home View -->
+      <div id="view-forge-shell" class="shell-view">
+        <!-- Rendered by ForgeShellView controller -->
+      </div>
+
+      <!-- Cognitive Forge View -->
+      <div id="view-cognitive-forge" class="shell-view">
+        <!-- Rendered by CognitiveForgeView controller -->
+      </div>
+
+      <!-- Product Forge Local View -->
+      <div id="view-product-forge-local" class="shell-view">
+        <!-- Rendered by ProductForgeLocalView controller -->
+      </div>
+
+      <!-- Roadmap View -->
+      <div id="view-roadmap" class="shell-view">
+        <!-- Rendered by RoadmapView controller -->
+      </div>
+
+      <!-- Tasks View -->
+      <div id="view-tasks" class="shell-view">
+        <!-- Rendered by TasksView controller -->
+      </div>
+
+      <!-- Memory View -->
+      <div id="view-memory" class="shell-view">
+        <!-- Rendered by MemoryView controller -->
+      </div>
+
+      <!-- Rovo Agent Forge View -->
+      <div id="view-rovo-agent-forge" class="shell-view">
+        <!-- Rendered by RovoAgentForgeView controller -->
+      </div>
+
+      <!-- Report Forge View -->
+      <div id="view-report-forge" class="shell-view">
+        <!-- Rendered by ReportForgeView controller -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Shared Confirm Dialog -->
+  <div id="confirm-dialog" class="modal-overlay">
+    <div class="confirm-content">
+      <h3 id="confirm-title">Confirm Action</h3>
+      <p id="confirm-message"></p>
+      <div class="confirm-details" id="confirm-details"></div>
+      <div class="confirm-actions">
+        <button onclick="ForgeUtils.Confirm.resolve(false)">Cancel</button>
+        <button class="primary" onclick="ForgeUtils.Confirm.resolve(true)">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/fs-adapter.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/card-data.js"></script>
+  <script src="js/shell.js"></script>
+  <script src="js/cognitive-forge.js"></script>
+  <script src="js/product-forge.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/memory.js"></script>
+  <script src="js/roadmap.js"></script>
+  <script src="js/rovo-agent-forge.js"></script>
+  <script src="js/report-forge.js"></script>
+
+</body>
+</html>

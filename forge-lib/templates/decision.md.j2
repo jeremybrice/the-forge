@@ -1,0 +1,30 @@
+---
+title: "{{ title }}"
+type: decision
+status: {{ status }}
+product: {{ product }}
+module: {{ module if module else 'null' }}
+client: {{ client if client else 'null' }}
+team: {{ team if team else 'null' }}
+decision_date: {{ decision_date }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Decision
+
+{{ decision if decision else 'TODO: State the decision clearly and concisely.' }}
+
+## Rationale
+
+{{ rationale if rationale else 'TODO: Explain the reasoning behind the decision, including alternatives considered.' }}
+
+## Impact
+
+{{ impact if impact else 'TODO: Describe the impact of this decision on systems, teams, and processes.' }}
+
+{% if stakeholders and stakeholders|length > 0 -%}
+## Stakeholders
+
+{{ stakeholders }}
+{% endif %}

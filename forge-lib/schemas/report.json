@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/report.json",
+  "title": "Report Card Schema",
+  "description": "JSON Schema for generated report cards",
+  "type": "object",
+  "required": ["title", "type", "report_type", "topic", "status", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Report title",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "report",
+      "description": "Card type identifier"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "executive-summary",
+        "technical-deep-dive",
+        "competitive-analysis",
+        "architecture-review",
+        "performance-analysis",
+        "incident-postmortem",
+        "quarterly-review",
+        "feasibility-study"
+      ],
+      "description": "Type of report"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Main topic or focus area of the report",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "In Review", "Published", "Archived"],
+      "description": "Current status of the report"
+    },
+    "product": {
+      "type": ["string", "null"],
+      "description": "Product from taxonomy",
+      "default": null
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy",
+      "default": null
+    },
+    "authors": {
+      "type": "array",
+      "description": "List of report authors or contributors",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "agents": {
+      "type": "array",
+      "description": "List of agents used to generate the report",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

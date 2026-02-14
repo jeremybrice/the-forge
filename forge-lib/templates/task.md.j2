@@ -1,0 +1,37 @@
+---
+title: "{{ title }}"
+type: task
+status: {{ status }}
+priority: {{ priority }}
+assignee: {{ assignee if assignee else 'null' }}
+due_date: {{ due_date if due_date else 'null' }}
+tags:
+{%- if tags and tags|length > 0 %}
+{% for tag in tags %}
+  - {{ tag }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+parent: {{ parent if parent else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Description
+
+{{ description if description else 'TODO: Describe the task and what needs to be done.' }}
+
+{% if notes -%}
+## Notes
+
+{{ notes }}
+{% endif %}
+
+{% if acceptance_criteria and acceptance_criteria|length > 0 -%}
+## Acceptance Criteria
+
+{%- for criterion in acceptance_criteria %}
+- {{ criterion }}
+{%- endfor %}
+{% endif %}

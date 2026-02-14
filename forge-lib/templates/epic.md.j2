@@ -1,0 +1,99 @@
+---
+title: "{{ title }}"
+type: epic
+status: {{ status }}
+product: {{ product }}
+module: {{ module if module else 'null' }}
+client: {{ client if client else 'null' }}
+team: {{ team if team else 'null' }}
+parent: {{ parent if parent else 'null' }}
+children:
+{%- if children and children|length > 0 %}
+{% for child in children %}
+  - {{ child }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+description: "{{ description }}"
+source_intake: {{ source_intake if source_intake else 'null' }}
+source_conversation: {{ source_conversation if source_conversation else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Background/Context
+
+{{ background if background else 'TODO: Describe why this Epic is needed, what parent Initiative it belongs to, and how it fits into the larger picture.' }}
+
+## Epic Scope
+
+{{ scope if scope else 'TODO: Describe what this Epic will deliver and what is explicitly excluded from scope.' }}
+
+## Affected Systems
+
+{%- if affected_systems and affected_systems|length > 0 %}
+{% for system in affected_systems %}
+- {{ system }}
+{%- endfor %}
+{%- else %}
+
+TODO: List systems impacted by this Epic.
+{%- endif %}
+
+## Functional Capabilities
+
+{%- if functional_capabilities and functional_capabilities|length > 0 %}
+{% for capability in functional_capabilities %}
+- {{ capability }}
+{%- endfor %}
+{%- else %}
+
+TODO: List the key functional capabilities this Epic delivers.
+{%- endif %}
+
+## Suggested Story Breakdown
+
+{%- if suggested_stories and suggested_stories|length > 0 %}
+{% for story in suggested_stories %}
+- {{ story }}
+{%- endfor %}
+{%- else %}
+
+TODO: Suggest how this Epic could be broken down into Stories.
+{%- endif %}
+
+## Success Criteria
+
+{%- if success_criteria and success_criteria|length > 0 %}
+{% for criterion in success_criteria %}
+- {{ criterion }}
+{%- endfor %}
+{%- else %}
+
+TODO: Define measurable success criteria for this Epic.
+{%- endif %}
+
+{% if related_epics and related_epics|length > 0 -%}
+## Related Epics/Dependencies
+
+{% for epic in related_epics %}
+- {{ epic }}
+{%- endfor %}
+{% endif %}
+
+{% if technical_constraints and technical_constraints|length > 0 -%}
+## Technical Constraints
+
+{% for constraint in technical_constraints %}
+- {{ constraint }}
+{%- endfor %}
+{% endif %}
+
+{% if open_questions and open_questions|length > 0 -%}
+## Open Questions
+
+{% for question in open_questions %}
+- {{ question }}
+{%- endfor %}
+{% endif %}

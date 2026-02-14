@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/task.json",
+  "title": "Task Card Schema",
+  "description": "JSON Schema for task management cards",
+  "type": "object",
+  "required": ["title", "type", "status", "priority", "created", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title or description",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "const": "task",
+      "description": "Card type identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Open", "In Progress", "Blocked", "Completed", "Cancelled"],
+      "description": "Current status of the task"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Priority level (1 = highest, 5 = lowest)",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 3
+    },
+    "assignee": {
+      "type": ["string", "null"],
+      "description": "Person assigned to the task",
+      "default": null
+    },
+    "due_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Due date in YYYY-MM-DD format",
+      "default": null
+    },
+    "tags": {
+      "type": "array",
+      "description": "List of tags for categorization",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "parent": {
+      "type": ["string", "null"],
+      "description": "Parent task or story filename (without extension)",
+      "default": null
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

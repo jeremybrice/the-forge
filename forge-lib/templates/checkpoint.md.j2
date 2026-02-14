@@ -1,0 +1,39 @@
+---
+title: "{{ title }}"
+type: checkpoint
+source: {{ source if source else 'null' }}
+participants:
+{%- if participants and participants|length > 0 %}
+{% for participant in participants %}
+  - {{ participant }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Summary
+
+{{ summary if summary else 'TODO: Provide a concise summary of the checkpoint session and its outcomes.' }}
+
+## Key Points
+
+{{ key_points if key_points else 'TODO: List the key discussion points, findings, and context from the session.' }}
+
+## Decisions and Conclusions
+
+{{ decisions if decisions else 'TODO: Document the decisions reached and conclusions drawn during the session.' }}
+
+{% if open_items and open_items|length > 0 -%}
+## Open Items
+
+{{ open_items }}
+{% endif %}
+
+{% if context -%}
+## Context
+
+{{ context }}
+{% endif %}

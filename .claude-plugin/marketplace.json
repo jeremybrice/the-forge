@@ -1,0 +1,41 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "the-forge-marketplace-v2",
+  "description": "A curated suite for product management and productivity tools with deterministic Python data layer (forge-lib) and LLM reasoning layer. Commands simplified 60% from v1.",
+  "version": "2.0.0-alpha",
+  "owner": {
+    "name": "Jeremy Brice"
+  },
+  "plugins": [
+    {
+      "name": "product-forge",
+      "source": "./product-forge",
+      "description": "Local-first product management with forge-lib delegation. Creates Initiative, Epic, Story, Intake, Checkpoint, Decision, and Release Note cards via CLI. Simplified commands (80-100 lines) focus on conversational workflow."
+    },
+    {
+      "name": "tasks-forge",
+      "source": "./tasks-forge",
+      "description": "Task management with sequential numbering (task-NNN.md) and status workflow. All file operations delegated to forge-lib. Query by status, priority, due date via index.json."
+    },
+    {
+      "name": "forge-memory",
+      "source": "./forge-memory",
+      "description": "Organizational memory and context management with taxonomy support. Two-tier system with CLAUDE.md hot cache and memory/ directory for products, modules, systems, clients, teams, and integrations."
+    },
+    {
+      "name": "cognitive-forge",
+      "source": "./cognitive-forge",
+      "description": "Multi-agent debate and exploration sessions with date-based filenames (YYYY-MM-DD-slug.md). Spawns specialized agents (Challenger, Decomposer, Evaluator, Explorer, Synthesizer) for parallel reasoning."
+    },
+    {
+      "name": "report-forge",
+      "source": "./report-forge",
+      "description": "Multi-agent report generation with 8 report types (executive-summary, technical-deep-dive, competitive-analysis, architecture-review, performance-analysis, incident-postmortem, quarterly-review, feasibility-study). Date-based filenames and status workflow."
+    },
+    {
+      "name": "rovo-forge",
+      "source": "./rovo-forge",
+      "description": "Interactive builders for Atlassian Rovo agents. Guides through Jira and Confluence agent configuration via adaptive interview. Outputs structured agent configs with copy-ready sections for Rovo Studio."
+    }
+  ]
+}

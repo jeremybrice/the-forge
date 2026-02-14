@@ -1,0 +1,362 @@
+/* ═══════════════════════════════════════════════════════════
+   Shell Layout — Sidebar, Content, Welcome, Edit Mode
+   ═══════════════════════════════════════════════════════════ */
+
+/* Main shell layout */
+#shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* ── Sidebar ── */
+#shell-sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width var(--transition);
+}
+
+#shell-nav {
+  list-style: none;
+  padding: 4px;
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.shell-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+  user-select: none;
+  position: relative;
+}
+
+.shell-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.shell-nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.shell-nav-item .nav-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  text-align: center;
+  width: 24px;
+}
+
+.shell-nav-item .nav-label {
+  display: none;
+}
+
+/* Edit mode visibility toggle */
+.shell-nav-item .visibility-toggle {
+  display: none;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.shell-nav-item .visibility-toggle:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+#shell.edit-mode .shell-nav-item .visibility-toggle {
+  display: flex;
+}
+
+#shell.edit-mode .shell-nav-item {
+  padding-right: 36px;
+}
+
+/* ── Sidebar Bottom Actions ── */
+#shell-sidebar-bottom {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+}
+
+#shell-sidebar-bottom .btn-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+#shell-sidebar-bottom .btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Content Area ── */
+#shell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+  position: relative;
+}
+
+/* View containers */
+.shell-view {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.shell-view.active {
+  display: flex;
+}
+
+/* ── Welcome Screen Overlay ── */
+#welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+#welcome-screen.hidden {
+  display: none;
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 480px;
+  padding: 40px;
+}
+
+.welcome-content .logo {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.welcome-content h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.welcome-content p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.welcome-content .btn-select {
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.welcome-content .btn-select:hover {
+  background: var(--accent-hover);
+}
+
+.welcome-content .note {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.welcome-content code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Not Active Fallback ── */
+.not-active-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.not-active-state .state-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.not-active-state h2 {
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.not-active-state p {
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.not-active-state code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.not-active-state button {
+  margin-top: 8px;
+}
+
+/* ── Forge Shell Home View ── */
+.shell-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+  padding: 40px;
+  text-align: center;
+}
+
+.shell-home h2 {
+  font-size: 22px;
+}
+
+.shell-home .dir-info {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.shell-home .dir-info i {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.shell-home .plugin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.plugin-status-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.plugin-status-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.plugin-status-card .status-icon {
+  font-size: 18px;
+}
+
+.plugin-status-card .status-label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.plugin-status-card .status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.plugin-status-card .status-badge.active {
+  background: rgba(39,174,96,0.15);
+  color: #27ae60;
+}
+
+.plugin-status-card .status-badge.inactive {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  #shell-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-md);
+  }
+
+  #shell-sidebar.open {
+    transform: translateX(0);
+  }
+
+  #shell-content {
+    width: 100%;
+  }
+}

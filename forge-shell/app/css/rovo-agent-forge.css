@@ -1,0 +1,403 @@
+/* ═══════════════════════════════════════════════════════════
+   Rovo Agent Forge View — Layout, sidebar, detail, modal
+   All classes use raf- prefix
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Custom Properties ── */
+:root {
+  --raf-platform-jira: #0052CC;
+  --raf-platform-confluence: #1868DB;
+}
+
+[data-theme="dark"] {
+  --raf-platform-jira: #4C9AFF;
+  --raf-platform-confluence: #579DFF;
+}
+
+/* ── Main Grid Layout ── */
+.raf-layout {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr;
+  grid-template-columns: 280px 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.raf-layout > .plugin-toolbar {
+  grid-column: 1 / -1;
+}
+
+/* ── Sidebar ── */
+.raf-sidebar {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.raf-filter-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.raf-agent-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* ── Agent List Items ── */
+.raf-agent-item {
+  display: flex;
+  align-items: stretch;
+  margin: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.raf-agent-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+
+.raf-agent-item.selected {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.raf-agent-platform-bar {
+  width: 4px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.raf-agent-item-content {
+  flex: 1;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.raf-agent-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.raf-agent-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Platform Pill ── */
+.raf-platform-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ── Status Dot ── */
+.raf-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Detail Panel ── */
+.raf-detail-panel {
+  grid-row: 2;
+  grid-column: 2;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+/* ── Agent Detail ── */
+.raf-agent-detail {
+  max-width: 900px;
+}
+
+.raf-title-header {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+
+/* ── Chip Lists ── */
+.raf-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.raf-skill-chip,
+.raf-knowledge-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ── Conversation Starters ── */
+.raf-starters-list {
+  font-size: 13px;
+  padding-left: 20px;
+  color: var(--text-secondary);
+}
+
+.raf-starters-list li {
+  margin: 4px 0;
+}
+
+/* ── Agent Actions ── */
+.raf-agent-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Empty States ── */
+.raf-empty-list {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.raf-not-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.raf-not-active .raf-state-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.raf-not-active h2 {
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.raf-not-active p {
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.raf-not-active code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Edit Modal (scoped to this view) ── */
+.raf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.raf-modal-overlay.raf-visible {
+  display: flex;
+}
+
+.raf-modal-content {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 850px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.raf-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.raf-modal-header h3 {
+  font-size: 18px;
+}
+
+.raf-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.raf-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.raf-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.raf-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.raf-form-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.raf-form-section-title:first-child {
+  margin-top: 0;
+}
+
+/* ── Diff Container ── */
+.raf-diff-container {
+  margin-top: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.raf-diff-container .diff-header {
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.raf-diff-container .diff-body {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.raf-diff-container .diff-line {
+  padding: 1px 12px;
+  white-space: pre-wrap;
+}
+
+.raf-diff-container .diff-line.added {
+  background: rgba(39,174,96,0.12);
+  color: var(--status-green);
+}
+
+.raf-diff-container .diff-line.removed {
+  background: rgba(231,76,60,0.12);
+  color: #e74c3c;
+}
+
+.raf-diff-container .diff-line.same {
+  color: var(--text-muted);
+}
+
+.raf-diff-container .diff-field {
+  padding: 4px 12px;
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.raf-diff-container .diff-field .field-name {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.raf-diff-container .diff-field .old-val {
+  color: #e74c3c;
+  text-decoration: line-through;
+}
+
+.raf-diff-container .diff-field .new-val {
+  color: var(--status-green);
+}
+
+/* ── Responsive: collapse sidebar below 768px ── */
+@media (max-width: 768px) {
+  .raf-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .raf-sidebar {
+    display: none;
+  }
+
+  .raf-layout.raf-sidebar-open .raf-sidebar {
+    display: flex;
+    position: absolute;
+    top: var(--toolbar-height);
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+
+  .raf-detail-panel {
+    grid-column: 1;
+  }
+
+  .raf-toolbar-toggle {
+    display: inline-flex !important;
+  }
+}
+
+/* Hide sidebar toggle on desktop */
+.raf-toolbar-toggle {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .raf-toolbar-toggle {
+    display: inline-flex !important;
+  }
+}
