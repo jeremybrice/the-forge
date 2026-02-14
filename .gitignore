@@ -45,9 +45,8 @@ forge-shell/src-tauri/target/
 *.swo
 *~
 
-# Test directories (validation artifacts)
-validation-test/
-validation-test-*/
+# Validation artifacts
+validation-*/
 *.sh
 
 # Agent state
