@@ -1,0 +1,6 @@
+{
+  "name": "forge-memory",
+  "version": "2.0.0-alpha",
+  "description": "Organizational memory and taxonomy management with tiered lookup. Enables shorthand decoding, taxonomy queries, and knowledge storage via forge-lib.",
+  "author": { "name": "Jeremy Brice" }
+}

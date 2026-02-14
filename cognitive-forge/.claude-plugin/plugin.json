@@ -1,0 +1,6 @@
+{
+  "name": "cognitive-forge",
+  "version": "2.0.0-alpha",
+  "description": "Multi-agent concept evaluation through structured debate and interactive exploration. Spawns specialized agents for parallel reasoning.",
+  "author": { "name": "Jeremy Brice" }
+}

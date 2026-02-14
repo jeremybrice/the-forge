@@ -1,0 +1,6 @@
+{
+  "name": "tasks-forge",
+  "version": "2.0.0-alpha",
+  "description": "Task management with sequential numbering, status workflows, and index-based queries. Delegates all file operations to forge-lib.",
+  "author": { "name": "Jeremy Brice" }
+}
