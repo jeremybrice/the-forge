@@ -199,27 +199,21 @@ Assemble a narrative summary from the dialogue (not a raw transcript). Structure
 Use forge-lib to create the session record:
 
 ```bash
-forge session create \
-  --session-type exploration \
-  --title "<concept title as confirmed>" \
-  --category <Business|Philosophical|Framework|Creative> \
-  --relationship <creator|evaluator|inheritor> \
-  --agents-recruited <agent-list> \
-  --techniques-applied <technique-list> \
-  --status complete \
-  --content "<assembled narrative summary>" \
-  --output json
+forge session create exploration \
+  "<concept title as confirmed>" \
+  "<concept being explored>" \
+  --agents "<agent-list-if-recruited>" \
+  --status Completed \
+  --data '{"category": "<classification>", "relationship": "<creator|evaluator|inheritor>", "techniques_applied": ["technique1"], "session_log": "<narrative summary>", "synthesis": "<refined understanding>", "key_insights": ["insight1"], "next_steps": ["step1"]}'
 ```
 
 Parameters:
-- `--session-type exploration`: Fixed value for exploration sessions
-- `--title`: Concept title as confirmed in Phase 1
-- `--category`: Primary classification (Business, Philosophical, Framework, or Creative)
-- `--relationship`: User's relationship to concept (creator, evaluator, or inheritor)
-- `--agents-recruited`: Comma-separated list if any were recruited (e.g., "decomposer,evaluator"), or omit if none
-- `--techniques-applied`: Comma-separated list of techniques used (e.g., "perspective-synthesis,boundary-mapping,pre-mortem")
-- `--status`: "complete" if finished, "partial" if interrupted
-- `--content`: Full assembled narrative summary from above
+- First positional arg: `exploration` (fixed session type)
+- Second positional arg: Concept title as confirmed in Phase 1
+- Third positional arg: Topic/question being explored
+- `--agents`: Comma-separated list if any were recruited (e.g., "decomposer,evaluator"), or omit if none
+- `--status`: `Completed` when finished, `Active` if interrupted
+- `--data`: JSON object containing `category`, `relationship`, `techniques_applied`, `session_log`, `synthesis`, `key_insights`, `next_steps`
 
 The forge-lib CLI will:
 - Generate date-based filename (YYYY-MM-DD-slug.md)

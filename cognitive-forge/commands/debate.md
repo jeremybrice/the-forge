@@ -259,23 +259,21 @@ Assemble the full session content in this order:
 Use forge-lib to create the session record:
 
 ```bash
-forge session create \
-  --session-type debate \
-  --title "<concept title as confirmed>" \
-  --category <Business|Philosophical|Framework|Creative> \
-  --agents <agent-list> \
-  --status complete \
-  --content "<assembled session content>" \
-  --output json
+forge session create debate \
+  "<concept title as confirmed>" \
+  "<concept being debated>" \
+  --agents "challenger,explorer,synthesizer" \
+  --status Completed \
+  --data '{"category": "<classification>", "session_log": "<assembled session content>", "synthesis": "<forge report>", "key_insights": ["insight1", "insight2"], "next_steps": ["step1", "step2"]}'
 ```
 
 Parameters:
-- `--session-type debate`: Fixed value for debate sessions
-- `--title`: Concept title as confirmed in Phase 1
-- `--category`: Primary classification (Business, Philosophical, Framework, or Creative)
+- First positional arg: `debate` (fixed session type)
+- Second positional arg: Concept title as confirmed in Phase 1
+- Third positional arg: Topic/question being debated
 - `--agents`: Comma-separated list of agents used (e.g., "challenger,explorer,synthesizer" or "challenger,explorer,synthesizer,decomposer,evaluator")
-- `--status`: "complete" if finished, "partial" if interrupted
-- `--content`: Full assembled session content from above
+- `--status`: `Completed` when finished, `Active` if interrupted
+- `--data`: JSON object containing `category`, `session_log`, `synthesis`, `key_insights`, `next_steps`
 
 The forge-lib CLI will:
 - Generate date-based filename (YYYY-MM-DD-slug.md)

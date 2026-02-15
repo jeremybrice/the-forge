@@ -56,6 +56,37 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "session_log": {
+      "type": "string",
+      "description": "Full session narrative"
+    },
+    "synthesis": {
+      "type": "string",
+      "description": "Integrated analysis from all perspectives"
+    },
+    "key_insights": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "category": {
+      "type": "string",
+      "enum": ["Business", "Philosophical", "Framework", "Creative"]
+    },
+    "relationship": {
+      "type": "string",
+      "enum": ["creator", "evaluator", "inheritor"]
+    },
+    "techniques_applied": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
     }
   },
   "additionalProperties": false
