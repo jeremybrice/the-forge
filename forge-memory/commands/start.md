@@ -44,16 +44,16 @@ For each taxonomy type the user provided, call forge-lib to add entries:
 
 ```bash
 # Add products
-forge memory set-taxonomy products --value "Product Name" --operation add --directory .
+forge memory set-taxonomy products --add "Product Name" --directory .
 
 # Add clients
-forge memory set-taxonomy clients --value "Client Name" --operation add --directory .
+forge memory set-taxonomy clients --add "Client Name" --directory .
 
 # Add teams
-forge memory set-taxonomy teams --value "Team Name" --operation add --directory .
+forge memory set-taxonomy teams --add "Team Name" --directory .
 
 # Add integrations
-forge memory set-taxonomy integrations --value "Integration Name" --operation add --directory .
+forge memory set-taxonomy integrations --add "Integration Name" --directory .
 ```
 
 ### Phase 4: Report Success

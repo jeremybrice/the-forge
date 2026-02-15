@@ -65,7 +65,7 @@ Initialize the organizational memory system.
 
 **Delegates to forge-lib:**
 - `forge memory init --directory .`
-- `forge memory set-taxonomy [type] --value "..." --operation add`
+- `forge memory set-taxonomy [type] --add "..."`
 
 ---
 
@@ -87,7 +87,7 @@ Configure organizational taxonomy through interactive interview.
 
 **Delegates to forge-lib:**
 - `forge memory get-taxonomy [type]` (reads)
-- `forge memory set-taxonomy [type] --value "..." --operation add` (writes)
+- `forge memory set-taxonomy [type] --add "..."` (writes)
 
 ---
 
@@ -223,8 +223,8 @@ forge memory get-taxonomy modules --directory .
 forge memory get-taxonomy systems --directory .
 
 # Update taxonomy
-forge memory set-taxonomy products --value "WebApp" --operation add --directory .
-forge memory set-taxonomy clients --value "Acme Corp" --operation remove --directory .
+forge memory set-taxonomy products --add "WebApp" --directory .
+forge memory set-taxonomy clients --remove "Acme Corp" --directory .
 ```
 
 **Returns:** JSON arrays for programmatic consumption.

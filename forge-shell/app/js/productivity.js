@@ -103,7 +103,7 @@ window.ProductivityView = (function () {
             '<div class="prod-state-icon"><i class="fa-solid fa-brain"></i></div>' +
             '<h2>No Memory Found</h2>' +
             '<p>No <code>memory/</code> directory or <code>CLAUDE.md</code> found in the current project. ' +
-            'Run <code>/productivity:setup-org</code> to initialize.</p>' +
+            'Run <code>/memory:setup-org</code> to initialize.</p>' +
           '</div>' +
           '<div data-ref="memory-main" style="display:none;flex-direction:column;min-height:0;flex:1;">' +
             '<div class="prod-memory-tabs" data-ref="memory-tabs"></div>' +

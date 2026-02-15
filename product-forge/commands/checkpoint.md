@@ -38,7 +38,7 @@ Infer classifications from conversation context. Only prompt for values that can
 - Technical Spec
 - Stakeholder Context
 
-**Product/Module/Client:** Read from taxonomy files via `forge memory get-taxonomy` if available. If no config exists, accept freeform value and suggest `/productivity:setup-org`.
+**Product/Module/Client:** Read from taxonomy files via `forge memory get-taxonomy` if available. If no config exists, accept freeform value and suggest `/memory:setup-org`.
 
 ### Phase 3: Structure Content
 

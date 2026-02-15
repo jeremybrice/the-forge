@@ -288,7 +288,7 @@ systems: []
 
 # Products
 
-Add your products below. Run `/productivity:setup-org` to populate this file interactively.
+Add your products below. Run `/memory:setup-org` to populate this file interactively.
 
 # Modules
 
@@ -310,7 +310,7 @@ clients: []
 
 # Clients
 
-Add your key clients/customers below. Run `/productivity:setup-org` to populate this file interactively.
+Add your key clients/customers below. Run `/memory:setup-org` to populate this file interactively.
 
 ## Example Client
 
@@ -326,7 +326,7 @@ integrations: []
 
 # Integrations
 
-Add your external system integrations below. Run `/productivity:setup-org` to populate this file interactively.
+Add your external system integrations below. Run `/memory:setup-org` to populate this file interactively.
 
 ## Example Integration
 
@@ -342,7 +342,7 @@ teams: []
 
 # Company Context
 
-Run `/productivity:setup-org` to populate this file interactively.
+Run `/memory:setup-org` to populate this file interactively.
 
 ## Identity
 

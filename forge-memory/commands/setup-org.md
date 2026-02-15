@@ -81,8 +81,8 @@ They might span multiple products or be specific to one.
 
 Save each entry:
 ```bash
-forge memory set-taxonomy products --value "WebApp" --operation add --directory .
-forge memory set-taxonomy modules --value "Authentication" --operation add --directory .
+forge memory set-taxonomy products --add "WebApp" --directory .
+forge memory set-taxonomy modules --add "Authentication" --directory .
 ```
 
 ### Phase 3: Systems
@@ -98,7 +98,7 @@ List the standard set your team would recognize.
 
 Save entries:
 ```bash
-forge memory set-taxonomy systems --value "API Gateway" --operation add --directory .
+forge memory set-taxonomy systems --add "API Gateway" --directory .
 ```
 
 ### Phase 4: Clients (Optional)
@@ -114,7 +114,7 @@ If this doesn't apply (B2C or internal-only), just say "skip".
 
 Save entries:
 ```bash
-forge memory set-taxonomy clients --value "Acme Corp" --operation add --directory .
+forge memory set-taxonomy clients --add "Acme Corp" --directory .
 ```
 
 ### Phase 5: Integrations (Optional)
@@ -133,7 +133,7 @@ If not applicable, say "skip".
 
 Save entries:
 ```bash
-forge memory set-taxonomy integrations --value "Salesforce" --operation add --directory .
+forge memory set-taxonomy integrations --add "Salesforce" --directory .
 ```
 
 ### Phase 6: Teams (Optional)
@@ -151,7 +151,7 @@ If you'd rather skip this, we can always add it later.
 
 Save entries:
 ```bash
-forge memory set-taxonomy teams --value "Platform Team" --operation add --directory .
+forge memory set-taxonomy teams --add "Platform Team" --directory .
 ```
 
 ### Phase 7: Report Results

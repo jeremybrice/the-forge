@@ -91,7 +91,7 @@ Query taxonomy for current values and display as suggestions.
 ### If value not in taxonomy:
 1. **Flag**: "I don't see '[value]' in your [category] taxonomy"
 2. **Offer**: "Should I add it? (Yes / Use it anyway / Enter different value)"
-3. **On confirmation**: Call `forge memory set-taxonomy --operation add`
+3. **On confirmation**: Call `forge memory set-taxonomy --add`
 
 ## Integration with Commands
 
@@ -141,12 +141,12 @@ Re-runnable—loads existing values and asks what to update.
 
 **Adding a value:**
 ```bash
-forge memory set-taxonomy products --value "New Product" --operation add --directory .
+forge memory set-taxonomy products --add "New Product" --directory .
 ```
 
 **Removing a value:**
 ```bash
-forge memory set-taxonomy products --value "Old Product" --operation remove --directory .
+forge memory set-taxonomy products --remove "Old Product" --directory .
 ```
 
 ## Reasoning Principles
