@@ -17,6 +17,7 @@ The LLM layer delegates to this CLI for all data operations.
 import argparse
 import json
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 # Import core modules
@@ -54,12 +55,17 @@ def output_json(data, success=True, error=None):
         success: Whether the operation succeeded
         error: Error message if success=False
     """
+    def _json_default(obj):
+        if isinstance(obj, (date, datetime)):
+            return obj.strftime("%Y-%m-%d")
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
     result = {
         "success": success,
         "data": data if success else None,
         "error": error if not success else None
     }
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, default=_json_default))
 
 
 def handle_card_create(args):
@@ -516,8 +522,6 @@ def handle_index_rebuild(args):
 def handle_index_update(args):
     """Update index.json for a specific file"""
     try:
-        from datetime import date, datetime
-
         filepath = Path(args.directory) / args.filename
         if not filepath.exists():
             output_json(None, success=False, error=f"File not found: {args.filename}")

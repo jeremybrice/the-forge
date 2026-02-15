@@ -323,14 +323,6 @@ def rebuild_index(
     if not dir_path.is_dir():
         raise IndexError(f"Path is not a directory: {directory}")
 
-    # Initialize new index
-    index_data = {
-        "schema_version": "1.0",
-        "plugin": plugin,
-        "updated": datetime.now().strftime("%Y-%m-%d"),
-        "entries": []
-    }
-
     # Determine directories to scan
     if entity_types:
         scan_dirs = [dir_path / entity_type for entity_type in entity_types]
@@ -338,12 +330,18 @@ def rebuild_index(
         # Scan all subdirectories
         scan_dirs = [d for d in dir_path.iterdir() if d.is_dir()]
 
+    # Group entries by subdirectory for per-subdirectory indexes
+    # Key: subdirectory Path, Value: list of (filename_only, relative_path, entry_fields)
+    subdir_entries: Dict[Path, List[Dict[str, Any]]] = {}
+    all_entries: List[Dict[str, Any]] = []
+    total_count = 0
+
     # Scan each directory
     for scan_dir in scan_dirs:
         if not scan_dir.exists():
             continue
 
-        # Find all .md files (excluding index.json)
+        # Find all .md files
         for md_file in scan_dir.rglob("*.md"):
             try:
                 # Parse frontmatter
@@ -352,9 +350,8 @@ def rebuild_index(
                 if not fm:
                     continue  # Skip files without frontmatter
 
-                # Build index entry
-                entry = {
-                    "file": str(md_file.relative_to(dir_path)),
+                # Build common entry fields (without "file" — set per index type)
+                entry_fields = {
                     "type": fm.get("type", ""),
                     "title": fm.get("title", ""),
                 }
@@ -369,19 +366,47 @@ def rebuild_index(
 
                 for field in optional_fields:
                     if field in fm:
-                        entry[field] = _serialize_value(fm[field])
+                        entry_fields[field] = _serialize_value(fm[field])
 
-                index_data["entries"].append(entry)
+                # Per-subdirectory entry: filename only
+                subdir = md_file.parent
+                if subdir not in subdir_entries:
+                    subdir_entries[subdir] = []
+                subdir_entry = {"file": md_file.name, **entry_fields}
+                subdir_entries[subdir].append(subdir_entry)
 
-            except Exception as e:
+                # Root aggregate entry: relative path from root dir
+                root_entry = {"file": str(md_file.relative_to(dir_path)), **entry_fields}
+                all_entries.append(root_entry)
+
+                total_count += 1
+
+            except Exception:
                 # Skip files that can't be parsed
-                # (could log this in a real implementation)
                 continue
 
-    # Write rebuilt index
-    write_index(directory, index_data)
+    now = datetime.now().strftime("%Y-%m-%d")
 
-    return len(index_data["entries"])
+    # Write per-subdirectory indexes (used by query_cards)
+    for subdir, entries in subdir_entries.items():
+        subdir_index = {
+            "schema_version": "1.0",
+            "plugin": plugin,
+            "updated": now,
+            "entries": entries
+        }
+        write_index(str(subdir), subdir_index)
+
+    # Write root-level aggregate index (used by forge-shell desktop app)
+    root_index = {
+        "schema_version": "1.0",
+        "plugin": plugin,
+        "updated": now,
+        "entries": all_entries
+    }
+    write_index(directory, root_index)
+
+    return total_count
 
 
 def get_entry_by_file(
