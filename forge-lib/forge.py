@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # Import core modules
-from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops
+from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, frontmatter
 from core.validator import ValidationError
 from core.card_ops import CardError
 from core.index_ops import IndexError
@@ -100,7 +100,7 @@ def handle_card_create(args):
 def handle_card_get(args):
     """Get a card by filename"""
     try:
-        result = card_ops.get_card(args.filename, directory=args.directory)
+        result = card_ops.get_card(args.type, args.filename, directory=args.directory)
         output_json(result)
     except CardError as e:
         output_json(None, success=False, error=str(e))
@@ -144,6 +144,7 @@ def handle_card_update(args):
 
         # Update the card
         result = card_ops.update_card(
+            card_type=args.type,
             filename=args.filename,
             updates=updates,
             directory=args.directory
@@ -494,49 +495,125 @@ def handle_report_update(args):
 
 def handle_index_rebuild(args):
     """Rebuild index.json from markdown files"""
-    # TODO: Implement using index_ops.py
-    output_json({
-        "message": "index rebuild not yet implemented",
-        "directory": args.directory
-    })
+    try:
+        count = index_ops.rebuild_index(
+            directory=args.directory,
+            plugin=args.plugin if args.plugin else ""
+        )
+        output_json({
+            "message": "Index rebuilt successfully",
+            "directory": args.directory,
+            "entries_indexed": count
+        })
+    except IndexError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
 
 
 def handle_index_update(args):
     """Update index.json for a specific file"""
-    # TODO: Implement using index_ops.py
-    output_json({
-        "message": "index update not yet implemented",
-        "filename": args.filename
-    })
+    try:
+        from datetime import date, datetime
+
+        filepath = Path(args.directory) / args.filename
+        if not filepath.exists():
+            output_json(None, success=False, error=f"File not found: {args.filename}")
+            sys.exit(EXIT_NOT_FOUND)
+
+        content = filepath.read_text(encoding='utf-8')
+        fm, _ = frontmatter.parse(content)
+        if not fm:
+            output_json(None, success=False, error=f"No frontmatter found in: {args.filename}")
+            sys.exit(EXIT_ERROR)
+
+        def _serialize(value):
+            if isinstance(value, (date, datetime)):
+                return value.strftime("%Y-%m-%d")
+            elif isinstance(value, list):
+                return [_serialize(item) for item in value]
+            elif isinstance(value, dict):
+                return {k: _serialize(v) for k, v in value.items()}
+            return value
+
+        updates = {
+            "file": args.filename,
+            "type": _serialize(fm.get("type", "")),
+            "title": _serialize(fm.get("title", "")),
+        }
+        for field in ["status", "product", "module", "client", "parent",
+                       "children", "created", "updated", "priority",
+                       "due_date", "assigned_to"]:
+            if field in fm:
+                updates[field] = _serialize(fm[field])
+
+        try:
+            index_ops.update_index_entry(args.directory, args.filename, updates)
+            output_json({"message": "Index entry updated", "filename": args.filename})
+        except IndexError:
+            index_ops.create_index_entry(args.directory, updates)
+            output_json({"message": "Index entry created", "filename": args.filename})
+
+    except IndexError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
 
 
 def handle_relationship_link(args):
     """Link two cards (parent-child relationship)"""
-    # TODO: Implement using relationship_ops.py
-    output_json({
-        "message": "relationship link not yet implemented",
-        "parent": args.parent,
-        "child": args.child
-    })
+    try:
+        result = relationship_ops.link_to_parent(
+            child_filepath=args.child,
+            parent_filepath=args.parent,
+            directory=args.directory
+        )
+        output_json(result)
+    except RelationshipError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
 
 
 def handle_relationship_unlink(args):
     """Unlink two cards"""
-    # TODO: Implement using relationship_ops.py
-    output_json({
-        "message": "relationship unlink not yet implemented",
-        "parent": args.parent,
-        "child": args.child
-    })
+    try:
+        result = relationship_ops.unlink_from_parent(
+            child_filepath=args.child,
+            parent_filepath=args.parent,
+            directory=args.directory
+        )
+        output_json(result)
+    except RelationshipError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
 
 
 def handle_relationship_validate(args):
-    """Validate all relationships"""
-    # TODO: Implement using relationship_ops.py
-    output_json({
-        "message": "relationship validate not yet implemented",
-        "directory": args.directory
-    })
+    """Validate all relationships in a directory"""
+    try:
+        orphans = relationship_ops.find_orphans(directory=args.directory)
+        output_json({
+            "directory": args.directory,
+            "orphans_found": len(orphans),
+            "orphans": orphans,
+            "valid": len(orphans) == 0
+        })
+    except RelationshipError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
 
 
 def create_parser():
@@ -578,6 +655,10 @@ def create_parser():
 
     # card get
     card_get = card_subparsers.add_parser("get", help="Get a card by filename")
+    card_get.add_argument("type", choices=[
+        "initiative", "epic", "story", "intake",
+        "checkpoint", "decision", "release-note"
+    ], help="Card type")
     card_get.add_argument("filename", help="Card filename")
     card_get.add_argument("--directory", default=".", help="Target directory")
     card_get.set_defaults(func=handle_card_get)
@@ -593,6 +674,10 @@ def create_parser():
 
     # card update
     card_update = card_subparsers.add_parser("update", help="Update a card")
+    card_update.add_argument("type", choices=[
+        "initiative", "epic", "story", "intake",
+        "checkpoint", "decision", "release-note"
+    ], help="Card type")
     card_update.add_argument("filename", help="Card filename")
     card_update.add_argument("--directory", default=".", help="Target directory")
     card_update.add_argument("--data", required=True, help="JSON frontmatter data to update")
@@ -763,6 +848,7 @@ def create_parser():
     # index rebuild
     index_rebuild = index_subparsers.add_parser("rebuild", help="Rebuild index.json")
     index_rebuild.add_argument("--directory", default=".", help="Target directory")
+    index_rebuild.add_argument("--plugin", default="", help="Plugin name (e.g., product-forge)")
     index_rebuild.set_defaults(func=handle_index_rebuild)
 
     # index update
