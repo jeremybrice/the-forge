@@ -1,14 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════
-   Product Forge — View Controller (V2)
-   All DOM scoped to #view-product-forge, classes pfl-*
-   V2: Uses index.json instead of directory scanning
+   Product Forge Local — View Controller
+   All DOM scoped to #view-product-forge-local, classes pfl-*
    ═══════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
   const ESC = ForgeUtils.escapeHTML;
-  const VIEW_ID = 'view-product-forge';
+  const VIEW_ID = 'view-product-forge-local';
 
   /* ─── Aliases from shared CardData layer ─── */
   const FIELD_ORDER = CardData.FIELD_ORDER;
@@ -867,24 +866,17 @@
       });
     },
 
+    // Loads cards via direct FS scanning (scanCardsDir) instead of reading
+    // from index.json — each .md file is read and parsed individually.
     async _loadCards() {
       store.clear();
+      var files = await scanCardsDir(cardsHandle);
 
-      // V2: Load from index.json instead of scanning directories
-      var indexData = await ForgeUtils.readIndex(rootHandle, 'cards');
-      if (!indexData || !indexData.entries) {
-        indexData = { entries: [] };
-      }
-
-      for (var entry of indexData.entries) {
-        var card = {
-          filename: entry.filename,
-          frontmatter: entry.frontmatter || {},
-          body: entry.body || '',
-          error: entry.error || null,
-          dirName: entry.dirName
-        };
-        store.set(entry.filename, card, Date.now(), null);
+      for (var entry of files) {
+        var filename = entry[0];
+        var fileData = entry[1];
+        var card = CardParser.parse(filename, fileData.content, fileData.dirName);
+        store.set(filename, card, fileData.lastModified, fileData.handle);
       }
 
       taxonomy = discoverTaxonomy(store.all());
@@ -917,47 +909,31 @@
       if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
     },
 
+    // Change detection: re-scans the cards directory and compares file
+    // timestamps and handle identity against the in-memory store to
+    // detect added, modified, and deleted cards without a full reload.
     async _doRefresh() {
       if (refreshRunning || !cardsHandle) return;
       refreshRunning = true;
       try {
-        // V2: Load from index.json instead of scanning directories
-        var indexData = await ForgeUtils.readIndex(rootHandle, 'cards');
-        if (!indexData || !indexData.entries) {
-          indexData = { entries: [] };
-        }
-
+        var files = await scanCardsDir(cardsHandle);
         var changes = { added: [], modified: [], deleted: [] };
-        var currentFilenames = new Set();
 
-        for (var entry of indexData.entries) {
-          var filename = entry.filename;
-          currentFilenames.add(filename);
-
+        for (var entry of files) {
+          var filename = entry[0];
+          var fileData = entry[1];
           var oldTs = store.timestamps.get(filename);
           if (oldTs === undefined) {
             changes.added.push(filename);
-          } else {
-            // Check if modified (using current timestamp since index doesn't track lastModified the same way)
-            // In V2, we can compare against index metadata if available
-            var newTs = Date.now();
-            if (newTs !== oldTs) {
-              changes.modified.push(filename);
-            }
+          } else if (fileData.lastModified !== oldTs) {
+            changes.modified.push(filename);
           }
-
-          var card = {
-            filename: entry.filename,
-            frontmatter: entry.frontmatter || {},
-            body: entry.body || '',
-            error: entry.error || null,
-            dirName: entry.dirName
-          };
-          store.set(entry.filename, card, Date.now(), null);
+          var card = CardParser.parse(filename, fileData.content, fileData.dirName);
+          store.set(filename, card, fileData.lastModified, fileData.handle);
         }
 
         for (var fn of store.cards.keys()) {
-          if (!currentFilenames.has(fn)) {
+          if (!files.has(fn)) {
             changes.deleted.push(fn);
             store.delete(fn);
           }
@@ -1160,7 +1136,7 @@
   /* ═══════════════════════════════════════════════════════════════
      Expose & Register
      ═══════════════════════════════════════════════════════════════ */
-  window.ProductForgeView = ctrl;
-  Shell.registerController('product-forge', window.ProductForgeView);
+  window.ProductForgeLocalView = ctrl;
+  Shell.registerController('product-forge-local', window.ProductForgeLocalView);
 
 })();
