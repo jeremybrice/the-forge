@@ -9,7 +9,7 @@
     "name": {
       "type": "string",
       "description": "Agent display name",
-      "minLength": 10,
+      "minLength": 1,
       "maxLength": 100
     },
     "platform": {
@@ -20,7 +20,7 @@
     "description": {
       "type": "string",
       "description": "Agent description",
-      "minLength": 50,
+      "minLength": 1,
       "maxLength": 500
     },
     "status": {
