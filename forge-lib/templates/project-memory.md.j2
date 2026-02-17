@@ -1,0 +1,30 @@
+---
+name: "{{ name }}"
+type: project
+description: "{{ description }}"
+status: {{ status }}
+people:
+{%- if people and people|length > 0 %}
+{% for person in people %}
+  - "{{ person }}"
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## {{ name }}
+
+{{ description }}
+
+**Status:** {{ status }}
+
+{% if people and people|length > 0 %}
+## People
+
+{% for person in people %}
+- {{ person }}
+{% endfor %}
+{% endif %}
