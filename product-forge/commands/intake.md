@@ -105,6 +105,47 @@ The forge-lib will:
 - Write to `cards/intakes/`
 - Update index.json
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "intake-{product}-{feature-name}.md",
+    "filepath": "cards/intakes/intake-{product}-{feature-name}.md",
+    "card_type": "intake",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating intake: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 After successful creation, display:
 ```
 Intake saved: {filename}

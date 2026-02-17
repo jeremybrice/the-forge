@@ -94,6 +94,47 @@ forge-lib will:
 - Update index.json
 - Return filepath
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "checkpoint-YYYY-MM-DD-{slug}.md",
+    "filepath": "cards/checkpoints/checkpoint-YYYY-MM-DD-{slug}.md",
+    "card_type": "checkpoint",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating checkpoint: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 Display to user: `Checkpoint saved to {filepath}`
 
 ## Key Behaviors

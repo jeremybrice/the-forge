@@ -80,6 +80,47 @@ The forge-lib will:
 - Write to `cards/decisions/`
 - Update index.json
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "{slug}.md",
+    "filepath": "cards/decisions/{slug}.md",
+    "card_type": "decision",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating decision: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 After successful creation, display:
 ```
 Decision logged: {filename}

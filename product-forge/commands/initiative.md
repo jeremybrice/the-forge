@@ -81,6 +81,47 @@ forge card create initiative "{title}" --data '[JSON frontmatter]' --directory .
 
 The forge-lib template (templates/initiative.md.j2) renders the card body from the frontmatter fields. The command returns the created filename.
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "{slug}.md",
+    "filepath": "cards/initiatives/{slug}.md",
+    "card_type": "initiative",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating initiative: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 **5. Link to Intake (if applicable)**
 
 If created from an intake, link the relationship:

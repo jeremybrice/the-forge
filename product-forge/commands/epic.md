@@ -88,6 +88,47 @@ forge card create epic "{title}" --data '[JSON frontmatter]' --directory .
 
 The forge-lib template (templates/epic.md.j2) renders the card body from the frontmatter fields. The command returns the created filename.
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "{slug}.md",
+    "filepath": "cards/epics/{slug}.md",
+    "card_type": "epic",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating epic: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 **5. Link to Parent**
 
 Link the Epic to its parent Initiative:

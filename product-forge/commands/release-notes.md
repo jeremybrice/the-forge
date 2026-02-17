@@ -163,6 +163,47 @@ forge card create release-note "{Product} Release YYMMDD" --data '{
 }'
 ```
 
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "{slug}.md",
+    "filepath": "cards/release-notes/{slug}.md",
+    "card_type": "release-note",
+    "title": "{title}",
+    "created": "YYYY-MM-DD",
+    "updated": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filename` and `data.filepath` for the confirmation message.
+
+### Error Handling
+
+If forge-lib returns an error response:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report the error to the user:
+```
+Error creating release-note: {error message from JSON response}
+```
+
+Common errors:
+- **Validation error**: A required field is missing or has an invalid value. Review the field values and retry.
+- **Duplicate filename**: A card with the same title already exists. Suggest a different title or use the update command.
+
 **Entry Condensation:**
 When writing the card body (passed to forge-lib), condense entries to essential information:
 - What's New: List features with brief descriptions (1-2 sentences each)
