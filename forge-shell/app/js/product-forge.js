@@ -819,6 +819,10 @@
 
           /* Sidebar */
           '<aside class="pfl-sidebar">' +
+            '<div class="sidebar-search">' +
+              '<i class="fa-solid fa-magnifying-glass"></i>' +
+              '<input type="text" placeholder="Search cards\u2026" data-pfl-search />' +
+            '</div>' +
             '<div class="pfl-tree-view"></div>' +
           '</aside>' +
 
@@ -864,6 +868,12 @@
           else if (action === 'save') editModal.save();
         });
       });
+
+      /* Bind search input */
+      var searchInput = $q('[data-pfl-search]');
+      if (searchInput) {
+        searchInput.addEventListener('input', function () { ctrl._renderTree(); });
+      }
     },
 
     // Loads cards via direct FS scanning (scanCardsDir) instead of reading
@@ -886,7 +896,85 @@
 
     _renderTree() {
       var hierarchy = buildHierarchy(store);
+
+      // On first render, collapse all sections and parent nodes by default
+      if (treeView.collapsedSections.size === 0 && treeView.collapsedNodes.size === 0) {
+        treeView.collapsedSections.add('initiatives');
+        treeView.collapsedSections.add('orphan-epics');
+        treeView.collapsedSections.add('orphan-stories');
+        treeView.collapsedSections.add('intakes');
+        treeView.collapsedSections.add('checkpoints');
+        treeView.collapsedSections.add('decisions');
+        treeView.collapsedSections.add('release-notes');
+
+        for (var initNode of hierarchy.tree) {
+          if (initNode.children.length > 0) {
+            treeView.collapsedNodes.add(initNode.card.filename);
+            for (var epicNode of initNode.children) {
+              if (epicNode.children.length > 0) {
+                treeView.collapsedNodes.add(epicNode.card.filename);
+              }
+            }
+          }
+        }
+        // Also collapse orphan epics with children
+        for (var orphanEpic of hierarchy.orphanEpics) {
+          if (orphanEpic.children.length > 0) {
+            treeView.collapsedNodes.add(orphanEpic.card.filename);
+          }
+        }
+      }
+
+      // Search filtering
+      var searchEl = $q('[data-pfl-search]');
+      var query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      var searching = query.length > 0;
+      var savedSections = null;
+
+      if (searching) {
+        var matchCard = function (card) {
+          var title = (card.frontmatter.title || '').toLowerCase();
+          var fname = (card.filename || '').toLowerCase();
+          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
+        };
+
+        // Filter leaf arrays
+        hierarchy.orphanStories = hierarchy.orphanStories.filter(matchCard);
+        hierarchy.intakes = hierarchy.intakes.filter(matchCard);
+        hierarchy.checkpoints = hierarchy.checkpoints.filter(matchCard);
+        hierarchy.decisions = hierarchy.decisions.filter(matchCard);
+        hierarchy.releaseNotes = hierarchy.releaseNotes.filter(matchCard);
+
+        // Filter orphan epics (keep if epic matches or any child story matches)
+        hierarchy.orphanEpics = hierarchy.orphanEpics.filter(function (epicNode) {
+          var epicMatch = matchCard(epicNode.card);
+          epicNode.children = epicNode.children.filter(matchCard);
+          return epicMatch || epicNode.children.length > 0;
+        });
+
+        // Filter initiatives (keep if init matches, or any child epic/story matches)
+        hierarchy.tree = hierarchy.tree.filter(function (initNode) {
+          var initMatch = matchCard(initNode.card);
+          initNode.children = initNode.children.filter(function (epicNode) {
+            var epicMatch = matchCard(epicNode.card);
+            epicNode.children = epicNode.children.filter(matchCard);
+            return epicMatch || epicNode.children.length > 0;
+          });
+          return initMatch || initNode.children.length > 0;
+        });
+
+        // Auto-expand all sections while searching
+        savedSections = new Set(treeView.collapsedSections);
+        treeView.collapsedSections.clear();
+      }
+
       treeView.render(hierarchy);
+
+      // Restore collapsed sections after render so user state is preserved
+      if (searching && savedSections) {
+        treeView.collapsedSections = savedSections;
+      }
+
       if (selectedCard) treeView.highlightSelected(selectedCard);
     },
 

@@ -134,6 +134,11 @@ These CSS classes are defined in `components.css` and **must** be reused by all 
 | `.view-toggle button` | Toggle button (font-size: 13px, padding: 6px 14px) | `components.css` |
 | `.view-toggle button.active` | Active toggle state (bg-card, shadow) | `components.css` |
 | `.filter-btn` | Sidebar filter buttons | `components.css` |
+| `.sidebar-search` | Sidebar search bar (input + icon) | `components.css` |
+| `.sidebar-card` | Sidebar list card (column layout, hover/selected states) | `components.css` |
+| `.sidebar-card-title` | Card title (13px, 600 weight, ellipsis) | `components.css` |
+| `.sidebar-card-meta` | Card meta row (flex, 11px, muted) | `components.css` |
+| `.sidebar-card-pill` | Muted pill — set color via inline `style="background: color-mix(in srgb, {color} 12%, transparent); color: {color};"` | `components.css` |
 
 Plugin-specific toolbar additions (e.g., year navigation, filter badges) should be added as extra elements using plugin-prefixed classes (e.g., `.rm-year-nav`, `.rm-filter-badge`) scoped under `.plugin-toolbar`. Never override the base shared styles.
 

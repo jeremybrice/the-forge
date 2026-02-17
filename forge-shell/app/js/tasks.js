@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    Tasks View Controller
-   Folder-based task management with Board/List views inside #view-tasks.
+   Folder-based task management with Board + Analytics views inside #view-tasks.
    Uses ForgeUtils.FS for file access, ForgeUtils.Toast for
    notifications.
    ═══════════════════════════════════════════════════════════════ */
@@ -20,13 +20,15 @@ window.TasksView = (function () {
   let tasksDirHandle = null;
   let tasks = [];
   let hasChanges = false;
-  let currentView = 'board';      // 'board' | 'list'
   let saveTimeout = null;
   let taskWatchInterval = null;
   let isSaving = false;
   let taskRefreshRunning = false;
   let taskSignature = '';
   let suppressExternalToasts = false;
+
+  /* Active view tab */
+  let activeView = 'board';
 
   /* Field visibility settings */
   let fieldVisibility = {
@@ -39,6 +41,20 @@ window.TasksView = (function () {
     creator: false,
     type: false
   };
+
+  /* View visibility settings */
+  let viewVisibility = {
+    board: true, timeline: true, summary: true, workload: true, matrix: true
+  };
+  let viewEditMode = false;
+
+  var VIEW_TABS = [
+    { key: 'board', icon: 'fa-table-columns', label: 'Board' },
+    { key: 'timeline', icon: 'fa-chart-gantt', label: 'Timeline' },
+    { key: 'summary', icon: 'fa-chart-pie', label: 'Summary' },
+    { key: 'workload', icon: 'fa-users', label: 'Workload' },
+    { key: 'matrix', icon: 'fa-table-cells', label: 'Matrix' }
+  ];
 
   /* ══════════════════════════════════════════════════════════
      DOM helpers — all queries scoped to #view-tasks
@@ -63,6 +79,76 @@ window.TasksView = (function () {
   }
 
   /* ══════════════════════════════════════════════════════════
+     Tooltip System
+     ══════════════════════════════════════════════════════════ */
+  var tooltip = {
+    _el: null,
+    _visible: false,
+
+    show: function (e, html) {
+      if (!this._el) this._el = document.querySelector('#view-tasks [data-ref="tooltip"]');
+      if (!this._el) return;
+      this._el.innerHTML = html;
+      this._el.classList.add('prod-tooltip-visible');
+      this._visible = true;
+      this._position(e);
+    },
+
+    hide: function () {
+      if (!this._el) return;
+      this._el.classList.remove('prod-tooltip-visible');
+      this._visible = false;
+    },
+
+    _position: function (e) {
+      if (!this._el) return;
+      var x = e.clientX + 12;
+      var y = e.clientY + 12;
+      var rect = this._el.getBoundingClientRect();
+      var vw = window.innerWidth;
+      var vh = window.innerHeight;
+      if (x + rect.width + 8 > vw) x = e.clientX - rect.width - 12;
+      if (y + rect.height + 8 > vh) y = e.clientY - rect.height - 12;
+      this._el.style.left = x + 'px';
+      this._el.style.top = y + 'px';
+    }
+  };
+
+  function buildTooltipHtml(task) {
+    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
+    var prio = (task.priority || 'medium').toLowerCase();
+    var statusLabel = (task.status || 'active').charAt(0).toUpperCase() + (task.status || 'active').slice(1);
+    var html = '<div class="prod-tooltip-title">' + esc(task.title) + '</div>';
+    html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>' + esc(prio.charAt(0).toUpperCase() + prio.slice(1)) + ' &middot; ' + esc(statusLabel) + '</div>';
+    if (task.assignee && task.assignee !== 'null') {
+      html += '<div class="prod-tooltip-row"><i class="fa-regular fa-user" style="width:14px;text-align:center;"></i> ' + esc(task.assignee) + '</div>';
+    }
+    if (task.due_date && task.due_date !== 'null') {
+      var today = new Date().toISOString().split('T')[0];
+      var isOverdue = task.due_date < today && task.status !== 'done';
+      html += '<div class="prod-tooltip-row' + (isOverdue ? ' prod-tooltip-overdue' : '') + '"><i class="fa-regular fa-calendar" style="width:14px;text-align:center;"></i> ' + esc(task.due_date) + (isOverdue ? ' (overdue)' : '') + '</div>';
+    }
+    return html;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     Color Hashing Helper
+     ══════════════════════════════════════════════════════════ */
+  function hashColor(str) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var hue = Math.abs(hash % 360);
+    return 'hsl(' + hue + ', 55%, 50%)';
+  }
+
+  function getInitial(name) {
+    if (!name) return '?';
+    return name.charAt(0).toUpperCase();
+  }
+
+  /* ══════════════════════════════════════════════════════════
      Scaffold — build initial DOM inside #view-tasks
      ══════════════════════════════════════════════════════════ */
   function scaffold() {
@@ -76,20 +162,35 @@ window.TasksView = (function () {
             '<i class="fa-solid fa-folder-open"></i>' +
             '<span data-ref="folder-name"></span>' +
           '</div>' +
-          '<div class="view-toggle" data-ref="task-view-toggle">' +
-            '<button class="active" data-task-view="board">Board</button>' +
-            '<button data-task-view="list">List</button>' +
+          '<div class="view-toggle" data-ref="view-tabs">' +
+            '<button data-tasks-view="board" class="active"><i class="fa-solid fa-table-columns"></i> Board</button>' +
+            '<button data-tasks-view="timeline"><i class="fa-solid fa-chart-gantt"></i> Timeline</button>' +
+            '<button data-tasks-view="summary"><i class="fa-solid fa-chart-pie"></i> Summary</button>' +
+            '<button data-tasks-view="workload"><i class="fa-solid fa-users"></i> Workload</button>' +
+            '<button data-tasks-view="matrix"><i class="fa-solid fa-table-cells"></i> Matrix</button>' +
           '</div>' +
           '<span class="spacer"></span>' +
           '<span class="refresh-indicator" data-ref="refresh-indicator"></span>' +
+          '<button class="btn-icon" data-action="view-edit-mode" title="Customize Views"><i class="fa-solid fa-pen"></i></button>' +
           '<button class="btn-icon" data-action="field-settings" title="Customize Fields"><i class="fa-solid fa-sliders"></i></button>' +
           '<button class="btn-icon" data-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
         '</div>' +
 
-        /* Tasks Panel */
-        '<div class="prod-tab-panel prod-active" data-ref="tasks-panel">' +
+        /* View Panels */
+        '<div class="prod-tab-panel prod-active" data-view-panel="board">' +
           '<div class="prod-board" data-ref="board"></div>' +
-          '<div class="prod-list-view" data-ref="list-view" style="display:none;"></div>' +
+        '</div>' +
+        '<div class="prod-tab-panel" data-view-panel="timeline">' +
+          '<div class="prod-view-body" data-view-body="timeline"></div>' +
+        '</div>' +
+        '<div class="prod-tab-panel" data-view-panel="summary">' +
+          '<div class="prod-view-body" data-view-body="summary"></div>' +
+        '</div>' +
+        '<div class="prod-tab-panel" data-view-panel="workload">' +
+          '<div class="prod-view-body" data-view-body="workload"></div>' +
+        '</div>' +
+        '<div class="prod-tab-panel" data-view-panel="matrix">' +
+          '<div class="prod-view-body" data-view-body="matrix"></div>' +
         '</div>' +
 
         /* Settings Modal */
@@ -127,6 +228,9 @@ window.TasksView = (function () {
           '</div>' +
         '</div>' +
 
+        /* Tooltip */
+        '<div class="prod-tooltip" data-ref="tooltip"></div>' +
+
         /* Status bar */
         '<div class="prod-status-bar" data-ref="status-bar"></div>' +
       '</div>';
@@ -154,34 +258,117 @@ window.TasksView = (function () {
       else if (action === 'cancel-edit') editModal.close();
       else if (action === 'save-edit') editModal.save();
       else if (action === 'toggle-diff') editModal.toggleDiff();
+      else if (action === 'view-edit-mode') toggleViewEditMode();
     });
 
-    /* Task view toggle */
+    /* View tab switching (with eye toggle interception) */
     view.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-task-view]');
-      if (!btn) return;
-      switchTaskView(btn.dataset.taskView);
+      var eye = e.target.closest('.prod-view-eye-toggle');
+      if (eye) {
+        toggleViewVisibility(eye.dataset.viewName);
+        return;
+      }
+      var btn = e.target.closest('[data-tasks-view]');
+      if (btn) { switchView(btn.dataset.tasksView); }
+    });
+
+    /* Delegated click on [data-task-id] elements (analytics views) */
+    view.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-task-id]');
+      if (!el) return;
+      /* Don't intercept board card clicks (they have their own handler) */
+      if (e.target.closest('.prod-task-card')) return;
+      var filename = el.dataset.taskId;
+      var task = tasks.find(function (t) { return t.filename === filename; });
+      if (task) editModal.open(task);
+    });
+
+    /* Delegated hover on [data-task-id] for tooltip */
+    view.addEventListener('mouseover', function (e) {
+      var el = e.target.closest('[data-task-id]');
+      if (!el || e.target.closest('.prod-task-card')) return;
+      var filename = el.dataset.taskId;
+      var task = tasks.find(function (t) { return t.filename === filename; });
+      if (task) tooltip.show(e, buildTooltipHtml(task));
+    });
+
+    view.addEventListener('mousemove', function (e) {
+      var el = e.target.closest('[data-task-id]');
+      if (!el || e.target.closest('.prod-task-card')) return;
+      if (tooltip._visible) tooltip._position(e);
+    });
+
+    view.addEventListener('mouseout', function (e) {
+      var el = e.target.closest('[data-task-id]');
+      if (!el) return;
+      if (!el.contains(e.relatedTarget)) tooltip.hide();
+    });
+
+    /* Workload lane expand/collapse */
+    view.addEventListener('click', function (e) {
+      var header = e.target.closest('.prod-wl-lane-header');
+      if (!header) return;
+      var lane = header.closest('.prod-workload-lane');
+      if (lane) lane.classList.toggle('prod-wl-expanded');
+    });
+
+    /* Matrix cell expand */
+    view.addEventListener('click', function (e) {
+      var expandBtn = e.target.closest('.prod-matrix-expand');
+      if (!expandBtn) return;
+      var cell = expandBtn.closest('.prod-matrix-cell');
+      if (cell) cell.classList.toggle('prod-matrix-cell-expanded');
     });
   }
 
   /* ══════════════════════════════════════════════════════════
-     View Switching
+     Active View State
      ══════════════════════════════════════════════════════════ */
-  function switchTaskView(view) {
-    currentView = view;
-    var boardEl = $('[data-ref="board"]');
-    var listEl = $('[data-ref="list-view"]');
-    if (view === 'list') {
-      listEl.style.display = 'block';
-      boardEl.style.display = 'none';
-    } else {
-      listEl.style.display = 'none';
-      boardEl.style.display = 'flex';
-    }
-    $$('[data-task-view]').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.taskView === view);
+  function loadActiveView() {
+    try {
+      var stored = localStorage.getItem('forge-shell-tasks-active-view');
+      if (stored && ['board','timeline','summary','workload','matrix'].indexOf(stored) !== -1) {
+        activeView = stored;
+      }
+      /* Fall back to first visible tab if active view is hidden */
+      if (!viewVisibility[activeView]) {
+        var first = VIEW_TABS.find(function (t) { return viewVisibility[t.key]; });
+        if (first) activeView = first.key;
+      }
+      localStorage.removeItem('forge-shell-tasks-analytics-panels');
+      localStorage.removeItem('forge-shell-tasks-analytics-collapsed');
+    } catch (e) { /* ignore */ }
+  }
+
+  function saveActiveView() {
+    try { localStorage.setItem('forge-shell-tasks-active-view', activeView); }
+    catch (e) { /* ignore */ }
+  }
+
+  function switchView(viewName) {
+    if (viewName === activeView) return;
+    if (!viewEditMode && !viewVisibility[viewName]) return;
+    activeView = viewName;
+    saveActiveView();
+    syncActiveView();
+    renderActiveView();
+  }
+
+  function syncActiveView() {
+    $$('[data-tasks-view]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.tasksView === activeView);
     });
-    renderTasks();
+    $$('[data-view-panel]').forEach(function (panel) {
+      panel.classList.toggle('prod-active', panel.dataset.viewPanel === activeView);
+    });
+  }
+
+  function renderActiveView() {
+    if (activeView === 'board') renderBoard();
+    else if (activeView === 'timeline') renderTimeline();
+    else if (activeView === 'summary') renderSummary();
+    else if (activeView === 'workload') renderWorkload();
+    else if (activeView === 'matrix') renderMatrix();
   }
 
   function updateFolderBadge() {
@@ -479,11 +666,10 @@ window.TasksView = (function () {
   }
 
   /* ══════════════════════════════════════════════════════════
-     Render Tasks — dispatches to board or list
+     Render Tasks — board + active analytics panels
      ══════════════════════════════════════════════════════════ */
   function renderTasks() {
-    if (currentView === 'board') renderBoard();
-    else renderList();
+    renderActiveView();
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -835,6 +1021,104 @@ window.TasksView = (function () {
     } catch (e) {
       console.warn('Failed to save field visibility settings:', e);
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     View Visibility Settings
+     ══════════════════════════════════════════════════════════ */
+  function loadViewVisibility() {
+    try {
+      var stored = localStorage.getItem('forge-shell-tasks-view-visibility');
+      if (stored) {
+        var parsed = JSON.parse(stored);
+        viewVisibility = Object.assign({}, viewVisibility, parsed);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function saveViewVisibility() {
+    try {
+      localStorage.setItem('forge-shell-tasks-view-visibility', JSON.stringify(viewVisibility));
+    } catch (e) { /* ignore */ }
+  }
+
+  function toggleViewEditMode() {
+    viewEditMode = !viewEditMode;
+
+    /* Update pencil/check icon */
+    var btn = $('[data-action="view-edit-mode"]');
+    if (btn) {
+      var icon = btn.querySelector('i');
+      if (viewEditMode) {
+        icon.className = 'fa-solid fa-check';
+        btn.title = 'Done editing';
+      } else {
+        icon.className = 'fa-solid fa-pen';
+        btn.title = 'Customize Views';
+      }
+    }
+
+    /* If exiting edit mode and active view is now hidden, switch to first visible */
+    if (!viewEditMode && !viewVisibility[activeView]) {
+      var first = VIEW_TABS.find(function (t) { return viewVisibility[t.key]; });
+      if (first) {
+        activeView = first.key;
+        saveActiveView();
+        syncActiveView();
+        renderActiveView();
+      }
+    }
+
+    syncViewTabs();
+  }
+
+  function toggleViewVisibility(viewName) {
+    /* Guard: don't hide the last visible tab */
+    if (viewVisibility[viewName]) {
+      var visibleCount = VIEW_TABS.filter(function (t) { return viewVisibility[t.key]; }).length;
+      if (visibleCount <= 1) {
+        ForgeUtils.Toast.show('At least one view must remain visible', 'warning');
+        return;
+      }
+    }
+
+    viewVisibility[viewName] = !viewVisibility[viewName];
+    saveViewVisibility();
+    syncViewTabs();
+  }
+
+  function syncViewTabs() {
+    var container = $('[data-ref="view-tabs"]');
+    if (!container) return;
+
+    var html = '';
+    VIEW_TABS.forEach(function (tab) {
+      var isVisible = viewVisibility[tab.key];
+
+      /* In normal mode, skip hidden tabs */
+      if (!viewEditMode && !isVisible) return;
+
+      var cls = [];
+      if (tab.key === activeView) cls.push('active');
+      if (!isVisible) cls.push('prod-view-hidden');
+
+      html += '<button data-tasks-view="' + tab.key + '"';
+      if (cls.length) html += ' class="' + cls.join(' ') + '"';
+      html += '><i class="fa-solid ' + tab.icon + '"></i> ' + tab.label;
+
+      if (viewEditMode) {
+        var eyeIcon = isVisible ? 'fa-eye' : 'fa-eye-slash';
+        html += ' <span class="prod-view-eye-toggle" data-view-name="' + tab.key + '"><i class="fa-solid ' + eyeIcon + '"></i></span>';
+      }
+
+      html += '</button>';
+    });
+
+    container.innerHTML = html;
+
+    /* Toggle layout class for CSS targeting */
+    var layout = $('.prod-layout');
+    if (layout) layout.classList.toggle('prod-view-edit-mode', viewEditMode);
   }
 
   function openSettingsPanel() {
@@ -1360,238 +1644,592 @@ window.TasksView = (function () {
   };
 
   /* ══════════════════════════════════════════════════════════
-     List View Renderer
+     Analytics Panel Renderers
      ══════════════════════════════════════════════════════════ */
-  function renderList() {
-    var listEl = $('[data-ref="list-view"]');
-    if (!listEl) return;
-    listEl.innerHTML = '';
+  function renderEmptyPanel(bodyEl, icon, message) {
+    bodyEl.innerHTML =
+      '<div class="prod-analytics-empty">' +
+        '<i class="' + icon + '"></i>' +
+        '<p>' + message + '</p>' +
+      '</div>';
+  }
 
-    if (!tasksDirHandle) {
-      listEl.innerHTML =
-        '<div class="prod-not-active">' +
-          '<div class="prod-state-icon"><i class="fa-solid fa-list-check"></i></div>' +
-          '<h2>No tasks directory found</h2>' +
-          '<p>The <code>tasks/</code> directory was not found in your project root.</p>' +
-        '</div>';
+  /* ── Timeline View ── */
+  function renderTimeline() {
+    var body = $('[data-view-body="timeline"]');
+    if (!body) return;
+
+    if (tasks.length === 0) {
+      renderEmptyPanel(body, 'fa-solid fa-chart-gantt', 'No tasks to display on timeline');
       return;
     }
 
-    // Group tasks by status
-    var statuses = ['active', 'waiting', 'someday', 'done'];
-    var statusLabels = {
-      'active': 'Active',
-      'waiting': 'Waiting On',
-      'someday': 'Someday',
-      'done': 'Done'
-    };
-    var statusIcons = {
-      'active': 'fa-regular fa-square-caret-right',
-      'waiting': 'fa-regular fa-circle-pause',
-      'someday': 'fa-regular fa-calendar',
-      'done': 'fa-regular fa-square-check'
-    };
-    var tasksByStatus = {};
-    statuses.forEach(function (status) { tasksByStatus[status] = []; });
+    var today = new Date().toISOString().split('T')[0];
+    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
+    var withDates = [];
+    var noDates = [];
 
-    tasks.forEach(function (task) {
-      var status = task.status || 'active';
-      if (!tasksByStatus[status]) tasksByStatus[status] = [];
-      tasksByStatus[status].push(task);
+    tasks.forEach(function (t) {
+      if (t.created && t.due_date && t.due_date !== 'null') withDates.push(t);
+      else noDates.push(t);
     });
 
-    /* Sections */
-    statuses.forEach(function (status) {
-      var statusTasks = tasksByStatus[status] || [];
-      var sectionEl = document.createElement('div');
-      sectionEl.className = 'prod-list-section';
-      sectionEl.dataset.status = status;
+    if (withDates.length === 0 && noDates.length === 0) {
+      renderEmptyPanel(body, 'fa-solid fa-chart-gantt', 'No tasks to display on timeline');
+      return;
+    }
 
-      var header = document.createElement('div');
-      header.className = 'prod-list-section-header';
-      header.innerHTML =
-        '<span class="prod-section-title"><i class="' + statusIcons[status] + '"></i> ' + esc(statusLabels[status]) + '</span>' +
-        '<span class="prod-count">' + statusTasks.length + '</span>';
-
-      sectionEl.appendChild(header);
-
-      var tasksContainer = document.createElement('div');
-      tasksContainer.className = 'prod-list-tasks-container';
-      tasksContainer.dataset.status = status;
-
-      statusTasks.forEach(function (task) {
-        tasksContainer.appendChild(createListItem(task));
-      });
-
-      sectionEl.appendChild(tasksContainer);
-
-      /* Drag target for list items */
-      var getDropPos = function (e) {
-        var items = Array.from(tasksContainer.querySelectorAll('.prod-list-item:not(.prod-dragging)'));
-        var insertBefore = null;
-        var dropIndex = items.length;
-        for (var i = 0; i < items.length; i++) {
-          var rect = items[i].getBoundingClientRect();
-          if (e.clientY < rect.top + rect.height / 2) {
-            insertBefore = items[i];
-            dropIndex = i;
-            break;
-          }
-        }
-        return { insertBefore: insertBefore, dropIndex: dropIndex };
-      };
-
-      sectionEl.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        sectionEl.classList.add('prod-drag-over');
-        tasksContainer.querySelectorAll('.prod-list-drop-indicator').forEach(function (el) { el.remove(); });
-        var pos = getDropPos(e);
-        var indicator = document.createElement('div');
-        indicator.className = 'prod-list-drop-indicator';
-        if (pos.insertBefore) tasksContainer.insertBefore(indicator, pos.insertBefore);
-        else tasksContainer.appendChild(indicator);
-      });
-
-      sectionEl.addEventListener('dragleave', function (e) {
-        if (!sectionEl.contains(e.relatedTarget)) {
-          sectionEl.classList.remove('prod-drag-over');
-          tasksContainer.querySelectorAll('.prod-list-drop-indicator').forEach(function (el) { el.remove(); });
-        }
-      });
-
-      sectionEl.addEventListener('drop', function (e) {
-        e.preventDefault();
-        console.log('[DRAG-DROP-LIST] Drop event fired');
-        sectionEl.classList.remove('prod-drag-over');
-        tasksContainer.querySelectorAll('.prod-list-drop-indicator').forEach(function (el) { el.remove(); });
-        var taskFilename = e.dataTransfer.getData('text/plain');
-        console.log('[DRAG-DROP-LIST] Task filename:', taskFilename);
-        if (!taskFilename) {
-          console.warn('[DRAG-DROP-LIST] No filename in dataTransfer');
-          return;
-        }
-        moveTaskToStatus(taskFilename, status);
-      });
-
-      listEl.appendChild(sectionEl);
+    // Compute date range
+    var allDates = [];
+    withDates.forEach(function (t) {
+      allDates.push(t.created);
+      allDates.push(t.due_date);
     });
+    allDates.push(today);
+    allDates.sort();
+
+    var rangeStart = new Date(allDates[0]);
+    var rangeEnd = new Date(allDates[allDates.length - 1]);
+    rangeStart.setDate(rangeStart.getDate() - 7);
+    rangeEnd.setDate(rangeEnd.getDate() + 14);
+    var rangeDays = Math.max(1, Math.ceil((rangeEnd - rangeStart) / 86400000));
+
+    function dayOffset(dateStr) {
+      return Math.max(0, Math.ceil((new Date(dateStr) - rangeStart) / 86400000));
+    }
+
+    // Month labels
+    var months = generateMonthLabels(rangeStart, rangeEnd, rangeDays);
+
+    // Week grid lines (Mondays)
+    var weeks = generateWeekLines(rangeStart, rangeEnd, rangeDays);
+
+    var todayPct = (dayOffset(today) / rangeDays) * 100;
+
+    var html = '<div class="prod-timeline">';
+
+    // Sticky header
+    html += '<div class="prod-tl-header">';
+    html += '<div class="prod-tl-label-col"></div>';
+    html += '<div class="prod-tl-track-col">';
+    months.forEach(function (m) {
+      html += '<span class="prod-tl-month" style="left:' + m.pct + '%">' + esc(m.label) + '</span>';
+    });
+    html += '<div class="prod-tl-today-label" style="left:' + todayPct + '%">Today</div>';
+    html += '</div></div>';
+
+    // Scrollable body
+    html += '<div class="prod-tl-body">';
+
+    withDates.forEach(function (t) {
+      var startPct = (dayOffset(t.created) / rangeDays) * 100;
+      var endPct = (dayOffset(t.due_date) / rangeDays) * 100;
+      var width = Math.max(1, endPct - startPct);
+      var prio = (t.priority || 'medium').toLowerCase();
+      var isOverdue = t.due_date < today && t.status !== 'done';
+
+      html += '<div class="prod-tl-row" data-task-id="' + esc(t.filename) + '">';
+
+      // Label column: priority dot + title + assignee initial
+      html += '<div class="prod-tl-label-col">';
+      html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+      html += '<span class="prod-tl-title" title="' + esc(t.title) + '">' + esc(t.title) + '</span>';
+      if (t.assignee && t.assignee !== 'null') {
+        html += '<span class="prod-tl-avatar" style="background:' + hashColor(t.assignee) + '">' + getInitial(t.assignee) + '</span>';
+      }
+      html += '</div>';
+
+      // Track column with week grid + today line + bar
+      html += '<div class="prod-tl-track-col">';
+      weeks.forEach(function (w) {
+        html += '<div class="prod-tl-week-line" style="left:' + w.pct + '%"></div>';
+      });
+      html += '<div class="prod-tl-today" style="left:' + todayPct + '%"></div>';
+      html += '<div class="prod-tl-bar prod-tl-' + prio + (isOverdue ? ' prod-tl-overdue' : '') + '" style="left:' + startPct + '%;width:' + width + '%"></div>';
+      html += '</div></div>';
+    });
+
+    html += '</div></div>';
+
+    // No-date chips
+    if (noDates.length > 0) {
+      html += '<div class="prod-tl-no-dates"><span class="prod-tl-no-dates-label"><i class="fa-regular fa-calendar-xmark"></i> No due date</span>';
+      noDates.forEach(function (t) {
+        var prio = (t.priority || 'medium').toLowerCase();
+        html += '<span class="prod-tl-chip prod-tl-' + prio + '" data-task-id="' + esc(t.filename) + '">' + esc(t.title) + '</span>';
+      });
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
   }
 
-  function createListItem(task) {
-    var item = document.createElement('div');
-    item.className = 'prod-list-item';
-    item.draggable = true;
-    item.dataset.filename = task.filename;
+  function generateMonthLabels(rangeStart, rangeEnd, rangeDays) {
+    var labels = [];
+    var d = new Date(rangeStart);
+    d.setDate(1);
+    if (d < rangeStart) d.setMonth(d.getMonth() + 1);
 
-    item.addEventListener('dragstart', function (e) {
-      item.classList.add('prod-dragging');
-      e.dataTransfer.setData('text/plain', task.filename);
-      e.dataTransfer.effectAllowed = 'move';
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    while (d <= rangeEnd) {
+      var dayOff = Math.ceil((d - rangeStart) / 86400000);
+      var pct = (dayOff / rangeDays) * 100;
+      labels.push({ label: monthNames[d.getMonth()] + ' ' + d.getFullYear(), pct: pct });
+      d.setMonth(d.getMonth() + 1);
+    }
+    return labels;
+  }
+
+  function generateWeekLines(rangeStart, rangeEnd, rangeDays) {
+    var lines = [];
+    var d = new Date(rangeStart);
+    // Find first Monday
+    var dow = d.getDay();
+    var daysToMonday = dow === 0 ? 1 : (8 - dow) % 7;
+    d.setDate(d.getDate() + daysToMonday);
+
+    while (d <= rangeEnd) {
+      var dayOff = Math.ceil((d - rangeStart) / 86400000);
+      var pct = (dayOff / rangeDays) * 100;
+      lines.push({ pct: pct });
+      d.setDate(d.getDate() + 7);
+    }
+    return lines;
+  }
+
+  /* ── Summary Dashboard ── */
+  function renderSummary() {
+    var body = $('[data-view-body="summary"]');
+    if (!body) return;
+
+    if (tasks.length === 0) {
+      renderEmptyPanel(body, 'fa-solid fa-chart-pie', 'No tasks to summarize');
+      return;
+    }
+
+    var today = new Date().toISOString().split('T')[0];
+    var total = tasks.length;
+    var overdue = 0;
+    var done = 0;
+    var nonDone = [];
+    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
+    var priorityCounts = { high: 0, medium: 0, low: 0 };
+    var tagCounts = {};
+
+    tasks.forEach(function (t) {
+      var s = t.status || 'active';
+      if (statusCounts[s] !== undefined) statusCounts[s]++;
+      if (s === 'done') done++;
+      else nonDone.push(t);
+
+      var p = (t.priority || 'medium').toLowerCase();
+      if (priorityCounts[p] !== undefined) priorityCounts[p]++;
+
+      if (t.due_date && t.due_date !== 'null' && t.due_date < today && s !== 'done') overdue++;
+
+      if (t.tags && t.tags.length) {
+        t.tags.forEach(function (tag) {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      }
     });
 
-    item.addEventListener('dragend', function () {
-      item.classList.remove('prod-dragging');
-      // Global cleanup for list view
-      document.querySelectorAll('.prod-list-drop-indicator').forEach(function (el) { el.remove(); });
-      document.querySelectorAll('.prod-list-section.prod-drag-over').forEach(function (el) { el.classList.remove('prod-drag-over'); });
-      // Also clean board view indicators in case of cross-view drags
-      document.querySelectorAll('.prod-drop-indicator').forEach(function (el) { el.remove(); });
-      document.querySelectorAll('.prod-drag-over').forEach(function (el) { el.classList.remove('prod-drag-over'); });
+    var avgAge = 0;
+    if (nonDone.length > 0) {
+      var todayMs = new Date(today).getTime();
+      var totalDays = 0;
+      nonDone.forEach(function (t) {
+        if (t.created) totalDays += Math.max(0, Math.floor((todayMs - new Date(t.created).getTime()) / 86400000));
+      });
+      avgAge = Math.round(totalDays / nonDone.length);
+    }
+
+    var completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    // Velocity: last 30 days
+    var thirtyAgo = new Date();
+    thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+    var thirtyAgoStr = thirtyAgo.toISOString().split('T')[0];
+    var createdLast30 = 0;
+    var completedLast30 = 0;
+    var dailyCompletions = {};
+    tasks.forEach(function (t) {
+      if (t.created && t.created >= thirtyAgoStr) createdLast30++;
+      if (t.status === 'done' && t.updated && t.updated >= thirtyAgoStr) {
+        completedLast30++;
+        dailyCompletions[t.updated] = (dailyCompletions[t.updated] || 0) + 1;
+      }
     });
 
-    var content = document.createElement('div');
-    content.className = 'prod-list-item-content';
+    // Build sparkline data (last 30 days)
+    var sparkDays = [];
+    var sparkMax = 0;
+    for (var i = 29; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      var ds = d.toISOString().split('T')[0];
+      var count = dailyCompletions[ds] || 0;
+      if (count > sparkMax) sparkMax = count;
+      sparkDays.push({ date: ds, count: count });
+    }
 
-    var titleEl = document.createElement('div');
-    titleEl.className = 'prod-list-item-title';
-    titleEl.textContent = task.title;
-    titleEl.addEventListener('click', function (e) {
-      e.stopPropagation();
-      startInlineEdit(titleEl, task.title, function (val) {
-        if (val && val !== task.title) { task.title = val; markChanged(task); }
-        renderTasks();
+    // Status donut gradient
+    var statusColors = { active: 'var(--accent)', waiting: '#f39c12', someday: 'var(--text-muted)', done: '#27ae60' };
+    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+    var statusColorRaw = {
+      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+    };
+    var conicParts = [];
+    var cumPct = 0;
+    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+      var pct = total > 0 ? (statusCounts[s] / total) * 100 : 0;
+      if (pct > 0) {
+        conicParts.push(statusColorRaw[s] + ' ' + cumPct.toFixed(1) + '% ' + (cumPct + pct).toFixed(1) + '%');
+        cumPct += pct;
+      }
+    });
+    var conicGrad = conicParts.length > 0 ? conicParts.join(', ') : 'var(--border-light) 0% 100%';
+
+    var html = '<div class="prod-summary-grid">';
+
+    // Stat cards with icons and top border accent
+    var statCards = [
+      { value: total, label: 'Total Tasks', icon: 'fa-solid fa-list-check', color: 'var(--accent)', alert: false },
+      { value: overdue, label: 'Overdue', icon: 'fa-solid fa-clock', color: '#e74c3c', alert: overdue > 0 },
+      { value: avgAge + 'd', label: 'Avg Age', icon: 'fa-solid fa-hourglass-half', color: '#f39c12', alert: false },
+      { value: completionRate + '%', label: 'Completion', icon: 'fa-solid fa-chart-line', color: '#27ae60', alert: false }
+    ];
+    statCards.forEach(function (card) {
+      html += '<div class="prod-stat-card' + (card.alert ? ' prod-stat-alert' : '') + '" style="border-top:3px solid ' + card.color + '">';
+      html += '<div class="prod-stat-icon"><i class="' + card.icon + '" style="color:' + card.color + '"></i></div>';
+      html += '<div class="prod-stat-value">' + card.value + '</div>';
+      html += '<div class="prod-stat-label">' + card.label + '</div>';
+      html += '</div>';
+    });
+
+    // Status donut + legend
+    html += '<div class="prod-summary-section prod-summary-half">';
+    html += '<div class="prod-summary-section-title">Status Breakdown</div>';
+    html += '<div class="prod-summary-donut-row">';
+    html += '<div class="prod-donut" style="background:conic-gradient(' + conicGrad + ')"><div class="prod-donut-hole">' + total + '</div></div>';
+    html += '<div class="prod-donut-legend">';
+    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+      var count = statusCounts[s];
+      html += '<div class="prod-donut-legend-item">';
+      html += '<span class="prod-donut-swatch" style="background:' + statusColorRaw[s] + '"></span>';
+      html += '<span class="prod-donut-legend-label">' + statusLabels[s] + '</span>';
+      html += '<span class="prod-donut-legend-count">' + count + '</span>';
+      html += '</div>';
+    });
+    html += '</div></div></div>';
+
+    // Priority distribution with larger bars
+    html += '<div class="prod-summary-section prod-summary-half">';
+    html += '<div class="prod-summary-section-title">Priority Distribution</div>';
+    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
+    var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
+    ['high', 'medium', 'low'].forEach(function (p) {
+      var count = priorityCounts[p];
+      var pct = total > 0 ? (count / total) * 100 : 0;
+      html += '<div class="prod-summary-bar-row">';
+      html += '<span class="prod-summary-bar-label">' + prioLabels[p] + '</span>';
+      html += '<div class="prod-summary-bar-track"><div class="prod-summary-bar-fill" style="width:' + pct + '%;background:' + prioColors[p] + '"></div></div>';
+      html += '<span class="prod-summary-bar-count">' + count + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Velocity with sparkline
+    html += '<div class="prod-summary-section prod-summary-full">';
+    html += '<div class="prod-summary-section-title">Velocity (Last 30 Days)</div>';
+    html += '<div class="prod-summary-velocity">';
+    html += '<div class="prod-velocity-stat"><span class="prod-velocity-value">' + createdLast30 + '</span><span class="prod-velocity-label">Created</span></div>';
+    html += '<div class="prod-velocity-stat"><span class="prod-velocity-value">' + completedLast30 + '</span><span class="prod-velocity-label">Completed</span></div>';
+    var netFlow = createdLast30 - completedLast30;
+    var netClass = netFlow > 0 ? 'prod-velocity-negative' : netFlow < 0 ? 'prod-velocity-positive' : '';
+    html += '<div class="prod-velocity-stat ' + netClass + '"><span class="prod-velocity-value">' + (netFlow > 0 ? '+' : '') + netFlow + '</span><span class="prod-velocity-label">Net Flow</span></div>';
+    html += '</div>';
+
+    // Sparkline
+    html += '<div class="prod-sparkline">';
+    sparkDays.forEach(function (day) {
+      var h = sparkMax > 0 ? Math.max(2, (day.count / sparkMax) * 100) : 2;
+      var cls = day.count > 0 ? 'prod-spark-bar prod-spark-active' : 'prod-spark-bar';
+      html += '<div class="' + cls + '" style="height:' + h + '%" title="' + day.date + ': ' + day.count + '"></div>';
+    });
+    html += '</div></div>';
+
+    // Upcoming due tasks
+    var upcoming = tasks.filter(function (t) {
+      return t.due_date && t.due_date !== 'null' && t.status !== 'done';
+    }).sort(function (a, b) {
+      return a.due_date.localeCompare(b.due_date);
+    }).slice(0, 8);
+
+    if (upcoming.length > 0) {
+      html += '<div class="prod-summary-section prod-summary-full">';
+      html += '<div class="prod-summary-section-title">Upcoming Due</div>';
+      html += '<table class="prod-due-table"><tbody>';
+      upcoming.forEach(function (t) {
+        var prio = (t.priority || 'medium').toLowerCase();
+        var isOverdue = t.due_date < today;
+        html += '<tr class="prod-due-row' + (isOverdue ? ' prod-due-overdue' : '') + '" data-task-id="' + esc(t.filename) + '">';
+        html += '<td><span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span></td>';
+        html += '<td class="prod-due-title">' + esc(t.title) + '</td>';
+        html += '<td class="prod-due-assignee">' + (t.assignee && t.assignee !== 'null' ? esc(t.assignee) : '<span style="color:var(--text-muted)">—</span>') + '</td>';
+        html += '<td class="prod-due-date">' + esc(t.due_date) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    // Tag breakdown
+    var tagEntries = Object.keys(tagCounts).map(function (k) { return { tag: k, count: tagCounts[k] }; });
+    tagEntries.sort(function (a, b) { return b.count - a.count; });
+    tagEntries = tagEntries.slice(0, 10);
+    if (tagEntries.length > 0) {
+      html += '<div class="prod-summary-section prod-summary-full">';
+      html += '<div class="prod-summary-section-title">Top Tags</div>';
+      html += '<div class="prod-summary-tags-row">';
+      tagEntries.forEach(function (entry) {
+        html += '<div class="prod-summary-tag-row"><span class="prod-tag">' + esc(entry.tag) + '</span><span class="prod-summary-bar-count">' + entry.count + '</span></div>';
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    body.innerHTML = html;
+  }
+
+  /* ── Workload View ── */
+  function renderWorkload() {
+    var body = $('[data-view-body="workload"]');
+    if (!body) return;
+
+    if (tasks.length === 0) {
+      renderEmptyPanel(body, 'fa-solid fa-users', 'No tasks to show workload');
+      return;
+    }
+
+    var lanes = {};
+    var unassigned = [];
+
+    tasks.forEach(function (t) {
+      if (t.assignee && t.assignee !== 'null') {
+        if (!lanes[t.assignee]) lanes[t.assignee] = [];
+        lanes[t.assignee].push(t);
+      } else {
+        unassigned.push(t);
+      }
+    });
+
+    var names = Object.keys(lanes).sort();
+    var totalAssignees = names.length;
+    var totalAssigned = tasks.length - unassigned.length;
+
+    // Imbalance check
+    var avgLoad = totalAssignees > 0 ? totalAssigned / totalAssignees : 0;
+    var imbalanced = false;
+    names.forEach(function (n) {
+      if (lanes[n].length > avgLoad * 1.5) imbalanced = true;
+    });
+
+    var html = '';
+
+    // Summary bar
+    html += '<div class="prod-wl-summary-bar">';
+    html += '<span class="prod-wl-summary-stat"><i class="fa-solid fa-users"></i> ' + totalAssignees + ' assignee' + (totalAssignees !== 1 ? 's' : '') + '</span>';
+    html += '<span class="prod-wl-summary-stat"><i class="fa-solid fa-list-check"></i> ' + tasks.length + ' task' + (tasks.length !== 1 ? 's' : '') + '</span>';
+    if (imbalanced) {
+      html += '<span class="prod-wl-summary-warn"><i class="fa-solid fa-triangle-exclamation"></i> Workload imbalance detected</span>';
+    }
+    html += '</div>';
+
+    // Lanes container
+    html += '<div class="prod-wl-lanes">';
+    names.forEach(function (name) {
+      html += buildWorkloadLane(name, lanes[name], false);
+    });
+    if (unassigned.length > 0) {
+      html += buildWorkloadLane('Unassigned', unassigned, true);
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+  }
+
+  function buildWorkloadLane(name, laneTasks, isUnassigned) {
+    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
+    laneTasks.forEach(function (t) {
+      var s = t.status || 'active';
+      if (statusCounts[s] !== undefined) statusCounts[s]++;
+    });
+    var total = laneTasks.length;
+
+    // Status bar segments
+    var statusColors = {
+      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+    };
+
+    var html = '<div class="prod-workload-lane prod-wl-expanded">';
+
+    // Lane header
+    html += '<div class="prod-wl-lane-header">';
+    if (isUnassigned) {
+      html += '<span class="prod-wl-avatar" style="background:var(--text-muted)"><i class="fa-solid fa-user-slash" style="font-size:12px;"></i></span>';
+    } else {
+      html += '<span class="prod-wl-avatar" style="background:' + hashColor(name) + '">' + getInitial(name) + '</span>';
+    }
+    html += '<div class="prod-wl-header-info">';
+    html += '<span class="prod-wl-name">' + esc(name) + '</span>';
+    html += '<div class="prod-wl-status-bar">';
+    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+      if (statusCounts[s] > 0) {
+        var pct = (statusCounts[s] / total) * 100;
+        html += '<div class="prod-wl-status-seg" style="width:' + pct + '%;background:' + statusColors[s] + '" title="' + s + ': ' + statusCounts[s] + '"></div>';
+      }
+    });
+    html += '</div></div>';
+    html += '<span class="prod-wl-count">' + total + '</span>';
+    html += '<span class="prod-wl-chevron"><i class="fa-solid fa-chevron-down"></i></span>';
+    html += '</div>';
+
+    // Expanded task grid
+    html += '<div class="prod-wl-task-grid">';
+    if (laneTasks.length === 0) {
+      html += '<div class="prod-wl-empty">No tasks</div>';
+    } else {
+      var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
+      var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+      laneTasks.forEach(function (t) {
+        var prio = (t.priority || 'medium').toLowerCase();
+        var status = t.status || 'active';
+        html += '<div class="prod-wl-mini-card" data-task-id="' + esc(t.filename) + '">';
+        html += '<div class="prod-wl-mini-top">';
+        html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+        html += '<span class="prod-wl-mini-title">' + esc(t.title) + '</span>';
+        html += '</div>';
+        html += '<div class="prod-wl-mini-bottom">';
+        html += '<span class="prod-wl-mini-status prod-wl-status-' + status + '">' + (statusLabels[status] || status) + '</span>';
+        if (t.due_date && t.due_date !== 'null') {
+          var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && status !== 'done';
+          html += '<span class="prod-wl-mini-due' + (isOverdue ? ' prod-wl-mini-overdue' : '') + '"><i class="fa-regular fa-calendar"></i> ' + esc(t.due_date) + '</span>';
+        }
+        html += '</div></div>';
+      });
+    }
+    html += '</div></div>';
+
+    return html;
+  }
+
+  /* ── Matrix View ── */
+  function renderMatrix() {
+    var body = $('[data-view-body="matrix"]');
+    if (!body) return;
+
+    if (tasks.length === 0) {
+      renderEmptyPanel(body, 'fa-solid fa-table-cells', 'No tasks to display in matrix');
+      return;
+    }
+
+    var priorities = ['high', 'medium', 'low'];
+    var statuses = ['active', 'waiting', 'someday', 'done'];
+    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+    var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
+    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
+
+    // Build matrix data
+    var matrix = {};
+    var maxCount = 0;
+    var colTotals = {};
+    var rowTotals = {};
+    priorities.forEach(function (p) {
+      matrix[p] = {};
+      rowTotals[p] = 0;
+      statuses.forEach(function (s) { matrix[p][s] = []; });
+    });
+    statuses.forEach(function (s) { colTotals[s] = 0; });
+
+    tasks.forEach(function (t) {
+      var p = (t.priority || 'medium').toLowerCase();
+      var s = t.status || 'active';
+      if (!matrix[p]) matrix[p] = {};
+      if (!matrix[p][s]) matrix[p][s] = [];
+      matrix[p][s].push(t);
+    });
+
+    priorities.forEach(function (p) {
+      statuses.forEach(function (s) {
+        var count = matrix[p][s].length;
+        if (count > maxCount) maxCount = count;
+        colTotals[s] += count;
+        rowTotals[p] += count;
       });
     });
-    content.appendChild(titleEl);
 
-    if (fieldVisibility.priority) {
-      var priorityClass = (task.priority || 'medium').toLowerCase();
-      var priorityLabel = priorityClass.charAt(0).toUpperCase() + priorityClass.slice(1);
-      var priorityPill = document.createElement('span');
-      priorityPill.className = 'prod-priority-pill ' + priorityClass;
-      priorityPill.textContent = priorityLabel;
-      priorityPill.style.marginTop = '8px';
-      content.appendChild(priorityPill);
-    }
+    // Detect dark theme for heat color
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var heatRGB = isDark ? '199, 97, 64' : '74, 108, 247';
 
-    if (fieldVisibility.assignee && task.assignee) {
-      var assigneeEl = document.createElement('div');
-      assigneeEl.className = 'prod-list-item-note';
-      assigneeEl.innerHTML = '<i class="fa-regular fa-user-clock"></i> ' + esc(task.assignee);
-      content.appendChild(assigneeEl);
-    }
+    var html = '<div class="prod-matrix-wrap"><table class="prod-matrix-table">';
+    html += '<thead><tr><th></th>';
+    statuses.forEach(function (s) {
+      html += '<th>' + statusLabels[s] + ' <span class="prod-matrix-col-badge">' + colTotals[s] + '</span></th>';
+    });
+    html += '</tr></thead><tbody>';
 
-    if (fieldVisibility.due_date && task.due_date) {
-      var today = new Date().toISOString().split('T')[0];
-      var isOverdue = task.due_date < today && task.status !== 'done';
-      var dueDateEl = document.createElement('div');
-      dueDateEl.className = 'prod-list-item-note';
-      dueDateEl.style.color = isOverdue ? '#e74c3c' : 'var(--text-muted)';
-      dueDateEl.innerHTML = '<i class="fa-regular fa-calendar-day"></i> ' + esc(task.due_date);
-      content.appendChild(dueDateEl);
-    }
+    priorities.forEach(function (p) {
+      html += '<tr>';
+      html += '<td class="prod-matrix-row-label">' + prioLabels[p] + ' <span class="prod-matrix-row-badge">' + rowTotals[p] + '</span></td>';
+      statuses.forEach(function (s) {
+        var cellTasks = matrix[p][s];
+        var count = cellTasks.length;
+        var intensity = maxCount > 0 ? (count / maxCount) * 0.35 : 0;
+        var bg = 'rgba(' + heatRGB + ', ' + intensity.toFixed(2) + ')';
 
-    if (fieldVisibility.dependencies && task.dependencies && task.dependencies.length > 0) {
-      var depEl = document.createElement('div');
-      depEl.className = 'prod-list-item-note';
-      depEl.innerHTML = '<i class="fa-regular fa-link"></i> ' + task.dependencies.length + ' dependencies';
-      content.appendChild(depEl);
-    }
-
-    if (fieldVisibility.external_id && task.external_id && task.external_id !== 'null') {
-      var extIdEl = document.createElement('div');
-      extIdEl.className = 'prod-list-item-note';
-      extIdEl.innerHTML = '<i class="fa-solid fa-link-simple"></i> ' + esc(task.external_id);
-      content.appendChild(extIdEl);
-    }
-
-    if (fieldVisibility.creator && task.creator && task.creator !== 'null') {
-      var creatorEl = document.createElement('div');
-      creatorEl.className = 'prod-list-item-note';
-      creatorEl.innerHTML = '<i class="fa-regular fa-user-pen"></i> ' + esc(task.creator);
-      content.appendChild(creatorEl);
-    }
-
-    if (fieldVisibility.type && task.type && task.type !== 'task') {
-      var typeEl = document.createElement('div');
-      typeEl.className = 'prod-list-item-note';
-      typeEl.innerHTML = '<i class="fa-solid fa-list-check"></i> ' + esc(task.type);
-      content.appendChild(typeEl);
-    }
-
-    if (fieldVisibility.tags && task.tags && task.tags.length > 0) {
-      var tagsEl = document.createElement('div');
-      tagsEl.className = 'prod-card-tags';
-      task.tags.forEach(function (tag) {
-        var tagSpan = document.createElement('span');
-        tagSpan.className = 'prod-tag';
-        tagSpan.textContent = tag;
-        tagsEl.appendChild(tagSpan);
+        html += '<td class="prod-matrix-cell" style="background:' + bg + '">';
+        html += '<div class="prod-matrix-count">' + count + '</div>';
+        if (count > 0) {
+          html += '<div class="prod-matrix-cards">';
+          var showCount = Math.min(count, 4);
+          cellTasks.slice(0, showCount).forEach(function (t) {
+            var tPrio = (t.priority || 'medium').toLowerCase();
+            html += '<div class="prod-matrix-mini" data-task-id="' + esc(t.filename) + '">';
+            html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
+            html += '<span class="prod-matrix-mini-title">' + esc(t.title) + '</span>';
+            if (t.due_date && t.due_date !== 'null') {
+              html += '<span class="prod-matrix-mini-due">' + esc(t.due_date) + '</span>';
+            }
+            html += '</div>';
+          });
+          if (count > 4) {
+            html += '<div class="prod-matrix-expand">+' + (count - 4) + ' more</div>';
+          }
+          // Hidden overflow cards
+          if (count > 4) {
+            html += '<div class="prod-matrix-overflow">';
+            cellTasks.slice(4).forEach(function (t) {
+              var tPrio = (t.priority || 'medium').toLowerCase();
+              html += '<div class="prod-matrix-mini" data-task-id="' + esc(t.filename) + '">';
+              html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
+              html += '<span class="prod-matrix-mini-title">' + esc(t.title) + '</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</td>';
       });
-      content.appendChild(tagsEl);
-    }
-
-    var actions = document.createElement('div');
-    actions.className = 'prod-list-item-actions';
-    actions.innerHTML = '<button title="Delete task"><i class="fa-regular fa-rectangle-xmark"></i></button>';
-    actions.querySelector('button').addEventListener('click', function (e) {
-      e.stopPropagation();
-      deleteTask(task);
+      html += '</tr>';
     });
 
-    item.appendChild(content);
-    item.appendChild(actions);
-    return item;
+    html += '</tbody></table></div>';
+    body.innerHTML = html;
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -1603,6 +2241,8 @@ window.TasksView = (function () {
     if (!initialized) {
       scaffold();
       loadFieldVisibility();
+      loadViewVisibility();
+      loadActiveView();
       initialized = true;
     }
 
@@ -1611,9 +2251,9 @@ window.TasksView = (function () {
     tasks = [];
     hasChanges = false;
 
-    /* Reset UI */
-    currentView = 'board';
-    switchTaskView('board');
+    /* Sync active view UI */
+    syncActiveView();
+    syncViewTabs();
 
     if (!rootHandle) {
       renderTasks();

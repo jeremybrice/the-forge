@@ -15,6 +15,7 @@ window.CognitiveForgeView = (function () {
   let allSessions = [];
   let activeFilter = 'all';
   let selectedSession = null;
+  let searchQuery = '';
   let refreshTimer = null;
   let initialized = false;
 
@@ -87,6 +88,10 @@ window.CognitiveForgeView = (function () {
 
         <!-- Sidebar -->
         <div class="cf-sidebar">
+          <div class="sidebar-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="Search sessions\u2026" data-ref="cf-search-input">
+          </div>
           <div class="cf-filter-bar">
             <div class="filter-btn active" data-filter="all">All</div>
             <div class="filter-btn" data-filter="debate">Debates</div>
@@ -104,6 +109,7 @@ window.CognitiveForgeView = (function () {
 
     bindToolbar();
     bindFilters();
+    bindSearch();
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -132,6 +138,19 @@ window.CognitiveForgeView = (function () {
       btn.classList.add('active');
       activeFilter = btn.dataset.filter;
       renderSessionList();
+    });
+  }
+
+  function bindSearch() {
+    var input = $('[data-ref="cf-search-input"]');
+    if (!input) return;
+    var timer = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        searchQuery = input.value.trim().toLowerCase();
+        renderSessionList();
+      }, 300);
     });
   }
 
@@ -203,13 +222,21 @@ window.CognitiveForgeView = (function () {
       ? allSessions
       : allSessions.filter(function (s) { return s.frontmatter.type === activeFilter; });
 
+    if (searchQuery) {
+      filtered = filtered.filter(function (s) {
+        var fm = s.frontmatter;
+        var hay = ((fm.title || '') + ' ' + (fm.category || '') + ' ' + (fm.concept || '')).toLowerCase();
+        return hay.indexOf(searchQuery) !== -1;
+      });
+    }
+
     if (allSessions.length === 0) {
       listEl.innerHTML = '<div class="cf-empty-list">No sessions yet</div>';
       return;
     }
 
     if (filtered.length === 0) {
-      listEl.innerHTML = '<div class="cf-empty-list">No ' + esc(activeFilter) + ' sessions</div>';
+      listEl.innerHTML = '<div class="cf-empty-list">No matching sessions</div>';
       return;
     }
 
@@ -217,20 +244,19 @@ window.CognitiveForgeView = (function () {
       var fm = s.frontmatter;
       var tc = typeColor(fm.type);
       var cc = categoryColor(fm.category);
+      var typeLabel = fm.type === 'debate' ? 'Debate' : fm.type === 'explore' ? 'Explore' : (fm.type || '');
       var sel = selectedSession && selectedSession.filename === s.filename;
-      return '<div class="cf-session-item' + (sel ? ' selected' : '') + '" data-filename="' + esc(s.filename) + '">' +
-        '<div class="cf-session-type-bar" style="background:' + tc + '"></div>' +
-        '<div class="cf-session-item-content">' +
-          '<div class="cf-session-item-title">' + esc(fm.title || s.filename) + '</div>' +
-          '<div class="cf-session-item-meta">' +
-            '<span class="cf-session-category-pill" style="background:' + cc + '">' + esc(fm.category || 'Unknown') + '</span>' +
+      return '<div class="sidebar-card' + (sel ? ' selected' : '') + '" data-filename="' + esc(s.filename) + '">' +
+          '<div class="sidebar-card-title">' + esc(fm.title || s.filename) + '</div>' +
+          '<div class="sidebar-card-meta">' +
+            '<span class="sidebar-card-pill" style="background:color-mix(in srgb, ' + tc + ' 12%, transparent);color:' + tc + '">' + esc(typeLabel) + '</span>' +
+            (fm.category ? '<span class="sidebar-card-pill" style="background:color-mix(in srgb, ' + cc + ' 12%, transparent);color:' + cc + '">' + esc(fm.category) + '</span>' : '') +
             '<span>' + esc(fm.created || '') + '</span>' +
           '</div>' +
-        '</div>' +
       '</div>';
     }).join('');
 
-    listEl.querySelectorAll('.cf-session-item').forEach(function (el) {
+    listEl.querySelectorAll('.sidebar-card').forEach(function (el) {
       el.addEventListener('click', function () {
         var fn = el.dataset.filename;
         selectedSession = allSessions.find(function (s) { return s.filename === fn; }) || null;
@@ -299,7 +325,7 @@ window.CognitiveForgeView = (function () {
     if (fm.category) {
       metaRows +=
         '<div class="meta-label">Category</div>' +
-        '<div class="meta-value"><span class="cf-session-category-pill" style="background:' + categoryColor(fm.category) + '">' + esc(fm.category) + '</span></div>';
+        '<div class="meta-value"><span class="sidebar-card-pill" style="background:color-mix(in srgb, ' + categoryColor(fm.category) + ' 12%, transparent);color:' + categoryColor(fm.category) + '">' + esc(fm.category) + '</span></div>';
     }
 
     // Date
@@ -423,6 +449,11 @@ window.CognitiveForgeView = (function () {
     allSessions = [];
     selectedSession = null;
     activeFilter = 'all';
+    searchQuery = '';
+
+    // Clear search input
+    var searchInput = $('[data-ref="cf-search-input"]');
+    if (searchInput) searchInput.value = '';
 
     // Reset filter buttons
     var bar = document.querySelector('#view-cognitive-forge .cf-filter-bar');

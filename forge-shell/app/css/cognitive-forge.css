@@ -6,10 +6,12 @@
 .cf-layout {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: var(--plugin-sidebar-width) 1fr;
   height: 100%;
   overflow: hidden;
 }
+
+.cf-layout > .plugin-toolbar { grid-column: 1 / -1; }
 
 /* ── Sidebar ── */
 .cf-sidebar {
@@ -36,65 +38,7 @@
   padding: 4px 0;
 }
 
-/* ── Session List Items ── */
-.cf-session-item {
-  display: flex;
-  align-items: stretch;
-  margin: 2px 8px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background var(--transition);
-  border: 1px solid transparent;
-  overflow: hidden;
-}
-
-.cf-session-item:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-light);
-}
-
-.cf-session-item.selected {
-  background: var(--accent-light);
-  border-color: var(--accent);
-}
-
-.cf-session-type-bar {
-  width: 4px;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.cf-session-item-content {
-  flex: 1;
-  padding: 8px 10px;
-  min-width: 0;
-}
-
-.cf-session-item-title {
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 4px;
-}
-
-.cf-session-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.cf-session-category-pill {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-}
+/* (Session list items use shared .sidebar-card from components.css) */
 
 /* ── Detail Panel ── */
 .cf-detail-panel {
@@ -140,7 +84,7 @@
     top: var(--toolbar-height);
     left: 0;
     bottom: 0;
-    width: 280px;
+    width: var(--plugin-sidebar-width);
     z-index: 5;
     box-shadow: var(--shadow-md);
   }

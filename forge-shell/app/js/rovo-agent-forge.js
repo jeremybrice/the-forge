@@ -31,6 +31,7 @@
   var allAgents = [];
   var selectedAgent = null;
   var activeFilter = 'all';
+  var searchQuery = '';
   var refreshTimer = null;
   var refreshRunning = false;
   var initialized = false;
@@ -153,6 +154,10 @@
 
         /* Sidebar */
         '<div class="raf-sidebar">' +
+          '<div class="sidebar-search">' +
+            '<i class="fa-solid fa-magnifying-glass"></i>' +
+            '<input type="text" placeholder="Search agents\u2026" data-raf-ref="search-input">' +
+          '</div>' +
           '<div class="raf-filter-bar">' +
             '<div class="filter-btn active" data-raf-filter="all">All</div>' +
             '<div class="filter-btn" data-raf-filter="jira">Jira</div>' +
@@ -183,6 +188,7 @@
 
     bindToolbar();
     bindFilters();
+    bindSearch();
     bindModalActions();
   }
 
@@ -216,6 +222,19 @@
     });
   }
 
+  function bindSearch() {
+    var input = $q('[data-raf-ref="search-input"]');
+    if (!input) return;
+    var timer = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        searchQuery = input.value.trim().toLowerCase();
+        renderAgentList();
+      }, 300);
+    });
+  }
+
   function bindModalActions() {
     $qa('[data-raf-modal-action]').forEach(function (el) {
       el.addEventListener('click', function () {
@@ -240,13 +259,21 @@
           return String(a.frontmatter.platform || '').toLowerCase() === activeFilter;
         });
 
+    if (searchQuery) {
+      filtered = filtered.filter(function (a) {
+        var fm = a.frontmatter;
+        var hay = ((fm.name || '') + ' ' + (fm.description || '') + ' ' + (fm.platform || '')).toLowerCase();
+        return hay.indexOf(searchQuery) !== -1;
+      });
+    }
+
     if (allAgents.length === 0) {
       listEl.innerHTML = '<div class="raf-empty-list">No agents yet</div>';
       return;
     }
 
     if (filtered.length === 0) {
-      listEl.innerHTML = '<div class="raf-empty-list">No ' + ESC(activeFilter) + ' agents</div>';
+      listEl.innerHTML = '<div class="raf-empty-list">No matching agents</div>';
       return;
     }
 
@@ -256,20 +283,17 @@
       var pc = platformColor(platform);
       var sc = statusColor(fm.status);
       var sel = selectedAgent && selectedAgent.slug === a.slug;
-      return '<div class="raf-agent-item' + (sel ? ' selected' : '') + '" data-raf-slug="' + ESC(a.slug) + '">' +
-        '<div class="raf-agent-platform-bar" style="background:' + pc + '"></div>' +
-        '<div class="raf-agent-item-content">' +
-          '<div class="raf-agent-item-title">' + ESC(fm.name || a.slug) + '</div>' +
-          '<div class="raf-agent-item-meta">' +
-            '<span class="raf-platform-pill" style="background:' + pc + '">' + ESC(platform) + '</span>' +
+      return '<div class="sidebar-card' + (sel ? ' selected' : '') + '" data-raf-slug="' + ESC(a.slug) + '">' +
+          '<div class="sidebar-card-title">' + ESC(fm.name || a.slug) + '</div>' +
+          '<div class="sidebar-card-meta">' +
+            '<span class="sidebar-card-pill" style="background:color-mix(in srgb, ' + pc + ' 12%, transparent);color:' + pc + '">' + ESC(platform) + '</span>' +
             '<span class="raf-status-dot" style="background:' + sc + '"></span>' +
             '<span>' + ESC(fm.status || '') + '</span>' +
           '</div>' +
-        '</div>' +
       '</div>';
     }).join('');
 
-    listEl.querySelectorAll('.raf-agent-item').forEach(function (el) {
+    listEl.querySelectorAll('.sidebar-card').forEach(function (el) {
       el.addEventListener('click', function () {
         var slug = el.dataset.rafSlug;
         selectedAgent = allAgents.find(function (a) { return a.slug === slug; }) || null;
@@ -337,7 +361,7 @@
     /* Platform */
     metaRows +=
       '<div class="meta-label">Platform</div>' +
-      '<div class="meta-value"><span class="raf-platform-pill" style="background:' + pc + '">' + ESC(platform) + '</span></div>';
+      '<div class="meta-value"><span class="sidebar-card-pill" style="background:color-mix(in srgb, ' + pc + ' 12%, transparent);color:' + pc + '">' + ESC(platform) + '</span></div>';
 
     /* Status */
     if (fm.status) {
@@ -783,7 +807,12 @@
     allAgents = [];
     selectedAgent = null;
     activeFilter = 'all';
+    searchQuery = '';
     prevSignature = '';
+
+    /* Clear search input */
+    var searchInput = $q('[data-raf-ref="search-input"]');
+    if (searchInput) searchInput.value = '';
 
     /* Reset filter buttons */
     var bar = $q('.raf-filter-bar');
