@@ -47,6 +47,6 @@ updated: {{ updated }}
 ### {{ event.ticket }}
 - **Event Type:** {{ event.event_type }}
 - **Summary:** {{ event.summary }}
-- **Needs Action:** {{ event.needs_action | default('false') }}
+- **Needs Action:** {{ 'true' if event.needs_action else 'false' }}
 {% endfor %}
 {% endif %}
