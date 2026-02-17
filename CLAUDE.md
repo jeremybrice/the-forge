@@ -27,6 +27,7 @@ python forge.py --help
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
+| **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/` + `slack-forge/index.json` + `slack-forge/config.json` |
 
 ## Architecture
 
@@ -55,6 +56,7 @@ python forge.py --help
 | Report | `YYYY-MM-DD-{slug}.md` | `2026-02-14-q1-performance-review.md` |
 | Checkpoint | `checkpoint-YYYY-MM-DD-{slug}.md` | `checkpoint-2026-02-14-architecture-decisions.md` |
 | Rovo Agent | `{slug}/agent.md` | `ticket-triage-agent/agent.md` |
+| Harvest | `YYYY-MM-DD-{harvest_type}-NNN.md` | `2026-02-17-task-harvest-001.md` |
 
 ## Forge Shell Desktop App
 
@@ -71,6 +73,7 @@ python forge.py --help
 - `cognitive-forge.js` — Session history
 - `report-forge.js` — Report archive
 - `rovo-agent-forge.js` — Agent config viewer
+- `slack-forge.js` — Harvest dashboard with review workflow
 - `roadmap.js` — Roadmap timeline view
 
 **Launch:**
