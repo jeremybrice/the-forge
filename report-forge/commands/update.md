@@ -30,13 +30,13 @@ Updates an existing report with new findings by re-running relevant agents and m
 **If filename provided:**
 1. Run forge report query to find the report:
    ```bash
-   forge report query --output json
+   forge report query --directory .
    ```
 2. Parse results and match on filename (with or without `.md`)
 3. If not found: "Report not found: {filename}. List reports with /report-forge:list"
 
 **If no filename provided:**
-1. Run `forge report query --output json` to get all reports
+1. Run `forge report query --directory .` to get all reports
 2. Display interactive selection menu:
    ```
    Select a report to update:
@@ -54,7 +54,7 @@ Updates an existing report with new findings by re-running relevant agents and m
 
 Use forge report get to retrieve the report:
 ```bash
-forge report get {filename} --output json
+forge report get {filename}
 ```
 
 Parse the JSON response to extract:
@@ -190,12 +190,10 @@ Use the new synthesized report content directly.
 
 ```bash
 forge report update {filename} \
-  --content "{merged or new content}" \
   --status {status} \
-  --confidence {confidence} \
-  --investigators {original + new agent names} \
-  --coverage-end {new end date if updated} \
-  --output json
+  --agents {agent names} \
+  --data '{"coverage_end": "{new end date}"}' \
+  --directory .
 ```
 
 ### Update Type 2: Update Metadata Only
@@ -214,9 +212,8 @@ Then update via forge-lib:
 ```bash
 forge report update {filename} \
   [--status {new_status}] \
-  [--confidence {new_confidence}] \
-  [--coverage-end {new_coverage_end}] \
-  --output json
+  [--data '{"coverage_end": "{new_coverage_end}"}'] \
+  --directory .
 ```
 
 ## Phase 4: Present Results

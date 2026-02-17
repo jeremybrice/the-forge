@@ -58,7 +58,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 
 **Retrieve card via forge-lib:**
 ```bash
-forge card get {card_identifier} --directory .
+forge card get {type} {card_identifier} --directory .
 ```
 
 Extract from response:
@@ -88,7 +88,7 @@ Inspect the frontmatter for linking fields:
 ### Phase 3A: Resolve Parent Link (if applicable)
 
 If the card has a `parent` field in frontmatter:
-1. Retrieve parent card via `forge card get {parent} --directory .`
+1. Retrieve parent card via `forge card get {parent_type} {parent} --directory .`
 2. Extract the parent's `jira_key` or `jira_card` field
 3. If the parent is not linked to Jira:
    ```
@@ -146,7 +146,7 @@ Delegate frontmatter updates to forge-lib:
 
 **For Epic cards:**
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "jira_key": "PROJ-123",
   "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
   "jira_last_synced": "2026-02-12T14:30:00Z"
@@ -155,7 +155,7 @@ forge card update {card_identifier} --data '{
 
 **For Initiative and Story cards:**
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "jira_card": "PROJ-123",
   "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
   "jira_last_synced": "2026-02-12T14:30:00Z"
@@ -225,7 +225,7 @@ Reference the `jira-sync` skill for MCP tool usage.
 Delegate frontmatter updates to forge-lib:
 
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "jira_last_synced": "2026-02-12T14:30:00Z"
 }' --directory .
 ```

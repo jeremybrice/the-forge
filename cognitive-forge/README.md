@@ -156,28 +156,18 @@ Both commands delegate session file creation to forge-lib CLI:
 
 **Debate sessions:**
 ```bash
-forge session create \
-  --session-type debate \
-  --title "Concept title" \
-  --category Business \
+forge session create debate "Concept title" "Topic being debated" \
   --agents challenger,explorer,synthesizer \
-  --status complete \
-  --content "assembled session content" \
-  --output json
+  --status Completed \
+  --data '{"category": "Business"}'
 ```
 
 **Exploration sessions:**
 ```bash
-forge session create \
-  --session-type exploration \
-  --title "Concept title" \
-  --category Philosophical \
-  --relationship creator \
-  --agents-recruited decomposer,evaluator \
-  --techniques-applied perspective-synthesis,boundary-mapping \
-  --status complete \
-  --content "narrative summary" \
-  --output json
+forge session create exploration "Concept title" "Topic being explored" \
+  --agents decomposer,evaluator \
+  --status Completed \
+  --data '{"category": "Philosophical", "techniques": ["perspective-synthesis", "boundary-mapping"]}'
 ```
 
 forge-lib handles:

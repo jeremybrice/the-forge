@@ -86,7 +86,7 @@ On approval, construct the frontmatter data for each story:
 
 Then call for each story:
 ```bash
-forge card create story --data '[JSON frontmatter]' --directory .
+forge card create story "{title}" --data '[JSON frontmatter]' --directory .
 ```
 
 The forge-lib template (templates/story.md.j2) renders the card body from the frontmatter fields. The command returns the created filename.
@@ -109,7 +109,7 @@ For batch stories: Report `Stories saved to cards/stories/:` with list of filena
 
 Use forge-lib to find the card:
 ```bash
-forge card query story --title "[search term]"
+forge card query --type story --directory .
 ```
 
 Or accept a direct filename from the user.

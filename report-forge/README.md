@@ -221,22 +221,14 @@ Creates `reports/` directory structure at project root.
 
 ### Creation
 ```bash
-forge report create \
-  --report-type <type> \
-  --title "<title>" \
-  --category <category> \
-  --topic "<topic>" \
-  --coverage-start <date> \
-  --coverage-end <date> \
-  --products <list> \
-  --modules <list> \
-  --clients <list> \
-  --teams <list> \
-  --investigators <agents> \
-  --confidence <level> \
-  --status <status> \
-  --content "<markdown content>" \
-  --output json
+forge report create {report_type} "{title}" "{topic}" \
+  [--directory DIR] \
+  [--status {status}] \
+  [--product {product}] \
+  [--module {module}] \
+  [--authors {authors}] \
+  [--agents {agents}] \
+  [--data '{...}']
 ```
 
 Creates a report file with:
@@ -249,11 +241,10 @@ Creates a report file with:
 ```bash
 forge report query \
   [--report-type <type>] \
-  [--category <category>] \
   [--status <status>] \
+  [--product <product>] \
   [--created-after <date>] \
-  [--product <name>] \
-  --output json
+  [--created-before <date>]
 ```
 
 Returns filtered list of reports with metadata.
@@ -261,11 +252,12 @@ Returns filtered list of reports with metadata.
 ### Updates
 ```bash
 forge report update <filename> \
-  [--content "<new content>"] \
   [--status <status>] \
-  [--confidence <level>] \
-  [--investigators <agents>] \
-  --output json
+  [--product <product>] \
+  [--module <module>] \
+  [--authors <authors>] \
+  [--agents <agents>] \
+  [--data '{...}']
 ```
 
 Updates existing report and refreshes index.

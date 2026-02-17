@@ -162,10 +162,10 @@ All Jira sync operations are performed via MCP tools, not forge-lib. However, fo
 
 ```bash
 # Read card frontmatter
-forge card get story-001-user-auth
+forge card get story story-001-user-auth
 
 # Update card with Jira fields after sync
-forge card update story-001-user-auth --data '{"jira_key":"PROJ-123","last_synced":"2024-01-15T10:30:00Z"}'
+forge card update story story-001-user-auth --data '{"jira_key":"PROJ-123","last_synced":"2024-01-15T10:30:00Z"}'
 ```
 
 MCP operations (jira_create_issue, jira_update_issue, jira_get_issue) are called directly from commands, following the patterns defined in this skill.

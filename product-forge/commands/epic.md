@@ -83,7 +83,7 @@ On approval, construct the frontmatter data including all card sections:
 
 Then call:
 ```bash
-forge card create epic --data '[JSON frontmatter]' --directory .
+forge card create epic "{title}" --data '[JSON frontmatter]' --directory .
 ```
 
 The forge-lib template (templates/epic.md.j2) renders the card body from the frontmatter fields. The command returns the created filename.
@@ -110,7 +110,7 @@ Report: `Epic saved to cards/epics/{filename}.md`
 
 Use forge-lib to find the card:
 ```bash
-forge card query epic --title "[search term]"
+forge card query --type epic --directory .
 ```
 
 Or accept a direct filename from the user.

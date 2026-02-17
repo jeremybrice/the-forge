@@ -77,7 +77,7 @@ Creates: `tasks/task-003.md` with status "Open"
 
 **forge-lib command:**
 ```bash
-forge task create --title "Review API spec" --priority High --due-date 2026-02-20
+forge task create "Review API spec" --data '{"priority": "High", "due_date": "2026-02-20"}'
 ```
 
 ---
@@ -125,8 +125,8 @@ Sync tasks from Linear, Asana, Jira, or GitHub when MCP tools are configured.
 
 **forge-lib commands:**
 ```bash
-forge task query --status Open --status "In Progress"
-forge task update task-003 --status Completed
+forge task query --status Open
+forge task update task-003 --data '{"status": "Completed"}'
 ```
 
 ## Skills
@@ -215,14 +215,14 @@ forge task init
 
 **Create task:**
 ```bash
-forge task create --title "Task title" --priority Medium --status Open
-forge task create --title "Task title" --description "Details" --due-date 2026-02-20
+forge task create "Task title" --data '{"priority": "Medium", "status": "Open"}'
+forge task create "Task title" --data '{"description": "Details", "due_date": "2026-02-20"}'
 ```
 
 **Query tasks:**
 ```bash
 forge task query
-forge task query --status Open --status "In Progress"
+forge task query --status Open
 forge task query --priority High
 ```
 
@@ -233,8 +233,8 @@ forge task get task-003
 
 **Update task:**
 ```bash
-forge task update task-003 --status "In Progress"
-forge task update task-003 --priority High --due-date 2026-02-25
+forge task update task-003 --data '{"status": "In Progress"}'
+forge task update task-003 --data '{"priority": "High", "due_date": "2026-02-25"}'
 ```
 
 All commands return JSON for easy parsing and integration.

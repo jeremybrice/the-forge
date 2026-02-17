@@ -76,7 +76,7 @@ On approval, construct the frontmatter data including all card sections:
 
 Then call:
 ```bash
-forge card create initiative --data '[JSON frontmatter]' --directory .
+forge card create initiative "{title}" --data '[JSON frontmatter]' --directory .
 ```
 
 The forge-lib template (templates/initiative.md.j2) renders the card body from the frontmatter fields. The command returns the created filename.
@@ -98,7 +98,7 @@ Report: `Initiative saved to cards/initiatives/{filename}.md`
 
 Use forge-lib to find the card:
 ```bash
-forge card query initiative --title "[search term]"
+forge card query --type initiative --directory .
 ```
 
 Or accept a direct filename from the user.

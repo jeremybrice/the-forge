@@ -44,7 +44,7 @@ If transition is invalid, warn the user and suggest valid transitions.
 Build the update command:
 
 ```bash
-forge task update task-003 --status "In Progress" --priority High
+forge task update task-003 --data '{"status": "In Progress", "priority": "High"}'
 ```
 
 Parse the JSON response and confirm:
@@ -61,7 +61,8 @@ When user runs `/tasks:update --triage`:
 #### 1. Query All Active Tasks
 
 ```bash
-forge task query --status Open --status "In Progress" --status Blocked
+forge task query --status Open
+# Repeat with --status "In Progress" or --status Blocked to query other statuses.
 ```
 
 This returns JSON array of tasks.
@@ -95,10 +96,10 @@ Action?
 #### 4. Apply User's Choice
 
 Based on user input:
-- **Completed**: `forge task update task-012 --status Completed`
+- **Completed**: `forge task update task-012 --data '{"status": "Completed"}'`
 - **Update status**: Prompt for new status, then update
-- **Reschedule**: Prompt for new due date, then `forge task update task-012 --due-date YYYY-MM-DD`
-- **Move to someday**: `forge task update task-012 --priority Low`
+- **Reschedule**: Prompt for new due date, then `forge task update task-012 --data '{"due_date": "YYYY-MM-DD"}'`
+- **Move to someday**: `forge task update task-012 --data '{"priority": "Low"}'`
 - **Skip**: Continue to next
 
 #### 5. Report Summary

@@ -43,12 +43,8 @@ Due date (YYYY-MM-DD, or leave blank): [wait for input]
 Build the task creation command:
 
 ```bash
-forge task create \
-  --title "{title}" \
-  --priority {priority} \
-  --status Open \
-  --description "{description}" \
-  --due-date "{due_date}"
+forge task create "{title}" \
+  --data '{"priority": "{priority}", "status": "Open", "description": "{description}", "due_date": "{due_date}"}'
 ```
 
 Notes:
