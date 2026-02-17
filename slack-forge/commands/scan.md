@@ -4,7 +4,7 @@ description: Scan monitored Slack channels for tasks, knowledge, and JIRA activi
 
 # Scan Command
 
-Orchestrate 3 sequential sub-agents to extract intelligence from monitored Slack channels.
+You are the **Orchestrator** for Slack Forge scanning. You dispatch 3 sequential sub-agents via the Task tool to extract intelligence from monitored Slack channels and create harvest records.
 
 ## Instructions
 
@@ -47,7 +47,7 @@ Calculate the cutoff timestamp based on the current system time:
 - 1 week: current time minus 604800 seconds
 - Custom: prompt for start date (YYYY-MM-DD) and optionally end date
 
-Store the selected timeframe label (e.g., "24h", "72h", "1 week", or "custom") for harvest record metadata.
+Store the selected timeframe label (e.g., "24h", "72h", "1w", or "custom") for harvest record metadata.
 
 ### 3. Extract Channel Lists from Config
 
@@ -57,122 +57,122 @@ Parse the config response:
 
 If no JIRA channel is configured, skip Agent 3 (JIRA Digest) later.
 
-### 4. Agent 1: Task Harvester
+Confirm the scan scope with the user:
+```
+Scan Brief:
+- Time frame: {timeframe}
+- Monitored channels: {count} ({channel_names})
+- JIRA channel: {jira_channel_name or "none"}
+
+Proceed? (yes/no)
+```
+
+### 4. Dispatch Agent 1: Task Harvester
 
 Inform the user:
 ```
-Agent 1/3: Task Harvester — scanning {count} channels...
+Agent 1/3: Dispatching Task Harvester...
 ```
 
-For each monitored channel:
+Use the Task tool to spawn the forge-task-harvester agent:
 
-1. Read channel messages using the Slack MCP tool:
-   ```
-   slack_read_channel (channel_id: "{id}", oldest: "{cutoff_timestamp}")
-   ```
-
-2. Apply `task-harvester` skill reasoning to the messages. Look for:
-   - Explicit task assignments ("can you...", "we need to...", "TODO:")
-   - Action items from discussions
-   - Commitments people made ("I'll handle...", "I'm going to...")
-   - Requests for help or work
-
-3. For each identified task, create a harvest record:
-   ```bash
-   forge harvest create "{task_title}" --harvest-type task --data '{
-     "source_channel": "{channel_name}",
-     "source_channel_id": "{channel_id}",
-     "source_author": "{author}",
-     "source_timestamp": "{message_timestamp}",
-     "scan_timeframe": "{timeframe}",
-     "confidence": "{high|medium|low}",
-     "tags": ["{relevant}", "{tags}"]
-   }'
-   ```
-   Check the `success` field in each JSON response. If `success` is `false`, report the error and continue to next item.
-
-Report:
 ```
-Task Harvester complete: found {count} potential tasks
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "Task Harvester scan"
+  prompt: |
+    Read slack-forge/agents/forge-task-harvester.md for your role and instructions.
+
+    **Scan Brief:**
+    - Timeframe: {timeframe_label}
+    - Cutoff: {cutoff_timestamp}
+    - Channels to scan:
+      {for each channel: "- #{name} (ID: {id})"}
+
+    Read each channel using `slack_read_channel (channel: "{channel_name}")`.
+    For each task found, create a harvest record using `forge harvest create`.
+
+    Return your results in the output format specified in your agent file.
 ```
 
-### 5. Agent 2: Knowledge Harvester
+Wait for the Task Harvester to complete. Capture the results and present a brief status to the user:
+```
+Task Harvester complete: {count} potential tasks found
+```
+
+### 5. Dispatch Agent 2: Knowledge Harvester
 
 Inform the user:
 ```
-Agent 2/3: Knowledge Harvester — scanning {count} channels...
+Agent 2/3: Dispatching Knowledge Harvester...
 ```
 
-For each monitored channel (reuse messages already read in Agent 1 if possible):
+Use the Task tool to spawn the forge-knowledge-harvester agent:
 
-1. Read channel messages if not already cached from Agent 1.
-
-2. Apply `knowledge-harvester` skill reasoning. Look for:
-   - People expertise signals ("I've been working on...", domain knowledge demonstrations)
-   - Project context (architecture decisions, technology choices, integration details)
-   - Glossary terms (acronyms defined, jargon explained)
-   - General organizational knowledge (processes, conventions, tribal knowledge)
-
-3. For each identified knowledge item, create a harvest record:
-   ```bash
-   forge harvest create "{knowledge_title}" --harvest-type knowledge --data '{
-     "source_channel": "{channel_name}",
-     "source_channel_id": "{channel_id}",
-     "source_author": "{author}",
-     "source_timestamp": "{message_timestamp}",
-     "scan_timeframe": "{timeframe}",
-     "confidence": "{high|medium|low}",
-     "tags": ["{relevant}", "{tags}"]
-   }'
-   ```
-   Check the `success` field in each JSON response. If `success` is `false`, report the error and continue to next item.
-
-Report:
 ```
-Knowledge Harvester complete: found {count} knowledge items
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "Knowledge Harvester scan"
+  prompt: |
+    Read slack-forge/agents/forge-knowledge-harvester.md for your role and instructions.
+
+    **Scan Brief:**
+    - Timeframe: {timeframe_label}
+    - Cutoff: {cutoff_timestamp}
+    - Channels to scan:
+      {for each channel: "- #{name} (ID: {id})"}
+
+    Read each channel using `slack_read_channel (channel: "{channel_name}")`.
+    For each knowledge item found, create a harvest record using `forge harvest create`.
+
+    Return your results in the output format specified in your agent file.
 ```
 
-### 6. Agent 3: JIRA Digest
+Wait for the Knowledge Harvester to complete. Capture the results:
+```
+Knowledge Harvester complete: {count} knowledge items found
+```
 
-If no JIRA channel is configured, skip this agent:
+### 6. Dispatch Agent 3: JIRA Digest
+
+If no JIRA channel is configured, skip:
 ```
 Agent 3/3: JIRA Digest — skipped (no JIRA channel configured)
 ```
 
 Otherwise, inform the user:
 ```
-Agent 3/3: JIRA Digest — reading JIRA feed...
+Agent 3/3: Dispatching JIRA Digest...
 ```
 
-1. Read the JIRA channel:
-   ```
-   slack_read_channel (channel_id: "{jira_channel_id}", oldest: "{cutoff_timestamp}")
-   ```
+Use the Task tool to spawn the forge-jira-digest agent:
 
-2. Apply `jira-digest` skill reasoning. Categorize JIRA events:
-   - Tickets created
-   - Status transitions (e.g., "In Progress" → "Done")
-   - Comments added
-   - Tickets resolved or closed
-
-3. Create one or more digest harvest records summarizing the activity:
-   ```bash
-   forge harvest create "JIRA Digest — {date_range}" --harvest-type jira-digest --data '{
-     "source_channel": "{jira_channel_name}",
-     "source_channel_id": "{jira_channel_id}",
-     "scan_timeframe": "{timeframe}",
-     "confidence": "high",
-     "tags": ["jira", "digest"]
-   }'
-   ```
-   Check the `success` field. If `success` is `false`, report the error.
-
-Report:
 ```
-JIRA Digest complete: summarized {count} JIRA events
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "JIRA Digest scan"
+  prompt: |
+    Read slack-forge/agents/forge-jira-digest.md for your role and instructions.
+
+    **Scan Brief:**
+    - Timeframe: {timeframe_label}
+    - Cutoff: {cutoff_timestamp}
+    - JIRA channel: #{jira_channel_name} (ID: {jira_channel_id})
+
+    Read the JIRA channel using `slack_read_channel (channel: "{jira_channel_name}")`.
+    Parse JIRA bot events and create digest harvest record(s) using `forge harvest create`.
+
+    Return your results in the output format specified in your agent file.
+```
+
+Wait for the JIRA Digest agent to complete. Capture the results:
+```
+JIRA Digest complete: {count} events summarized
 ```
 
 ### 7. Present Summary
+
+Combine results from all three agents:
 
 ```
 Scan complete:
@@ -181,14 +181,16 @@ Scan complete:
 - JIRA Digest: {jira_count} digest record(s)
 - Total: {total} harvest records created
 
+Agents used: forge-task-harvester, forge-knowledge-harvester, forge-jira-digest
+
 All items are pending review. Run /slack-forge:review to approve or reject.
 ```
 
 ## Notes
 
-- Sub-agents run sequentially to avoid rate-limiting Slack MCP tools
+- Agents are dispatched **sequentially** via the Task tool to respect Slack MCP rate limits
+- Each agent gets its own focused context and dedicated MCP session for extraction quality
 - All harvest records start with status "pending" — nothing is auto-promoted
-- Confidence scoring helps prioritize review (high → medium → low)
-- Duplicate detection is best-effort — review step catches remaining duplicates
+- Agent files are in `slack-forge/agents/` and skills in `slack-forge/skills/`
 - The scan command is safe to run multiple times; sequential numbering prevents conflicts
-- Use the task-harvester, knowledge-harvester, and jira-digest skills for reasoning guidance
+- If an agent fails or errors, report the failure and continue with the next agent
