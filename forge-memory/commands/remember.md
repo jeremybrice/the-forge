@@ -71,6 +71,8 @@ Create structured markdown files in the memory/ directory:
 
 **Slug generation:** lowercase, spaces to hyphens, alphanumeric only, max 50 chars.
 
+**Note:** Knowledge file operations (people, projects, glossary) currently use direct file creation. Once forge-lib memory CRUD operations are available, these operations should delegate to `forge memory create-person`, `forge memory create-project`, etc.
+
 ### Phase 4: Confirm to User
 
 ```

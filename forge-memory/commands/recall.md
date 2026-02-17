@@ -49,6 +49,22 @@ forge memory get-taxonomy modules --directory .
 forge memory get-taxonomy systems --directory .
 ```
 
+#### Parse Response
+
+Each `get-taxonomy` call returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`:
+```
+Error: {error message from JSON response}
+```
+Report which taxonomy type failed to load and fall through to the next search tier.
+
 If the query matches a taxonomy type, return the results.
 
 #### Tier 2: Glossary
@@ -63,6 +79,8 @@ For people or project queries:
 - Search `memory/people/` directory (fuzzy match on filenames)
 - Search `memory/projects/` directory
 - Read and return full file content if found
+
+**Note:** Knowledge file operations (people, projects, glossary) currently use direct file creation. Once forge-lib memory CRUD operations are available, these operations should delegate to `forge memory create-person`, `forge memory create-project`, etc.
 
 #### Tier 4: Context Files
 
