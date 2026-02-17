@@ -425,7 +425,7 @@ window.TasksView = (function () {
      Task File Parser & Serializer
      ══════════════════════════════════════════════════════════ */
   // Scans the tasks/ directory directly via ForgeFS and filters for files
-  // matching the task-NNN-*.md pattern, replacing the old index.json lookup.
+  // matching the task-NNN.md pattern (with optional slug suffix), replacing the old index.json lookup.
   async function parseTaskFiles() {
     if (!tasksDirHandle) return [];
 
@@ -923,7 +923,7 @@ window.TasksView = (function () {
     // Find next task number
     var maxNum = 0;
     tasks.forEach(function (t) {
-      var match = t.filename.match(/^task-(\d{3})-/);
+      var match = t.filename.match(/^task-(\d{3})/);
       if (match) {
         var num = parseInt(match[1]);
         if (num > maxNum) maxNum = num;
@@ -931,7 +931,7 @@ window.TasksView = (function () {
     });
 
     var newNum = maxNum + 1;
-    var newFilename = 'task-' + String(newNum).padStart(3, '0') + '-new-task.md';
+    var newFilename = 'task-' + String(newNum).padStart(3, '0') + '.md';
     var today = new Date().toISOString().split('T')[0];
 
     var newTask = {

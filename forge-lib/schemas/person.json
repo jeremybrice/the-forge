@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forge-lib.local/schemas/person.json",
+  "title": "Person",
+  "description": "Schema for person entries in organizational memory",
+  "type": "object",
+  "required": ["name", "type", "role", "created", "updated"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "type": { "type": "string", "const": "person" },
+    "role": { "type": "string", "minLength": 1 },
+    "team": { "type": ["string", "null"], "default": null },
+    "context": { "type": ["string", "null"], "default": null },
+    "created": { "type": "string", "format": "date" },
+    "updated": { "type": "string", "format": "date" }
+  },
+  "additionalProperties": false
+}

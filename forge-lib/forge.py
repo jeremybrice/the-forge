@@ -21,7 +21,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 # Import core modules
-from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, frontmatter
+from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, agent_ops, harvest_ops, frontmatter
 from core.validator import ValidationError
 from core.card_ops import CardError
 from core.index_ops import IndexError
@@ -30,6 +30,8 @@ from core.memory_ops import MemoryError
 from core.task_ops import TaskError
 from core.session_ops import SessionError
 from core.report_ops import ReportError
+from core.agent_ops import AgentError
+from core.harvest_ops import HarvestError
 
 # Version info
 __version__ = "2.0.0-alpha"
@@ -298,6 +300,39 @@ def handle_memory_set_taxonomy(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_memory_create_knowledge(args):
+    """Create a new knowledge entry."""
+    try:
+        data = json.loads(args.data) if args.data else {}
+        if args.name:
+            name_field = 'term' if args.type == 'glossary' else 'name'
+            data[name_field] = args.name
+        result = memory_ops.create_knowledge_entry(args.type, data, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON in --data: {e}"}, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_query_knowledge(args):
+    """Query knowledge entries."""
+    try:
+        filters = {}
+        if args.type:
+            filters['type'] = args.type
+        results = memory_ops.query_knowledge(directory=args.directory, filters=filters)
+        output_json(results, success=True)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
 def handle_session_init(args):
     """Initialize sessions directory structure"""
     try:
@@ -499,6 +534,100 @@ def handle_report_update(args):
         raise ForgeError(str(e))
 
 
+def handle_harvest_init(args):
+    """Initialize slack-forge directory structure"""
+    try:
+        result = harvest_ops.harvest_init(directory=args.directory)
+        output_json(result, success=True)
+    except HarvestError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_harvest_create(args):
+    """Create a new harvest record"""
+    try:
+        data = json.loads(args.data) if args.data else {}
+        data['title'] = args.title
+        if args.harvest_type:
+            data['harvest_type'] = args.harvest_type
+        result = harvest_ops.create_harvest(data, directory=args.directory)
+        output_json(result, success=True)
+    except (HarvestError, ValidationError) as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_VALIDATION_ERROR if isinstance(e, ValidationError) else EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON data: {e}"}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_harvest_get(args):
+    """Get a harvest record by filename"""
+    try:
+        result = harvest_ops.get_harvest(args.filename, directory=args.directory)
+        output_json(result, success=True)
+    except HarvestError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_NOT_FOUND)
+
+
+def handle_harvest_query(args):
+    """Query harvest records with filters"""
+    try:
+        filters = {}
+        if args.status:
+            filters['status'] = args.status
+        if args.harvest_type:
+            filters['harvest_type'] = args.harvest_type
+        result = harvest_ops.query_harvests(filters if filters else None, directory=args.directory)
+        output_json({"harvests": result}, success=True)
+    except HarvestError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_harvest_update(args):
+    """Update a harvest record"""
+    try:
+        updates = json.loads(args.data)
+        result = harvest_ops.update_harvest(args.filename, updates, directory=args.directory)
+        output_json(result, success=True)
+    except (HarvestError, ValidationError) as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_VALIDATION_ERROR if isinstance(e, ValidationError) else EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON data: {e}"}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_harvest_config(args):
+    """Get or set slack-forge channel config"""
+    try:
+        if args.get:
+            result = harvest_ops.get_config(directory=args.directory)
+            output_json(result, success=True)
+        elif args.set_channels:
+            channels = json.loads(args.set_channels)
+            config = harvest_ops.get_config(directory=args.directory)
+            config['channels'] = channels
+            harvest_ops.set_config(args.directory, config)
+            output_json({"message": "Channels updated", "count": len(channels)}, success=True)
+        elif args.set_jira_channel:
+            config = harvest_ops.get_config(directory=args.directory)
+            config['jira_channel'] = args.set_jira_channel
+            harvest_ops.set_config(args.directory, config)
+            output_json({"message": "JIRA channel set", "channel": args.set_jira_channel}, success=True)
+        else:
+            output_json(None, success=False, error="Must specify --get, --set-channels, or --set-jira-channel")
+            sys.exit(EXIT_ERROR)
+    except HarvestError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON: {e}"}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
 def handle_index_rebuild(args):
     """Rebuild index.json from markdown files"""
     try:
@@ -614,6 +743,73 @@ def handle_relationship_validate(args):
         })
     except RelationshipError as e:
         output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_create(args):
+    """Create a new Rovo agent configuration."""
+    try:
+        data = {'name': args.name, 'platform': args.platform}
+        if args.data:
+            data.update(json.loads(args.data))
+        result = agent_ops.create_agent(data, directory=args.directory)
+        output_json(result)
+    except ValidationError as e:
+        output_json(None, success=False, error=f"Validation error: {e}")
+        sys.exit(EXIT_VALIDATION_ERROR)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_get(args):
+    """Get a Rovo agent configuration by slug."""
+    try:
+        result = agent_ops.get_agent(args.slug, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_NOT_FOUND)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_query(args):
+    """Query Rovo agent configurations."""
+    try:
+        filters = {}
+        if args.platform:
+            filters['platform'] = args.platform
+        if args.status:
+            filters['status'] = args.status
+        results = agent_ops.query_agents(directory=args.directory, filters=filters)
+        output_json(results)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_update(args):
+    """Update a Rovo agent configuration."""
+    try:
+        updates = json.loads(args.data) if args.data else {}
+        result = agent_ops.update_agent(args.slug, updates, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
         sys.exit(EXIT_ERROR)
     except Exception as e:
         output_json(None, success=False, error=f"Unexpected error: {e}")
@@ -747,6 +943,20 @@ def create_parser():
     memory_set.add_argument("--directory", default=".", help="Target directory")
     memory_set.set_defaults(func=handle_memory_set_taxonomy)
 
+    # memory create-knowledge
+    mem_create_knowledge = memory_subparsers.add_parser('create-knowledge', help='Create a knowledge entry')
+    mem_create_knowledge.add_argument('type', choices=['person', 'project', 'glossary'], help='Knowledge type')
+    mem_create_knowledge.add_argument('name', nargs='?', help='Entry name (or term for glossary)')
+    mem_create_knowledge.add_argument('--data', help='Additional data as JSON')
+    mem_create_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_create_knowledge.set_defaults(func=handle_memory_create_knowledge)
+
+    # memory query-knowledge
+    mem_query_knowledge = memory_subparsers.add_parser('query-knowledge', help='Query knowledge entries')
+    mem_query_knowledge.add_argument('--type', choices=['person', 'project', 'glossary'], help='Filter by type')
+    mem_query_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_query_knowledge.set_defaults(func=handle_memory_query_knowledge)
+
     # ==================== SESSION COMMANDS ====================
     session_parser = subparsers.add_parser("session", help="Session operations")
     session_subparsers = session_parser.add_subparsers(dest="session_command", required=True)
@@ -845,6 +1055,55 @@ def create_parser():
     report_update.add_argument("--data", help="JSON update data")
     report_update.set_defaults(func=handle_report_update)
 
+    # ==================== HARVEST COMMANDS ====================
+    harvest_parser = subparsers.add_parser("harvest", help="Harvest operations (slack-forge)")
+    harvest_subparsers = harvest_parser.add_subparsers(dest="harvest_command", required=True)
+
+    # harvest init
+    harvest_init = harvest_subparsers.add_parser("init", help="Initialize slack-forge directory")
+    harvest_init.add_argument("--directory", default=".", help="Target directory")
+    harvest_init.set_defaults(func=handle_harvest_init)
+
+    # harvest create
+    harvest_create = harvest_subparsers.add_parser("create", help="Create a harvest record")
+    harvest_create.add_argument("title", help="Harvest item title")
+    harvest_create.add_argument("--harvest-type", dest="harvest_type", required=True,
+                                choices=["task", "knowledge", "jira-digest"], help="Type of harvest")
+    harvest_create.add_argument("--directory", default=".", help="Target directory")
+    harvest_create.add_argument("--data", help="JSON harvest data")
+    harvest_create.set_defaults(func=handle_harvest_create)
+
+    # harvest get
+    harvest_get = harvest_subparsers.add_parser("get", help="Get a harvest record by filename")
+    harvest_get.add_argument("filename", help="Harvest filename")
+    harvest_get.add_argument("--directory", default=".", help="Target directory")
+    harvest_get.set_defaults(func=handle_harvest_get)
+
+    # harvest query
+    harvest_query = harvest_subparsers.add_parser("query", help="Query harvest records")
+    harvest_query.add_argument("--directory", default=".", help="Target directory")
+    harvest_query.add_argument("--status", choices=["pending", "approved", "rejected", "promoted"],
+                               help="Filter by status")
+    harvest_query.add_argument("--harvest-type", dest="harvest_type",
+                               choices=["task", "knowledge", "jira-digest"], help="Filter by harvest type")
+    harvest_query.set_defaults(func=handle_harvest_query)
+
+    # harvest update
+    harvest_update = harvest_subparsers.add_parser("update", help="Update a harvest record")
+    harvest_update.add_argument("filename", help="Harvest filename")
+    harvest_update.add_argument("--directory", default=".", help="Target directory")
+    harvest_update.add_argument("--data", required=True, help="JSON update data")
+    harvest_update.set_defaults(func=handle_harvest_update)
+
+    # harvest config
+    harvest_config = harvest_subparsers.add_parser("config", help="Manage channel config")
+    harvest_config.add_argument("--directory", default=".", help="Target directory")
+    harvest_config_group = harvest_config.add_mutually_exclusive_group(required=True)
+    harvest_config_group.add_argument("--get", action="store_true", help="Get current config")
+    harvest_config_group.add_argument("--set-channels", dest="set_channels", help="Set channels JSON array")
+    harvest_config_group.add_argument("--set-jira-channel", dest="set_jira_channel", help="Set JIRA bot channel ID")
+    harvest_config.set_defaults(func=handle_harvest_config)
+
     # ==================== INDEX COMMANDS ====================
     index_parser = subparsers.add_parser("index", help="Index operations")
     index_subparsers = index_parser.add_subparsers(dest="index_command", required=True)
@@ -883,6 +1142,38 @@ def create_parser():
     relationship_validate = relationship_subparsers.add_parser("validate", help="Validate relationships")
     relationship_validate.add_argument("--directory", default=".", help="Target directory")
     relationship_validate.set_defaults(func=handle_relationship_validate)
+
+    # ==================== AGENT COMMANDS ====================
+    agent_parser = subparsers.add_parser("agent", help="Rovo agent operations")
+    agent_subparsers = agent_parser.add_subparsers(dest="agent_command", required=True)
+
+    # agent create
+    agent_create = agent_subparsers.add_parser("create", help="Create a new Rovo agent")
+    agent_create.add_argument("name", help="Agent display name")
+    agent_create.add_argument("platform", choices=["jira", "confluence"], help="Target platform")
+    agent_create.add_argument("--data", help="Additional agent data as JSON")
+    agent_create.add_argument("--directory", default=".", help="Base directory")
+    agent_create.set_defaults(func=handle_agent_create)
+
+    # agent get
+    agent_get = agent_subparsers.add_parser("get", help="Get agent by slug")
+    agent_get.add_argument("slug", help="Agent directory slug")
+    agent_get.add_argument("--directory", default=".", help="Base directory")
+    agent_get.set_defaults(func=handle_agent_get)
+
+    # agent query
+    agent_query = agent_subparsers.add_parser("query", help="Query agents")
+    agent_query.add_argument("--platform", choices=["jira", "confluence"], help="Filter by platform")
+    agent_query.add_argument("--status", choices=["draft", "published", "archived"], help="Filter by status")
+    agent_query.add_argument("--directory", default=".", help="Base directory")
+    agent_query.set_defaults(func=handle_agent_query)
+
+    # agent update
+    agent_update = agent_subparsers.add_parser("update", help="Update an agent")
+    agent_update.add_argument("slug", help="Agent directory slug")
+    agent_update.add_argument("--data", help="Update data as JSON")
+    agent_update.add_argument("--directory", default=".", help="Base directory")
+    agent_update.set_defaults(func=handle_agent_update)
 
     return parser
 

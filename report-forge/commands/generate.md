@@ -256,7 +256,46 @@ forge report create architecture-review \
   --data '{"coverage_start": "2026-01-01", "coverage_end": "2026-02-14"}'
 ```
 
-Parse the JSON response to extract the report file path.
+### Parse forge-lib Response
+
+The `forge report create` command returns a JSON response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "YYYY-MM-DD-slug.md",
+    "filepath": "reports/{type}s/YYYY-MM-DD-slug.md",
+    "report_type": "{type}",
+    "title": "Report Title",
+    "created": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract the `filepath` and `filename` from `data` for use in Phase 4.
+
+### Error Handling
+
+If `forge report create` fails, the response will be:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report to user:
+```
+Error saving report: {error message}
+
+The synthesized report content is still available. You can retry with:
+forge report create {type} "{title}" "{topic}" --directory . --status Draft --data '{...}'
+```
+
+Do NOT proceed to Phase 4 on failure. Instead, display the error and offer the retry command with the original arguments so the user can attempt again.
 
 ## Phase 4: Present Results
 

@@ -21,12 +21,13 @@ python forge.py --help
 
 | Plugin | Primary Commands | Data Location |
 |--------|-----------------|---------------|
-| **product-forge** | `/product-forge:init`, `/product-forge:intake`, `/product-forge:initiative`, `/product-forge:epic`, `/product-forge:story` | `cards/` + `cards/index.json` |
+| **product-forge** | `/product-forge:create`, `/product-forge:update`, `/product-forge:review`, `/product-forge:init`, `/product-forge:checkpoint` | `cards/` + `cards/index.json` |
 | **tasks-forge** | `/tasks-forge:start`, `/tasks-forge:add`, `/tasks-forge:update` | `tasks/` + `tasks/index.json` |
 | **forge-memory** | `/forge-memory:start`, `/forge-memory:setup-org`, `/forge-memory:remember`, `/forge-memory:recall` | `memory/` + `CLAUDE.md` |
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
+| **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/` + `slack-forge/index.json` + `slack-forge/config.json` |
 
 ## Architecture
 
@@ -55,6 +56,7 @@ python forge.py --help
 | Report | `YYYY-MM-DD-{slug}.md` | `2026-02-14-q1-performance-review.md` |
 | Checkpoint | `checkpoint-YYYY-MM-DD-{slug}.md` | `checkpoint-2026-02-14-architecture-decisions.md` |
 | Rovo Agent | `{slug}/agent.md` | `ticket-triage-agent/agent.md` |
+| Harvest | `YYYY-MM-DD-{harvest_type}-NNN.md` | `2026-02-17-task-harvest-001.md` |
 
 ## Forge Shell Desktop App
 
@@ -62,7 +64,7 @@ python forge.py --help
 
 **Purpose:** Tauri desktop app providing visual dashboards for all plugins.
 
-**Data Loading:** Scans project directories directly via `ForgeFS` helpers in `forge-shell/app/js/forge-fs.js` (no `index.json` dependency).
+**Data Loading:** Uses direct filesystem scanning via `ForgeFS` utility in `forge-shell/app/js/utils.js`. Each view controller scans its plugin's data directory and parses markdown frontmatter directly (refactored from index.json in commit `da5080c`).
 
 **View Controllers:**
 - `product-forge.js` — Cards grid view
@@ -71,6 +73,7 @@ python forge.py --help
 - `cognitive-forge.js` — Session history
 - `report-forge.js` — Report archive
 - `rovo-agent-forge.js` — Agent config viewer
+- `slack-forge.js` — Harvest dashboard with review workflow
 - `roadmap.js` — Roadmap timeline view
 
 **Launch:**

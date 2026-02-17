@@ -1,0 +1,52 @@
+---
+title: "{{ title }}"
+type: harvest
+harvest_type: {{ harvest_type }}
+status: {{ status }}
+source_channel: "{{ source_channel }}"
+source_channel_id: "{{ source_channel_id }}"
+source_timestamp: {{ '"%s"' % source_timestamp if source_timestamp else 'null' }}
+source_author: {{ '"%s"' % source_author if source_author else 'null' }}
+scan_timeframe: {{ scan_timeframe }}
+scan_date: {{ scan_date }}
+confidence: {{ confidence }}
+tags:
+{%- if tags and tags|length > 0 %}
+{% for tag in tags %}
+  - {{ tag }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## Extracted Content
+
+{{ content if content else 'No content extracted.' }}
+
+{% if source_context -%}
+## Source Context
+
+{{ source_context }}
+{% endif %}
+
+{% if action_items and action_items|length > 0 -%}
+## Action Items
+
+{%- for item in action_items %}
+- {{ item }}
+{%- endfor %}
+{% endif %}
+
+{% if jira_events and jira_events|length > 0 -%}
+## JIRA Events
+
+{%- for event in jira_events %}
+### {{ event.ticket }}
+- **Event Type:** {{ event.event_type }}
+- **Summary:** {{ event.summary }}
+- **Needs Action:** {{ 'true' if event.needs_action else 'false' }}
+{% endfor %}
+{% endif %}

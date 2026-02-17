@@ -49,7 +49,7 @@ forge-lib/
 
 ## CLI Command Groups
 
-The `forge.py` CLI has 7 command groups:
+The `forge.py` CLI has 8 command groups:
 
 1. **card** — Product card operations (7 types)
 2. **task** — Task management
@@ -58,6 +58,7 @@ The `forge.py` CLI has 7 command groups:
 5. **report** — Report generation
 6. **index** — Index management
 7. **relationship** — Parent-child linking
+8. **agent** — Rovo agent configuration management
 
 ## Output Format
 
@@ -220,6 +221,28 @@ python forge.py relationship link \
 ```
 
 Bidirectionally links parent and child (updates both `parent` field and `children` array).
+
+## Agent Commands
+
+```bash
+# Create a new Rovo agent
+forge agent create "Ticket Triage Agent" jira --data '{"description": "Triages incoming Jira tickets based on priority.", "skills": ["Search Jira Issues (JQL)"], "knowledge_sources": ["SUPPORT project"], "conversation_starters": ["Triage tickets", "Show queue", "Route ticket"], "owner": "Jeremy Brice", "collaborators": [], "visibility": "organization"}'
+
+# Get agent by slug
+forge agent get ticket-triage-agent
+
+# Query all agents
+forge agent query
+
+# Query by platform
+forge agent query --platform jira
+
+# Query by status
+forge agent query --status published
+
+# Update an agent
+forge agent update ticket-triage-agent --data '{"status": "published"}'
+```
 
 ## Testing
 

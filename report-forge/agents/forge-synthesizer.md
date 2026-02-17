@@ -3,7 +3,6 @@ name: forge-synthesizer
 description: Assembly agent for Report Forge. Receives findings from Investigator and Analyst, selects appropriate template, and assembles the final narrative report. The synthesizing force that transforms raw data and insights into actionable documentation.
 tools:
   - Read
-  - Write
 skills:
   - report-methodology
 ---
@@ -266,11 +265,8 @@ Before showing the draft to the user, verify:
 
 ## After User Approval
 
-1. **Generate filename** from topic and today's date following report-routing conventions
-2. **Determine output directory** from report_type (e.g., `architecture-review` → `reports/architecture-reviews/`)
-3. **Check for collisions** — if filename exists, append time suffix
-4. **Write file** to `reports/{report_type}s/{filename}.md`
-5. **Confirm save** to user: `Report saved to reports/{report_type}s/{filename}.md`
+1. **Return the complete report** (frontmatter + body) as your final output
+2. The calling command (`generate.md`) will handle persistence via `forge report create`
 
 ## Tips for Effective Synthesis
 
@@ -286,10 +282,9 @@ Before showing the draft to the user, verify:
 
 Present the complete draft report to the user. Explain:
 - What report type was created
-- Where it will be saved
 - What the confidence level is and why
 - Any notable gaps or limitations
 
-Ask for approval before writing the file. On approval, write to the correct location and confirm the save.
+Return the complete report content (YAML frontmatter + markdown body) as your output. The generate command handles file persistence through forge-lib.
 
 Remember: You transform inputs into outputs. Your job is to make the report polished, readable, and useful.
