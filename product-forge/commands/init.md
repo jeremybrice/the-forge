@@ -83,3 +83,13 @@ Check that the working directory is writable and you're running from the project
 
 - If the working directory is not writable, report the error and suggest checking permissions.
 - If the working directory appears to be inside a plugin folder rather than a project root, warn the user and suggest running from the project root instead.
+
+## Success Message
+
+After successful initialization, display:
+
+```
+Cards directory initialized. Ready for card creation.
+
+Use /product-forge:create to generate cards (auto-detects type) or specify with --type.
+```

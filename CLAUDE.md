@@ -21,7 +21,7 @@ python forge.py --help
 
 | Plugin | Primary Commands | Data Location |
 |--------|-----------------|---------------|
-| **product-forge** | `/product-forge:init`, `/product-forge:intake`, `/product-forge:initiative`, `/product-forge:epic`, `/product-forge:story` | `cards/` + `cards/index.json` |
+| **product-forge** | `/product-forge:create`, `/product-forge:update`, `/product-forge:review`, `/product-forge:init`, `/product-forge:checkpoint` | `cards/` + `cards/index.json` |
 | **tasks-forge** | `/tasks-forge:start`, `/tasks-forge:add`, `/tasks-forge:update` | `tasks/` + `tasks/index.json` |
 | **forge-memory** | `/forge-memory:start`, `/forge-memory:setup-org`, `/forge-memory:remember`, `/forge-memory:recall` | `memory/` + `CLAUDE.md` |
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
