@@ -285,8 +285,10 @@ def create_harvest(
     if 'tags' not in data:
         data['tags'] = []
 
-    # Add created/updated dates if not present
+    # Add date fields if not present
     today = date.today().strftime("%Y-%m-%d")
+    if 'scan_date' not in data:
+        data['scan_date'] = today
     if 'created' not in data:
         data['created'] = today
     if 'updated' not in data:
