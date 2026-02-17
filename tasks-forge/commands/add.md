@@ -53,9 +53,11 @@ Notes:
 - Status always starts as "Open"
 - forge-lib handles sequential numbering (task-001.md, task-002.md, etc.)
 
-### 5. Parse forge-lib Response
+### 5. Check forge-lib Response
 
-The forge-lib command returns JSON:
+Check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and do not proceed to the confirmation step.
+
+The forge-lib command returns JSON on success:
 ```json
 {
   "success": true,

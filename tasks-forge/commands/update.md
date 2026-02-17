@@ -47,7 +47,9 @@ Build the update command:
 forge task update task-003 --data '{"status": "In Progress", "priority": "High"}'
 ```
 
-Parse the JSON response and confirm:
+Check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and do not proceed.
+
+Parse the successful JSON response and confirm:
 ```
 Task updated: task-003.md
 - Status: Open → In Progress
@@ -65,7 +67,9 @@ forge task query --status Open
 # Repeat with --status "In Progress" or --status Blocked to query other statuses.
 ```
 
-This returns JSON array of tasks.
+Check the `success` field in each query response. If `success` is `false`, report the `error` field to the user and do not proceed with triage.
+
+This returns JSON array of tasks on success.
 
 #### 2. Identify Tasks Needing Attention
 
@@ -102,6 +106,8 @@ Based on user input:
 - **Move to someday**: `forge task update task-012 --data '{"priority": "Low"}'`
 - **Skip**: Continue to next
 
+For each triage update, check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and continue to the next task.
+
 #### 5. Report Summary
 
 ```
@@ -122,6 +128,7 @@ If MCP tools are available:
 3. Offer to import new tasks or sync status changes
 4. Use `forge task create` with `--external-id` and `--external-link` for imports
 5. Use `forge task update` for status syncs
+6. Check the `success` field in each forge-lib JSON response. If `success` is `false`, report the `error` field to the user and skip that item (continue syncing remaining items).
 
 If MCP not available:
 ```
