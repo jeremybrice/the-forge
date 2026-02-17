@@ -300,6 +300,34 @@ When MCP tools are configured (Linear, Asana, Jira, GitHub):
 forge task query --status Open --priority High
 ```
 
+## Verification
+
+After installation, verify the plugin is working:
+
+1. **Initialize tasks directory:**
+   ```
+   /tasks-forge:start
+   ```
+   Expected: Creates `tasks/` directory with `index.json`
+
+2. **Create a test task:**
+   ```
+   /tasks-forge:add
+   ```
+   Expected: Interactive workflow creates `tasks/task-001.md` and updates `tasks/index.json`
+
+3. **Update the test task:**
+   ```
+   /tasks-forge:update
+   ```
+   Expected: Can query and update existing tasks via forge-lib
+
+4. **Verify forge-lib integration:**
+   ```bash
+   python forge-lib/forge.py task query --directory .
+   ```
+   Expected: Returns JSON with `{"success": true, "data": [...]}`
+
 ## Notes
 
 - Task numbers are sequential and permanent (001, 002, 003...)
