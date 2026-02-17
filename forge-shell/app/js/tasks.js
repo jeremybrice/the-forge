@@ -437,7 +437,7 @@ window.TasksView = (function () {
       for (var i = 0; i < entries.length; i++) {
         var entry = entries[i];
 
-        if (entry.kind === 'file' && /^task-\d{3}-.*\.md$/.test(entry.name)) {
+        if (entry.kind === 'file' && /^task-\d{3}(-.*)?\.md$/.test(entry.name)) {
           try {
             var content = await ForgeFS.readFile(tasksDirHandle, entry.name);
             var task = parseTaskFile(entry.name, content);
@@ -563,7 +563,7 @@ window.TasksView = (function () {
 
       for (var i = 0; i < files.length; i++) {
         var file = files[i];
-        if (file.kind === 'file' && /^task-\d{3}-.*\.md$/.test(file.name)) {
+        if (file.kind === 'file' && /^task-\d{3}(-.*)?\.md$/.test(file.name)) {
           try {
             var meta = await ForgeFS.getFileMeta(tasksDirHandle, file.name);
             entries.push(file.name + ':' + meta.modified);

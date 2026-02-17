@@ -36,7 +36,7 @@ python forge.py --help
 - **Commands** = 80-100 lines (down from 250-300 in v1) focused on conversational workflow
 - **Skills** = Pure reasoning guidance (no file operations, schemas, or templates)
 
-**Performance:** All queries run against `index.json` files (no directory scanning).
+**Performance:** forge-lib plugins query `index.json` files; forge-shell uses direct FS scanning via `ForgeFS` helpers.
 
 **Validation:** JSON Schema validation for all entity types via `forge.py` CLI.
 
@@ -62,7 +62,7 @@ python forge.py --help
 
 **Purpose:** Tauri desktop app providing visual dashboards for all plugins.
 
-**Data Loading:** Reads from `index.json` files via `ForgeUtils.readIndex()` in `forge-shell/app/js/utils.js`.
+**Data Loading:** Scans project directories directly via `ForgeFS` helpers in `forge-shell/app/js/forge-fs.js` (no `index.json` dependency).
 
 **View Controllers:**
 - `product-forge.js` — Cards grid view
