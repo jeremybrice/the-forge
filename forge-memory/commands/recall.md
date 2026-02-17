@@ -67,22 +67,23 @@ Report which taxonomy type failed to load and fall through to the next search ti
 
 If the query matches a taxonomy type, return the results.
 
-#### Tier 2: Glossary
+#### Tier 2: Knowledge Entries (via forge-lib)
 
-For term definitions, search `memory/glossary.md`:
-- Match by heading or content
-- Return full entry if found
+### Query Knowledge via forge-lib
 
-#### Tier 3: People & Projects
+```bash
+# Query all knowledge entries
+forge memory query-knowledge
 
-For people or project queries:
-- Search `memory/people/` directory (fuzzy match on filenames)
-- Search `memory/projects/` directory
-- Read and return full file content if found
+# Query by type
+forge memory query-knowledge --type person
+forge memory query-knowledge --type project
+forge memory query-knowledge --type glossary
+```
 
-**Note:** Knowledge file operations (people, projects, glossary) currently use direct file creation. Once forge-lib memory CRUD operations are available, these operations should delegate to `forge memory create-person`, `forge memory create-project`, etc.
+For term definitions, query glossary entries. For people or project queries, query by the appropriate type. Parse the JSON response and return matching entries.
 
-#### Tier 4: Context Files
+#### Tier 3: Context Files
 
 Search context files:
 - `memory/context/company.md` — teams, tools, org info
@@ -166,8 +167,8 @@ Extract key terms from natural language:
 **User:** `/memory:recall` → "Who is Maya?"
 
 **Agent:**
-- Searches `memory/people/` directory
-- Reads `memory/people/maya.md`
+- Calls `forge memory query-knowledge --type person`
+- Finds Maya in results
 - Returns full profile
 
-Taxonomy queries use forge-lib, knowledge queries use direct file reads.
+All queries (taxonomy and knowledge) use forge-lib.

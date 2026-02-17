@@ -10,8 +10,6 @@ Add new people, terms, projects, preferences, or other context to the organizati
 
 This command helps capture and store organizational knowledge in structured markdown files. It covers knowledge entries like people profiles, glossary terms, project details, and preferences.
 
-**Note:** This command operates on knowledge files (people, projects, glossary) which are currently managed directly through markdown file creation rather than forge-lib operations. The taxonomy operations (products, clients, teams, integrations) use forge-lib via `/memory:setup-org`.
-
 ## Conversational Workflow
 
 ### Phase 1: Ask What to Remember
@@ -60,18 +58,46 @@ What's the preference or convention?
 - What should I do / not do?
 ```
 
-### Phase 3: Write to Memory Files
+### Phase 3: Save to Memory via forge-lib
 
-Create structured markdown files in the memory/ directory:
+**For a Person:**
+```bash
+forge memory create-knowledge person "{Name}" \
+  --data '{"role": "{role}", "team": "{team}", "context": "{context}"}'
+```
 
-**Person:** `memory/people/{slug}.md`
-**Term:** Add to `memory/glossary.md`
-**Project:** `memory/projects/{slug}.md`
-**Preference:** Document in appropriate context file
+**For a Project:**
+```bash
+forge memory create-knowledge project "{Name}" \
+  --data '{"description": "{description}", "status": "{status}", "people": ["{person1}"]}'
+```
 
-**Slug generation:** lowercase, spaces to hyphens, alphanumeric only, max 50 chars.
+**For a Term:**
+```bash
+forge memory create-knowledge glossary "{Term}" \
+  --data '{"definition": "{definition}", "context": "{context}"}'
+```
 
-**Note:** Knowledge file operations (people, projects, glossary) currently use direct file creation. Once forge-lib memory CRUD operations are available, these operations should delegate to `forge memory create-person`, `forge memory create-project`, etc.
+### Parse forge-lib Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "jane-smith.md",
+    "filepath": "memory/people/jane-smith.md",
+    "type": "person",
+    "name": "Jane Smith"
+  }
+}
+```
+
+### Error Handling
+
+If forge-lib returns an error:
+```
+Error saving memory entry: {error message}
+```
 
 ### Phase 4: Confirm to User
 
@@ -86,7 +112,7 @@ Use /memory:recall to look it up later.
 ## Key Behaviors
 
 1. **Knowledge vs Taxonomy**: This command handles knowledge entries (people, terms, projects), not taxonomy (products, clients, teams)
-2. **File creation**: Creates markdown files directly (not via forge-lib in v2.0.0)
+2. **File creation**: Delegates to forge-lib `forge memory create-knowledge` commands
 3. **Progressive capture**: Gather just enough detail to be useful
 4. **Update existing**: If entry exists, offer to update rather than duplicate
 5. **Slug consistency**: Use same slug generation as other commands
@@ -98,7 +124,5 @@ Use /memory:recall to look it up later.
 **Agent:**
 - Asks what to remember
 - Gathers details conversationally
-- Creates markdown file in memory/ directory
+- Saves via `forge memory create-knowledge`
 - Confirms storage location
-
-Knowledge file operations are direct markdown creation in v2.0.0.
