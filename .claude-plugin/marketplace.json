@@ -40,7 +40,7 @@
     {
       "name": "slack-forge",
       "source": "./slack-forge",
-      "description": "Slack intelligence harvester — scans channels for tasks, knowledge, and JIRA activity. Creates review-first harvest records. Delegates all file operations to forge-lib.",
+      "description": "Slack intelligence harvester — scans channels for tasks, knowledge, and JIRA activity. Creates review-first harvest records. Delegates all file operations to forge-lib."
     }
   ]
 }
