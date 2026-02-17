@@ -36,6 +36,11 @@
       "name": "rovo-forge",
       "source": "./rovo-forge",
       "description": "Interactive builders for Atlassian Rovo agents. Guides through Jira and Confluence agent configuration via adaptive interview. Outputs structured agent configs with copy-ready sections for Rovo Studio."
+    },
+    {
+      "name": "slack-forge",
+      "version": "2.0.0-alpha",
+      "description": "Slack intelligence harvester — scans channels for tasks, knowledge, and JIRA activity. Creates review-first harvest records. Delegates all file operations to forge-lib.",
     }
   ]
 }
