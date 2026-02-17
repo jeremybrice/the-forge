@@ -52,6 +52,15 @@
   color: var(--accent);
 }
 
+.shell-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 25%; bottom: 25%;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
 .shell-nav-item .nav-icon {
   font-size: 20px;
   flex-shrink: 0;
@@ -212,7 +221,7 @@
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ── Not Active Fallback ── */
@@ -248,7 +257,7 @@
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .not-active-state button {

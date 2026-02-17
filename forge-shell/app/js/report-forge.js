@@ -119,9 +119,9 @@ window.ReportForgeView = (function () {
 
         <!-- Sidebar -->
         <div class="rf-sidebar">
-          <div class="rf-search-bar">
-            <i class="fa-solid fa-search"></i>
-            <input type="text" class="rf-search-input" placeholder="Search reports..." data-ref="search-input">
+          <div class="sidebar-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="Search reports..." data-ref="search-input">
           </div>
           <div class="rf-report-list" data-ref="report-list"></div>
         </div>
@@ -209,19 +209,33 @@ window.ReportForgeView = (function () {
 
     const results = [];
 
-    // 1. Scan root level reports/*.md files first
+    // 1. Scan root level reports/*.md files only (non-recursive to avoid
+    //    duplicating files that stage 2 picks up from subdirectories)
     try {
-      const rootFiles = await ForgeUtils.FS.readAllMd(reportsHandle);
-      for (const file of rootFiles) {
-        const parsed = ForgeUtils.parseFrontmatter(file.text);
-        if (parsed) {  // Only process files with valid frontmatter
-          results.push({
-            filename: file.name,
-            frontmatter: parsed.frontmatter || {},
-            body: parsed.body || '',
-            lastModified: file.lastModified || Date.now(),
-            subdirectory: 'root'
-          });
+      const rootEntries = await ForgeFS.readDir(reportsHandle, '');
+      const rootMdFiles = rootEntries.filter(e => e.kind === 'file' && e.name.endsWith('.md'));
+
+      for (const entry of rootMdFiles) {
+        try {
+          const text = await ForgeFS.readFile(reportsHandle, entry.name);
+          let lastModified = Date.now();
+          try {
+            const meta = await ForgeFS.getFileMeta(reportsHandle, entry.name);
+            lastModified = meta.modified || lastModified;
+          } catch (_) { /* use fallback */ }
+
+          const parsed = ForgeUtils.parseFrontmatter(text);
+          if (parsed) {  // Only process files with valid frontmatter
+            results.push({
+              filename: entry.name,
+              frontmatter: parsed.frontmatter || {},
+              body: parsed.body || '',
+              lastModified: lastModified,
+              subdirectory: 'root'
+            });
+          }
+        } catch (e) {
+          console.warn(`[ReportForge] Failed to read root file ${entry.name}:`, e);
         }
       }
     } catch (e) {
@@ -355,15 +369,12 @@ window.ReportForgeView = (function () {
       const catColor = categoryColor(category);
 
       html += `
-        <div class="rf-report-item ${isSelected ? 'selected' : ''}" data-filename="${esc(report.filename)}">
-          <div class="rf-report-category-bar" style="background: ${catColor};"></div>
-          <div class="rf-report-item-content">
-            <div class="rf-report-item-title">${esc(title)}</div>
-            <div class="rf-report-item-meta">
-              ${category ? `<span class="rf-category-pill" style="background: ${catColor};">${esc(category)}</span>` : ''}
-              <span class="rf-report-type-label">${esc(reportTypeLabel(reportType))}</span>
-              ${created ? `<span>${created}</span>` : ''}
-            </div>
+        <div class="sidebar-card ${isSelected ? 'selected' : ''}" data-filename="${esc(report.filename)}">
+          <div class="sidebar-card-title">${esc(title)}</div>
+          <div class="sidebar-card-meta">
+            ${category ? `<span class="sidebar-card-pill" style="background: color-mix(in srgb, ${catColor} 12%, transparent); color: ${catColor};">${esc(category)}</span>` : ''}
+            <span class="rf-report-type-label">${esc(reportTypeLabel(reportType))}</span>
+            ${created ? `<span>${created}</span>` : ''}
           </div>
         </div>
       `;
@@ -372,7 +383,7 @@ window.ReportForgeView = (function () {
     list.innerHTML = html;
 
     // Bind clicks
-    list.querySelectorAll('.rf-report-item').forEach(item => {
+    list.querySelectorAll('.sidebar-card').forEach(item => {
       item.addEventListener('click', () => {
         const filename = item.dataset.filename;
         const report = filteredReports.find(r => r.filename === filename);
@@ -450,7 +461,7 @@ window.ReportForgeView = (function () {
           <span class="status-pill" style="background: ${statusClr};">${esc(status)}</span>
         </div>
 
-        <div class="view-toggle rf-view-toggle">
+        <div class="view-toggle">
           <button data-rf-view="description" class="active">Description</button>
           <button data-rf-view="visualization">Visualization</button>
         </div>
@@ -483,7 +494,7 @@ window.ReportForgeView = (function () {
     if (fm.confidence) {
       const clr = confidenceColor(fm.confidence);
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Confidence</span>
           <span class="meta-value" style="color: ${clr}; font-weight: 600;">${esc(fm.confidence)}</span>
         </div>
@@ -494,7 +505,7 @@ window.ReportForgeView = (function () {
     if (fm.category) {
       const clr = categoryColor(fm.category);
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Category</span>
           <span class="meta-value" style="color: ${clr}; font-weight: 600;">${esc(fm.category)}</span>
         </div>
@@ -504,7 +515,7 @@ window.ReportForgeView = (function () {
     // Report Type
     if (fm.report_type) {
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Type</span>
           <span class="meta-value">${esc(reportTypeLabel(fm.report_type))}</span>
         </div>
@@ -516,7 +527,7 @@ window.ReportForgeView = (function () {
       const start = fm.coverage_period.start || 'N/A';
       const end = fm.coverage_period.end || 'N/A';
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Coverage Period</span>
           <span class="meta-value">${esc(start)} → ${esc(end)}</span>
         </div>
@@ -537,7 +548,7 @@ window.ReportForgeView = (function () {
       }
       if (entities.length > 0) {
         html += `
-          <div class="metadata-row">
+          <div class="rf-metadata-row">
             <span class="meta-label">Related Entities</span>
             <span class="meta-value">${esc(entities.join(' • '))}</span>
           </div>
@@ -548,7 +559,7 @@ window.ReportForgeView = (function () {
     // Investigators
     if (fm.investigators && fm.investigators.length > 0) {
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Investigators</span>
           <span class="meta-value">${esc(fm.investigators.join(', '))}</span>
         </div>
@@ -558,7 +569,7 @@ window.ReportForgeView = (function () {
     // Created / Updated
     if (fm.created || fm.updated) {
       html += `
-        <div class="metadata-row">
+        <div class="rf-metadata-row">
           <span class="meta-label">Dates</span>
           <span class="meta-value">
             ${fm.created ? `Created: ${esc(fm.created)}` : ''}

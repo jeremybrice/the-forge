@@ -37,7 +37,7 @@ python forge.py --help
 - **Commands** = 80-100 lines (down from 250-300 in v1) focused on conversational workflow
 - **Skills** = Pure reasoning guidance (no file operations, schemas, or templates)
 
-**Performance:** Plugin commands query via forge-lib which uses `index.json` for fast lookups. forge-shell view controllers use direct FS scanning for real-time accuracy.
+**Performance:** forge-lib plugins query `index.json` files; forge-shell uses direct FS scanning via `ForgeFS` helpers.
 
 **Validation:** JSON Schema validation for all entity types via `forge.py` CLI.
 
