@@ -39,7 +39,7 @@
     },
     {
       "name": "slack-forge",
-      "version": "2.0.0-alpha",
+      "source": "./slack-forge",
       "description": "Slack intelligence harvester — scans channels for tasks, knowledge, and JIRA activity. Creates review-first harvest records. Delegates all file operations to forge-lib.",
     }
   ]
