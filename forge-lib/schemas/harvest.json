@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/harvest.json",
+  "title": "Harvest Record Schema",
+  "description": "JSON Schema for slack-forge harvest records — items extracted from Slack channels for review-first workflow",
+  "type": "object",
+  "required": [
+    "title",
+    "type",
+    "harvest_type",
+    "status",
+    "source_channel",
+    "source_channel_id",
+    "scan_timeframe",
+    "scan_date",
+    "confidence",
+    "created",
+    "updated"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Harvest record title",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "type": {
+      "type": "string",
+      "const": "harvest",
+      "description": "Card type identifier"
+    },
+    "harvest_type": {
+      "type": "string",
+      "enum": ["task", "knowledge", "jira-digest"],
+      "description": "Classification of harvested content"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "promoted"],
+      "description": "Review workflow status"
+    },
+    "source_channel": {
+      "type": "string",
+      "description": "Slack channel name where the content was harvested",
+      "minLength": 1
+    },
+    "source_channel_id": {
+      "type": "string",
+      "description": "Slack channel ID",
+      "minLength": 1
+    },
+    "source_timestamp": {
+      "type": ["string", "null"],
+      "description": "Slack message timestamp of the source message",
+      "default": null
+    },
+    "source_author": {
+      "type": ["string", "null"],
+      "description": "Slack user who authored the source message",
+      "default": null
+    },
+    "scan_timeframe": {
+      "type": "string",
+      "enum": ["24h", "72h", "1w", "custom"],
+      "description": "Time window used for the channel scan"
+    },
+    "scan_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the scan was performed in YYYY-MM-DD format"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "LLM confidence level in the harvested content"
+    },
+    "tags": {
+      "type": "array",
+      "description": "List of tags for categorization",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}
