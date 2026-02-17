@@ -64,7 +64,7 @@ The user must explicitly specify the card or Jira key using one of:
 If the user provides ambiguous input, ask for clarification before proceeding.
 
 **If user provided filename or title:**
-1. Retrieve card via `forge card get {card_identifier} --directory .`
+1. Retrieve card via `forge card get {type} {card_identifier} --directory .`
 2. Extract `jira_key` (for Epic) or `jira_card` (for Initiative/Story) from frontmatter
 3. If no linking field is present:
    ```
@@ -184,7 +184,7 @@ If the user declines, exit. If the user accepts or `--force` is present, proceed
 Delegate updates to forge-lib:
 
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "title": "<Jira summary>",
   "jira_status": "<Jira status.name>",
   "estimate_hours": <Jira timeestimate / 3600, rounded to 1 decimal>,

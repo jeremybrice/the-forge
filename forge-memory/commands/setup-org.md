@@ -24,6 +24,22 @@ forge memory get-taxonomy teams --directory .
 forge memory get-taxonomy integrations --directory .
 ```
 
+#### Parse Response
+
+Each `get-taxonomy` call returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`:
+```
+Error: {error message from JSON response}
+```
+Report which taxonomy type failed to load and continue with available data.
+
 Display current state to user:
 ```
 I found existing taxonomy. I'll show you what's there and you can
@@ -85,6 +101,22 @@ forge memory set-taxonomy products --add "WebApp" --directory .
 forge memory set-taxonomy modules --add "Authentication" --directory .
 ```
 
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`:
+```
+Error: {error message from JSON response}
+```
+Report which entry failed to save and continue with remaining entries.
+
 ### Phase 3: Systems
 
 Ask:
@@ -101,6 +133,10 @@ Save entries:
 forge memory set-taxonomy systems --add "API Gateway" --directory .
 ```
 
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response. If `success` is `false`, report which entry failed and continue with remaining entries.
+
 ### Phase 4: Clients (Optional)
 
 Ask:
@@ -116,6 +152,10 @@ Save entries:
 ```bash
 forge memory set-taxonomy clients --add "Acme Corp" --directory .
 ```
+
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response. If `success` is `false`, report which entry failed and continue with remaining entries.
 
 ### Phase 5: Integrations (Optional)
 
@@ -136,6 +176,10 @@ Save entries:
 forge memory set-taxonomy integrations --add "Salesforce" --directory .
 ```
 
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response. If `success` is `false`, report which entry failed and continue with remaining entries.
+
 ### Phase 6: Teams (Optional)
 
 Ask:
@@ -154,6 +198,10 @@ Save entries:
 forge memory set-taxonomy teams --add "Platform Team" --directory .
 ```
 
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response. If `success` is `false`, report which entry failed and continue with remaining entries.
+
 ### Phase 7: Report Results
 
 Query final state and report:
@@ -163,6 +211,18 @@ forge memory get-taxonomy clients --directory .
 forge memory get-taxonomy teams --directory .
 forge memory get-taxonomy integrations --directory .
 ```
+
+#### Parse Response
+
+Each `get-taxonomy` call returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`, note which taxonomy type failed to load in the report.
 
 ```
 Org context configured:

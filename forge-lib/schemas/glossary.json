@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forge-lib.local/schemas/glossary.json",
+  "title": "Glossary Term",
+  "description": "Schema for glossary entries in organizational memory",
+  "type": "object",
+  "required": ["term", "type", "definition", "created", "updated"],
+  "properties": {
+    "term": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "type": { "type": "string", "const": "glossary" },
+    "definition": { "type": "string", "minLength": 1 },
+    "context": { "type": ["string", "null"], "default": null },
+    "created": { "type": "string", "format": "date" },
+    "updated": { "type": "string", "format": "date" }
+  },
+  "additionalProperties": false
+}

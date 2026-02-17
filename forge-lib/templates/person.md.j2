@@ -1,0 +1,20 @@
+---
+name: "{{ name }}"
+type: person
+role: "{{ role }}"
+team: {{ team if team else 'null' }}
+context: {{ ('"' ~ context ~ '"') if context else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## {{ name }}
+
+**Role:** {{ role }}
+{% if team %}**Team:** {{ team }}{% endif %}
+
+{% if context %}
+## Context
+
+{{ context }}
+{% endif %}

@@ -237,46 +237,39 @@ window.TasksView = (function () {
   /* ══════════════════════════════════════════════════════════
      Task File Parser & Serializer
      ══════════════════════════════════════════════════════════ */
+  // Scans the tasks/ directory directly via ForgeFS and filters for files
+  // matching the task-NNN.md pattern (with optional slug suffix), replacing the old index.json lookup.
   async function parseTaskFiles() {
     if (!tasksDirHandle) return [];
 
-    // V2: Load from index.json instead of scanning directories
+    var resultTasks = [];
+
     try {
-      var indexData = await ForgeUtils.readIndex(rootHandle, 'tasks');
-      if (!indexData || !indexData.entries) {
-        return [];
+      var entries = await ForgeFS.readDir(tasksDirHandle, '.');
+
+      for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+
+        if (entry.kind === 'file' && /^task-\d{3}(-.*)?\.md$/.test(entry.name)) {
+          try {
+            var content = await ForgeFS.readFile(tasksDirHandle, entry.name);
+            var task = parseTaskFile(entry.name, content);
+            if (task) resultTasks.push(task);
+          } catch (e) {
+            console.warn('Failed to parse task file:', entry.name, e);
+          }
+        }
       }
-
-      var resultTasks = indexData.entries.map(function(entry) {
-        return {
-          filename: entry.filename,
-          title: entry.frontmatter.title || '',
-          type: entry.frontmatter.type || 'task',
-          status: entry.frontmatter.status || 'active',
-          priority: entry.frontmatter.priority || 'medium',
-          assignee: entry.frontmatter.assignee || null,
-          creator: entry.frontmatter.creator || null,
-          created: entry.frontmatter.created || '',
-          updated: entry.frontmatter.updated || '',
-          due_date: entry.frontmatter.due_date || null,
-          dependencies: entry.frontmatter.dependencies || [],
-          tags: entry.frontmatter.tags || [],
-          external_link: entry.frontmatter.external_link || null,
-          external_id: entry.frontmatter.external_id || null,
-          body: entry.body || ''
-        };
-      });
-
-      // Sort by filename (task number)
-      resultTasks.sort(function (a, b) {
-        return a.filename.localeCompare(b.filename);
-      });
-
-      return resultTasks;
     } catch (e) {
-      console.warn('Failed to read tasks index:', e);
-      return [];
+      console.warn('Failed to read tasks directory:', e);
     }
+
+    // Sort by filename (task number)
+    resultTasks.sort(function (a, b) {
+      return a.filename.localeCompare(b.filename);
+    });
+
+    return resultTasks;
   }
 
   function parseTaskFile(filename, content) {
@@ -372,6 +365,8 @@ window.TasksView = (function () {
     setTimeout(function () { suppressExternalToasts = false; }, 1000);
   }
 
+  // Builds a signature string from file names + last-modified timestamps
+  // so the auto-refresh loop can detect on-disk changes cheaply.
   async function buildTaskSignature() {
     if (!tasksDirHandle) return '';
 
@@ -381,7 +376,7 @@ window.TasksView = (function () {
 
       for (var i = 0; i < files.length; i++) {
         var file = files[i];
-        if (file.kind === 'file' && /^task-\d{3}-.*\.md$/.test(file.name)) {
+        if (file.kind === 'file' && /^task-\d{3}(-.*)?\.md$/.test(file.name)) {
           try {
             var meta = await ForgeFS.getFileMeta(tasksDirHandle, file.name);
             entries.push(file.name + ':' + meta.modified);
@@ -742,7 +737,7 @@ window.TasksView = (function () {
     // Find next task number
     var maxNum = 0;
     tasks.forEach(function (t) {
-      var match = t.filename.match(/^task-(\d{3})-/);
+      var match = t.filename.match(/^task-(\d{3})/);
       if (match) {
         var num = parseInt(match[1]);
         if (num > maxNum) maxNum = num;
@@ -750,7 +745,7 @@ window.TasksView = (function () {
     });
 
     var newNum = maxNum + 1;
-    var newFilename = 'task-' + String(newNum).padStart(3, '0') + '-new-task.md';
+    var newFilename = 'task-' + String(newNum).padStart(3, '0') + '.md';
     var today = new Date().toISOString().split('T')[0];
 
     var newTask = {

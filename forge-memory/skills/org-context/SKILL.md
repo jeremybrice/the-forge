@@ -91,7 +91,7 @@ Query taxonomy for current values and display as suggestions.
 ### If value not in taxonomy:
 1. **Flag**: "I don't see '[value]' in your [category] taxonomy"
 2. **Offer**: "Should I add it? (Yes / Use it anyway / Enter different value)"
-3. **On confirmation**: Call `forge memory set-taxonomy --add`
+3. **On confirmation**: Call `forge memory set-taxonomy {taxonomy_type} --add "{value}" --directory .`
 
 ## Integration with Commands
 

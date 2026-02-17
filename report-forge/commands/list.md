@@ -64,13 +64,11 @@ Construct the forge report query command from provided arguments:
 ```bash
 forge report query \
   [--report-type {type}] \
-  [--category {category}] \
   [--status {status}] \
   [--created-after {since}] \
+  [--created-before {until}] \
   [--product {product}] \
-  [--module {module}] \
-  [--client {client}] \
-  --output json
+  --directory .
 ```
 
 **IMPORTANT**: Only include flags for arguments that were actually provided by the user. Omit flags with no values.
@@ -81,7 +79,7 @@ Run the forge report query command using Bash and capture the JSON output.
 
 Example:
 ```bash
-forge report query --report-type architecture-review --status Published --output json
+forge report query --report-type architecture-review --status Published --directory .
 ```
 
 ### Step 3: Parse Results

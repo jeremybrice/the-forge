@@ -1,0 +1,16 @@
+---
+term: "{{ term }}"
+type: glossary
+definition: "{{ definition }}"
+context: {{ ('"' ~ context ~ '"') if context else 'null' }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+## {{ term }}
+
+{{ definition }}
+
+{% if context %}
+**Used in:** {{ context }}
+{% endif %}

@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forge-lib.local/schemas/agent.json",
+  "title": "Rovo Agent",
+  "description": "Schema for Rovo agent configurations created by rovo-forge",
+  "type": "object",
+  "required": ["name", "platform", "description", "status", "created", "updated"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Agent display name",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "platform": {
+      "type": "string",
+      "description": "Target Atlassian platform",
+      "enum": ["jira", "confluence"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Agent description",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "status": {
+      "type": "string",
+      "description": "Agent lifecycle status",
+      "enum": ["draft", "published", "archived"],
+      "default": "draft"
+    },
+    "skills": {
+      "type": "array",
+      "description": "List of Rovo skills enabled for this agent",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "knowledge_sources": {
+      "type": "array",
+      "description": "List of knowledge sources the agent can access",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "conversation_starters": {
+      "type": "array",
+      "description": "Suggested conversation starters (exactly 3)",
+      "items": { "type": "string" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "owner": {
+      "type": ["string", "null"],
+      "description": "Agent owner",
+      "default": null
+    },
+    "collaborators": {
+      "type": "array",
+      "description": "List of collaborators who can edit this agent",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "visibility": {
+      "type": "string",
+      "description": "Agent visibility scope",
+      "enum": ["organization", "team", "private"],
+      "default": "organization"
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date in YYYY-MM-DD format"
+    }
+  },
+  "additionalProperties": false
+}

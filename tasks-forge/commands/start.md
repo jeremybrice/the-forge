@@ -30,6 +30,8 @@ Run forge-lib to create the task directory structure:
 forge task init
 ```
 
+Check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and stop — do not proceed with subsequent steps.
+
 This creates:
 - `tasks/` directory for task files
 - `tasks/index.json` for fast queries
@@ -59,8 +61,9 @@ If yes:
 3. Extract tasks matching pattern: `- [ ] **Title** - note` or `- [x] ~~Title~~ (date) - note`
 4. For each task, prepare task data and call:
    ```bash
-   forge task create --title "Task Title" --status Open --priority Medium --description "note content"
+   forge task create "Task Title" --data '{"status": "Open", "priority": "Medium", "description": "note content"}'
    ```
+   Check the `success` field in each JSON response. If `success` is `false`, report the `error` field to the user and skip that task (continue migrating remaining tasks).
 5. Move TASKS.md to TASKS.md.legacy
 6. Report migration results
 

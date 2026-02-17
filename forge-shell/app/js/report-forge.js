@@ -201,38 +201,73 @@ window.ReportForgeView = (function () {
   /* ═══════════════════════════════════════════════════════════
      Scan Reports — scans root level + all subdirectories
      ═══════════════════════════════════════════════════════════ */
+  // Two-stage scan: first reads root-level .md files, then dynamically
+  // enumerates all subdirectories (not limited to a hardcoded list) so
+  // new report categories are picked up automatically.
   async function scanReports() {
-    if (!rootHandle) return [];
+    if (!reportsHandle) return [];
 
-    // V2: Load from index.json instead of scanning directories
+    const results = [];
+
+    // 1. Scan root level reports/*.md files first
     try {
-      const indexData = await ForgeUtils.readIndex(rootHandle, 'reports');
-      if (!indexData || !indexData.entries) {
-        return [];
+      const rootFiles = await ForgeUtils.FS.readAllMd(reportsHandle);
+      for (const file of rootFiles) {
+        const parsed = ForgeUtils.parseFrontmatter(file.text);
+        if (parsed) {  // Only process files with valid frontmatter
+          results.push({
+            filename: file.name,
+            frontmatter: parsed.frontmatter || {},
+            body: parsed.body || '',
+            lastModified: file.lastModified || Date.now(),
+            subdirectory: 'root'
+          });
+        }
       }
-
-      const results = indexData.entries.map(function(entry) {
-        return {
-          filename: entry.filename,
-          frontmatter: entry.frontmatter || {},
-          body: entry.body || '',
-          lastModified: entry.metadata?.lastModified || Date.now(),
-          subdirectory: entry.subdirectory || 'root'
-        };
-      });
-
-      // Sort by created date (newest first)
-      results.sort((a, b) => {
-        const dateA = a.frontmatter.created || '';
-        const dateB = b.frontmatter.created || '';
-        return dateB.localeCompare(dateA);
-      });
-
-      return results;
     } catch (e) {
-      console.warn('[ReportForge] Failed to read reports index:', e);
-      return [];
+      console.warn('[ReportForge] Failed to scan root level:', e);
     }
+
+    // 2. Scan ALL subdirectories (not just the 8 hardcoded ones)
+    try {
+      const entries = await ForgeFS.readDir(reportsHandle, '');
+      const subdirs = entries.filter(e => e.kind === 'directory');
+
+      for (const subdir of subdirs) {
+        try {
+          const subHandle = await ForgeUtils.FS.getSubDir(reportsHandle, subdir.name);
+          if (!subHandle) continue;
+
+          const files = await ForgeUtils.FS.readAllMd(subHandle);
+
+          for (const file of files) {
+            const parsed = ForgeUtils.parseFrontmatter(file.text);
+            if (parsed) {  // Only process files with valid frontmatter
+              results.push({
+                filename: file.name,
+                frontmatter: parsed.frontmatter || {},
+                body: parsed.body || '',
+                lastModified: file.lastModified || Date.now(),
+                subdirectory: subdir.name
+              });
+            }
+          }
+        } catch (e) {
+          console.warn(`[ReportForge] Failed to scan ${subdir.name}:`, e);
+        }
+      }
+    } catch (e) {
+      console.warn('[ReportForge] Failed to enumerate subdirectories:', e);
+    }
+
+    // Sort by created date (newest first)
+    results.sort((a, b) => {
+      const dateA = a.frontmatter.created || '';
+      const dateB = b.frontmatter.created || '';
+      return dateB.localeCompare(dateA);
+    });
+
+    return results;
   }
 
   /* ═══════════════════════════════════════════════════════════

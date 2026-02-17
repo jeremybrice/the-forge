@@ -221,7 +221,46 @@ The forge-lib CLI will:
 - Update sessions index
 - Return JSON with file path confirmation
 
-After the command completes, confirm to the user: "Session saved to [file path from JSON response]"
+### Parse forge-lib Response
+
+The forge-lib command returns JSON:
+
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "YYYY-MM-DD-slug.md",
+    "filepath": "sessions/explorations/YYYY-MM-DD-slug.md",
+    "session_type": "exploration",
+    "title": "Concept Title",
+    "created": "YYYY-MM-DD"
+  }
+}
+```
+
+Extract `data.filepath` and use it in the confirmation message: "Session saved to {filepath}"
+
+### Error Handling
+
+If `forge session create` fails:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error description"
+}
+```
+
+Report to user:
+```
+Warning: Session analysis is complete but could not be saved: {error}
+
+The exploration results are still available in this conversation. You can retry saving with:
+forge session create exploration "{title}" "{topic}" --status Completed --data '{...}'
+```
+
+Do not let a persistence failure invalidate the exploration analysis. The user already has the results.
 
 ## Agent Recruitment Protocol
 

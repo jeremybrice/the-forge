@@ -21,7 +21,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 # Import core modules
-from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, frontmatter
+from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, agent_ops, frontmatter
 from core.validator import ValidationError
 from core.card_ops import CardError
 from core.index_ops import IndexError
@@ -30,6 +30,7 @@ from core.memory_ops import MemoryError
 from core.task_ops import TaskError
 from core.session_ops import SessionError
 from core.report_ops import ReportError
+from core.agent_ops import AgentError
 
 # Version info
 __version__ = "2.0.0-alpha"
@@ -295,6 +296,39 @@ def handle_memory_set_taxonomy(args):
         output_json(result, success=True)
     except MemoryError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_create_knowledge(args):
+    """Create a new knowledge entry."""
+    try:
+        data = json.loads(args.data) if args.data else {}
+        if args.name:
+            name_field = 'term' if args.type == 'glossary' else 'name'
+            data[name_field] = args.name
+        result = memory_ops.create_knowledge_entry(args.type, data, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON in --data: {e}"}, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_query_knowledge(args):
+    """Query knowledge entries."""
+    try:
+        filters = {}
+        if args.type:
+            filters['type'] = args.type
+        results = memory_ops.query_knowledge(directory=args.directory, filters=filters)
+        output_json(results, success=True)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
         sys.exit(EXIT_ERROR)
 
 
@@ -620,6 +654,73 @@ def handle_relationship_validate(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_agent_create(args):
+    """Create a new Rovo agent configuration."""
+    try:
+        data = {'name': args.name, 'platform': args.platform}
+        if args.data:
+            data.update(json.loads(args.data))
+        result = agent_ops.create_agent(data, directory=args.directory)
+        output_json(result)
+    except ValidationError as e:
+        output_json(None, success=False, error=f"Validation error: {e}")
+        sys.exit(EXIT_VALIDATION_ERROR)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_get(args):
+    """Get a Rovo agent configuration by slug."""
+    try:
+        result = agent_ops.get_agent(args.slug, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_NOT_FOUND)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_query(args):
+    """Query Rovo agent configurations."""
+    try:
+        filters = {}
+        if args.platform:
+            filters['platform'] = args.platform
+        if args.status:
+            filters['status'] = args.status
+        results = agent_ops.query_agents(directory=args.directory, filters=filters)
+        output_json(results)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_update(args):
+    """Update a Rovo agent configuration."""
+    try:
+        updates = json.loads(args.data) if args.data else {}
+        result = agent_ops.update_agent(args.slug, updates, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
 def create_parser():
     """Create the argument parser with all subcommands"""
     parser = argparse.ArgumentParser(
@@ -746,6 +847,20 @@ def create_parser():
     memory_set_group.add_argument("--remove", help="Remove taxonomy entry")
     memory_set.add_argument("--directory", default=".", help="Target directory")
     memory_set.set_defaults(func=handle_memory_set_taxonomy)
+
+    # memory create-knowledge
+    mem_create_knowledge = memory_subparsers.add_parser('create-knowledge', help='Create a knowledge entry')
+    mem_create_knowledge.add_argument('type', choices=['person', 'project', 'glossary'], help='Knowledge type')
+    mem_create_knowledge.add_argument('name', nargs='?', help='Entry name (or term for glossary)')
+    mem_create_knowledge.add_argument('--data', help='Additional data as JSON')
+    mem_create_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_create_knowledge.set_defaults(func=handle_memory_create_knowledge)
+
+    # memory query-knowledge
+    mem_query_knowledge = memory_subparsers.add_parser('query-knowledge', help='Query knowledge entries')
+    mem_query_knowledge.add_argument('--type', choices=['person', 'project', 'glossary'], help='Filter by type')
+    mem_query_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_query_knowledge.set_defaults(func=handle_memory_query_knowledge)
 
     # ==================== SESSION COMMANDS ====================
     session_parser = subparsers.add_parser("session", help="Session operations")
@@ -883,6 +998,38 @@ def create_parser():
     relationship_validate = relationship_subparsers.add_parser("validate", help="Validate relationships")
     relationship_validate.add_argument("--directory", default=".", help="Target directory")
     relationship_validate.set_defaults(func=handle_relationship_validate)
+
+    # ==================== AGENT COMMANDS ====================
+    agent_parser = subparsers.add_parser("agent", help="Rovo agent operations")
+    agent_subparsers = agent_parser.add_subparsers(dest="agent_command", required=True)
+
+    # agent create
+    agent_create = agent_subparsers.add_parser("create", help="Create a new Rovo agent")
+    agent_create.add_argument("name", help="Agent display name")
+    agent_create.add_argument("platform", choices=["jira", "confluence"], help="Target platform")
+    agent_create.add_argument("--data", help="Additional agent data as JSON")
+    agent_create.add_argument("--directory", default=".", help="Base directory")
+    agent_create.set_defaults(func=handle_agent_create)
+
+    # agent get
+    agent_get = agent_subparsers.add_parser("get", help="Get agent by slug")
+    agent_get.add_argument("slug", help="Agent directory slug")
+    agent_get.add_argument("--directory", default=".", help="Base directory")
+    agent_get.set_defaults(func=handle_agent_get)
+
+    # agent query
+    agent_query = agent_subparsers.add_parser("query", help="Query agents")
+    agent_query.add_argument("--platform", choices=["jira", "confluence"], help="Filter by platform")
+    agent_query.add_argument("--status", choices=["draft", "published", "archived"], help="Filter by status")
+    agent_query.add_argument("--directory", default=".", help="Base directory")
+    agent_query.set_defaults(func=handle_agent_query)
+
+    # agent update
+    agent_update = agent_subparsers.add_parser("update", help="Update an agent")
+    agent_update.add_argument("slug", help="Agent directory slug")
+    agent_update.add_argument("--data", help="Update data as JSON")
+    agent_update.add_argument("--directory", default=".", help="Base directory")
+    agent_update.set_defaults(func=handle_agent_update)
 
     return parser
 

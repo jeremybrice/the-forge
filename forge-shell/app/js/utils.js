@@ -395,6 +395,10 @@ ForgeUtils.DB = {
 
 /* ═══════════════════════════════════════════════════════════════
    FS — File System Access API Helpers (Dual-Mode with ForgeFS)
+
+   Replaces the former readIndex() approach. All view controllers now
+   use direct file system scanning via ForgeFS instead of reading from
+   centralized index.json files, avoiding index drift issues.
    ═══════════════════════════════════════════════════════════════ */
 ForgeUtils.FS = {
   /**
@@ -653,36 +657,5 @@ ForgeUtils.parseFrontmatter = function(content) {
     return { frontmatter: ForgeUtils.YAML.parse(match[1]), body: (match[2] || '').trim() };
   } catch {
     return null;
-  }
-};
-
-/**
- * Read and parse index.json file from a directory
- * @param {FileSystemDirectoryHandle|string} dirHandle - Directory handle (browser) or path (Tauri)
- * @param {string} subPath - Optional subdirectory path (e.g., 'cards', 'tasks')
- * @returns {Promise<Array>} Array of index entries, or empty array if not found
- */
-ForgeUtils.readIndex = async function(dirHandle, subPath = '') {
-  try {
-    const indexPath = subPath ? `${subPath}/index.json` : 'index.json';
-
-    if (ForgeFS.isTauri()) {
-      // Tauri mode: read file directly
-      const content = await ForgeFS.readFile(dirHandle, indexPath);
-      return JSON.parse(content);
-    } else {
-      // Browser mode: get subdirectory first if needed, then read file
-      let targetDir = dirHandle;
-      if (subPath) {
-        targetDir = await dirHandle.getDirectoryHandle(subPath, { create: false });
-      }
-      const fileHandle = await targetDir.getFileHandle('index.json', { create: false });
-      const file = await fileHandle.getFile();
-      const content = await file.text();
-      return JSON.parse(content);
-    }
-  } catch (e) {
-    console.warn(`index.json not found in ${subPath || 'root'}:`, e);
-    return [];
   }
 };

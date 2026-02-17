@@ -96,14 +96,14 @@ forge card query --product webapp
 
 **Update cards:**
 ```bash
-forge card update initiative-slug --data '{"status": "Approved"}'
+forge card update initiative initiative-slug --data '{"status": "Approved"}'
 ```
 
 **Relationship operations:**
 ```bash
 forge relationship link story-001-slug epic-slug
 forge relationship unlink story-001-slug epic-slug
-forge relationship validate epic-slug story-001-slug
+forge relationship validate --directory .
 ```
 
 ## Skills

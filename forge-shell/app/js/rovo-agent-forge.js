@@ -68,44 +68,61 @@
      Scanning — read agents from FS
      Uses ForgeFS abstraction for dual-mode (browser/Tauri) support
      ═══════════════════════════════════════════════════════════ */
+  // Discovers agents by enumerating subdirectories under rovo-agents/ and
+  // looking for an agent.md file in each — no index.json required.
   async function scanAgents() {
-    if (!rootHandle) return [];
+    if (!agentsHandle) return [];
 
-    // V2: Load from index.json instead of scanning directories
+    var agents = [];
     try {
-      var indexData = await ForgeUtils.readIndex(rootHandle, 'rovo-agents');
-      if (!indexData || !indexData.entries) {
-        return [];
+      // List directories in rovo-agents/ folder
+      var entries = await ForgeFS.readDir(agentsHandle, '');
+
+      for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+        if (entry.kind !== 'directory') continue;
+
+        var slug = entry.name;
+
+        try {
+          // Read agent.md file from this directory
+          var content = await ForgeFS.readFile(agentsHandle, slug + '/agent.md');
+          var meta = await ForgeFS.getFileMeta(agentsHandle, slug + '/agent.md');
+
+          var parsed = ForgeUtils.parseFrontmatter(content);
+          if (!parsed) continue;
+
+          // Build agent object
+          var agentPath = typeof agentsHandle === 'string'
+            ? agentsHandle + '/' + slug
+            : slug;
+
+          agents.push({
+            slug: slug,
+            frontmatter: parsed.frontmatter,
+            body: parsed.body,
+            lastModified: meta.modified,
+            dirHandle: agentPath,
+            fileHandle: typeof agentsHandle === 'string'
+              ? agentsHandle + '/' + slug + '/agent.md'
+              : slug + '/agent.md'
+          });
+        } catch (e) {
+          // Skip agents without agent.md or with read errors
+          console.warn('Failed to read agent ' + slug + ':', e);
+        }
       }
-
-      var agents = indexData.entries.map(function(entry) {
-        var slug = entry.slug || entry.subdirectory;
-        var agentPath = typeof rootHandle === 'string'
-          ? rootHandle + '/rovo-agents/' + slug
-          : slug;
-
-        return {
-          slug: slug,
-          frontmatter: entry.frontmatter || {},
-          body: entry.body || '',
-          lastModified: entry.metadata?.lastModified || Date.now(),
-          dirHandle: agentPath,
-          fileHandle: entry.path || (slug + '/agent.md')
-        };
-      });
-
-      // Sort by updated/created date (newest first)
-      agents.sort(function (a, b) {
-        var da = a.frontmatter.updated || a.frontmatter.created || '';
-        var db = b.frontmatter.updated || b.frontmatter.created || '';
-        return db.localeCompare(da);
-      });
-
-      return agents;
     } catch (e) {
       console.warn('Rovo Agent Forge scan error:', e);
-      return [];
     }
+
+    agents.sort(function (a, b) {
+      var da = a.frontmatter.updated || a.frontmatter.created || '';
+      var db = b.frontmatter.updated || b.frontmatter.created || '';
+      return db.localeCompare(da);
+    });
+
+    return agents;
   }
 
   /* ═══════════════════════════════════════════════════════════

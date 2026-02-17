@@ -1130,26 +1130,17 @@
       }
     },
 
+    // Uses the shared CardData.scanCardsDir() helper for consistency with
+    // product-forge — both views scan the same cards/ directory directly.
     async _loadCards() {
       store.clear();
-
-      // V2: Load from index.json instead of scanning directories
-      var indexData = await ForgeUtils.readIndex(rootHandle, 'cards');
-      if (!indexData || !indexData.entries) {
-        indexData = { entries: [] };
+      var files = await CardData.scanCardsDir(cardsHandle);
+      for (var entry of files) {
+        var filename = entry[0];
+        var fileData = entry[1];
+        var card = CardData.CardParser.parse(filename, fileData.content, fileData.dirName);
+        store.set(filename, card, fileData.lastModified, fileData.handle);
       }
-
-      for (var entry of indexData.entries) {
-        var card = {
-          filename: entry.filename,
-          frontmatter: entry.frontmatter || {},
-          body: entry.body || '',
-          error: entry.error || null,
-          dirName: entry.dirName
-        };
-        store.set(entry.filename, card, Date.now(), null);
-      }
-
       taxonomy = CardData.discoverTaxonomy(store.all());
     },
 
@@ -1174,36 +1165,24 @@
           CardData.roadmapConfig = rmConfig;
         }
 
-        // V2: Load from index.json instead of scanning directories
-        var indexData = await ForgeUtils.readIndex(rootHandle, 'cards');
-        if (!indexData || !indexData.entries) {
-          indexData = { entries: [] };
-        }
-
+        var files = await CardData.scanCardsDir(cardsHandle);
         var changes = { added: [], modified: [], deleted: [] };
-        var currentFilenames = new Set();
 
-        for (var entry of indexData.entries) {
-          var filename = entry.filename;
-          currentFilenames.add(filename);
-
+        for (var entry of files) {
+          var filename = entry[0];
+          var fileData = entry[1];
           var oldTs = store.timestamps.get(filename);
           if (oldTs === undefined) {
             changes.added.push(filename);
+          } else if (fileData.lastModified !== oldTs) {
+            changes.modified.push(filename);
           }
-
-          var card = {
-            filename: entry.filename,
-            frontmatter: entry.frontmatter || {},
-            body: entry.body || '',
-            error: entry.error || null,
-            dirName: entry.dirName
-          };
-          store.set(entry.filename, card, Date.now(), null);
+          var card = CardData.CardParser.parse(filename, fileData.content, fileData.dirName);
+          store.set(filename, card, fileData.lastModified, fileData.handle);
         }
 
         for (var fn of store.cards.keys()) {
-          if (!currentFilenames.has(fn)) {
+          if (!files.has(fn)) {
             changes.deleted.push(fn);
             store.delete(fn);
           }

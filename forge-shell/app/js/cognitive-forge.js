@@ -144,37 +144,43 @@ window.CognitiveForgeView = (function () {
     return cfDir;
   }
 
+  // Scans the debates/ and explorations/ subdirectories under sessions/,
+  // inferring the session type from the directory name rather than from
+  // an index.json entry.
   async function scanSessions() {
-    if (!rootHandle) return [];
+    if (!sessionsHandle) return [];
 
-    // V2: Load from index.json instead of scanning directories
-    try {
-      const indexData = await ForgeUtils.readIndex(rootHandle, 'sessions');
-      if (!indexData || !indexData.entries) {
-        return [];
+    const sessions = [];
+    const dirs = [
+      { name: 'debates', type: 'debate' },
+      { name: 'explorations', type: 'explore' }
+    ];
+
+    for (const dir of dirs) {
+      const subDir = await ForgeUtils.FS.getSubDir(sessionsHandle, dir.name);
+      if (!subDir) continue;
+
+      const files = await ForgeUtils.FS.readAllMd(subDir);
+      for (const f of files) {
+        const parsed = ForgeUtils.parseFrontmatter(f.text);
+        if (!parsed) continue;
+        if (!parsed.frontmatter.type) parsed.frontmatter.type = dir.type;
+        sessions.push({
+          filename: f.name,
+          frontmatter: parsed.frontmatter,
+          body: parsed.body,
+          lastModified: f.lastModified
+        });
       }
-
-      const sessions = indexData.entries.map(function(entry) {
-        return {
-          filename: entry.filename,
-          frontmatter: entry.frontmatter || {},
-          body: entry.body || '',
-          lastModified: entry.metadata?.lastModified || Date.now()
-        };
-      });
-
-      // Sort by created date (newest first)
-      sessions.sort(function (a, b) {
-        var da = a.frontmatter.created || '';
-        var db = b.frontmatter.created || '';
-        return db.localeCompare(da);
-      });
-
-      return sessions;
-    } catch (e) {
-      console.warn('Failed to read sessions index:', e);
-      return [];
     }
+
+    sessions.sort(function (a, b) {
+      var da = a.frontmatter.created || '';
+      var db = b.frontmatter.created || '';
+      return db.localeCompare(da);
+    });
+
+    return sessions;
   }
 
   /* ═══════════════════════════════════════════════════════════

@@ -1,0 +1,61 @@
+---
+name: "{{ name }}"
+platform: {{ platform }}
+description: "{{ description }}"
+status: {{ status }}
+skills:
+{%- if skills and skills|length > 0 %}
+{% for skill in skills %}
+  - "{{ skill }}"
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+knowledge_sources:
+{%- if knowledge_sources and knowledge_sources|length > 0 %}
+{% for source in knowledge_sources %}
+  - "{{ source }}"
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+conversation_starters:
+{%- if conversation_starters and conversation_starters|length > 0 %}
+{% for starter in conversation_starters %}
+  - "{{ starter }}"
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+owner: {{ owner if owner else 'null' }}
+collaborators:
+{%- if collaborators and collaborators|length > 0 %}
+{% for collab in collaborators %}
+  - "{{ collab }}"
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+visibility: {{ visibility }}
+created: {{ created }}
+updated: {{ updated }}
+---
+
+{% if behavior %}
+## Behavior
+
+{{ behavior }}
+{% endif %}
+
+{% if scenarios and scenarios|length > 0 %}
+## Scenarios
+
+{% for scenario in scenarios %}
+### {{ 'Default: ' if loop.first else 'Scenario ' ~ loop.index ~ ': ' }}{{ scenario.name }}
+
+{{ scenario.instructions }}
+
+**Trigger keywords**: {{ scenario.triggers if scenario.triggers else '(none — default scenario)' }}
+
+{% endfor %}
+{% endif %}

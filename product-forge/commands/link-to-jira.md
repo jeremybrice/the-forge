@@ -55,7 +55,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 
 **Retrieve card via forge-lib:**
 ```bash
-forge card get {card_identifier} --directory .
+forge card get {type} {card_identifier} --directory .
 ```
 
 Extract from response:
@@ -171,7 +171,7 @@ Delegate frontmatter updates to forge-lib:
 
 **For Epic cards:**
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "jira_key": "PROJ-123",
   "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
   "jira_last_synced": "2026-02-12T14:30:00Z"
@@ -180,7 +180,7 @@ forge card update {card_identifier} --data '{
 
 **For Initiative and Story cards:**
 ```bash
-forge card update {card_identifier} --data '{
+forge card update {type} {card_identifier} --data '{
   "jira_card": "PROJ-123",
   "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
   "jira_last_synced": "2026-02-12T14:30:00Z"

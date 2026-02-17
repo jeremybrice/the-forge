@@ -21,6 +21,22 @@ Call forge-lib to check if memory is already initialized:
 forge memory init --directory .
 ```
 
+#### Parse Response
+
+The CLI returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`:
+```
+Error: {error message from JSON response}
+```
+Stop and inform the user of the initialization failure before proceeding.
+
 If already initialized, skip to Phase 4 (reporting).
 
 ### Phase 2: Gather Organizational Context
@@ -55,6 +71,22 @@ forge memory set-taxonomy teams --add "Team Name" --directory .
 # Add integrations
 forge memory set-taxonomy integrations --add "Integration Name" --directory .
 ```
+
+#### Parse Response
+
+Each `set-taxonomy` call returns a JSON response:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+If `success` is `false`:
+```
+Error: {error message from JSON response}
+```
+Report the specific taxonomy entry that failed and continue with remaining entries.
 
 ### Phase 4: Report Success
 

@@ -3,14 +3,17 @@
    welcome screen, boot sequence, Forge Shell home view
    ═══════════════════════════════════════════════════════════════ */
 
+// Plugin IDs match the view controller export names (e.g. 'product-forge-local',
+// 'tasks', 'roadmap'). requiredDir gates plugin visibility to projects that
+// contain the corresponding data directory.
 const PLUGINS = [
   { id: 'forge-shell',         label: 'Forge Shell',      icon: 'fa-solid fa-terminal',       requiredDir: null },
   { id: 'cognitive-forge',     label: 'Cognitive Forge',  icon: 'fa-solid fa-scale-balanced', requiredDir: 'sessions' },
-  { id: 'product-forge',       label: 'Product Forge',    icon: 'fa-solid fa-clipboard-list', requiredDir: 'cards' },
-  { id: 'forge-roadmap',       label: 'Roadmap',          icon: 'fa-solid fa-road',           requiredDir: 'cards' },
-  { id: 'tasks-forge',         label: 'Tasks',            icon: 'fa-solid fa-list-check',     requiredDir: 'tasks' },
-  { id: 'forge-memory',        label: 'Memory',           icon: 'fa-solid fa-brain',          requiredDir: 'memory' },
-  { id: 'rovo-forge',          label: 'Rovo Forge',       icon: 'fa-solid fa-robot',          requiredDir: 'rovo-agents' },
+  { id: 'product-forge-local', label: 'Product Forge',    icon: 'fa-solid fa-clipboard-list', requiredDir: 'cards' },
+  { id: 'roadmap',             label: 'Roadmap',          icon: 'fa-solid fa-road',           requiredDir: 'cards' },
+  { id: 'tasks',               label: 'Tasks',            icon: 'fa-solid fa-list-check',     requiredDir: 'tasks' },
+  { id: 'memory',              label: 'Memory',           icon: 'fa-solid fa-brain',          requiredDir: 'memory' },
+  { id: 'rovo-agent-forge',    label: 'Rovo Agent Forge', icon: 'fa-solid fa-robot',          requiredDir: 'rovo-agents' },
   { id: 'report-forge',        label: 'Report Forge',     icon: 'fa-solid fa-file-lines',     requiredDir: 'reports' },
 ];
 
@@ -291,6 +294,9 @@ const Shell = {
   },
 
   /* ── Handle file change events ── */
+  // Maps changed file paths to the owning plugin by matching known data
+  // directories (e.g. /cards/ → product-forge-local). This lets each
+  // controller refresh only when its own data changes.
   _onFileChanged(path) {
     console.log('[Shell] File changed:', path);
 
@@ -298,17 +304,17 @@ const Shell = {
     let pluginToRefresh = null;
 
     if (path.includes('/cards/')) {
-      pluginToRefresh = 'product-forge';
+      pluginToRefresh = 'product-forge-local';
     } else if (path.includes('/sessions/')) {
       pluginToRefresh = 'cognitive-forge';
     } else if (path.includes('/rovo-agents/')) {
-      pluginToRefresh = 'rovo-forge';
+      pluginToRefresh = 'rovo-agent-forge';
     } else if (path.includes('/tasks/') || path.includes('TASKS.md')) {
-      pluginToRefresh = 'tasks-forge';
+      pluginToRefresh = 'tasks';
     } else if (path.includes('/memory/')) {
-      pluginToRefresh = 'forge-memory';
+      pluginToRefresh = 'memory';
     } else if (path.includes('/roadmap-data/')) {
-      pluginToRefresh = 'forge-roadmap';
+      pluginToRefresh = 'roadmap';
     } else if (path.includes('/reports/')) {
       pluginToRefresh = 'report-forge';
     }
