@@ -21,7 +21,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 # Import core modules
-from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, frontmatter
+from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, agent_ops, frontmatter
 from core.validator import ValidationError
 from core.card_ops import CardError
 from core.index_ops import IndexError
@@ -30,6 +30,7 @@ from core.memory_ops import MemoryError
 from core.task_ops import TaskError
 from core.session_ops import SessionError
 from core.report_ops import ReportError
+from core.agent_ops import AgentError
 
 # Version info
 __version__ = "2.0.0-alpha"
@@ -620,6 +621,73 @@ def handle_relationship_validate(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_agent_create(args):
+    """Create a new Rovo agent configuration."""
+    try:
+        data = {'name': args.name, 'platform': args.platform}
+        if args.data:
+            data.update(json.loads(args.data))
+        result = agent_ops.create_agent(data, directory=args.directory)
+        output_json(result)
+    except ValidationError as e:
+        output_json(None, success=False, error=f"Validation error: {e}")
+        sys.exit(EXIT_VALIDATION_ERROR)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_get(args):
+    """Get a Rovo agent configuration by slug."""
+    try:
+        result = agent_ops.get_agent(args.slug, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_NOT_FOUND)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_query(args):
+    """Query Rovo agent configurations."""
+    try:
+        filters = {}
+        if args.platform:
+            filters['platform'] = args.platform
+        if args.status:
+            filters['status'] = args.status
+        results = agent_ops.query_agents(directory=args.directory, filters=filters)
+        output_json(results)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_agent_update(args):
+    """Update a Rovo agent configuration."""
+    try:
+        updates = json.loads(args.data) if args.data else {}
+        result = agent_ops.update_agent(args.slug, updates, directory=args.directory)
+        output_json(result)
+    except AgentError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
 def create_parser():
     """Create the argument parser with all subcommands"""
     parser = argparse.ArgumentParser(
@@ -883,6 +951,38 @@ def create_parser():
     relationship_validate = relationship_subparsers.add_parser("validate", help="Validate relationships")
     relationship_validate.add_argument("--directory", default=".", help="Target directory")
     relationship_validate.set_defaults(func=handle_relationship_validate)
+
+    # ==================== AGENT COMMANDS ====================
+    agent_parser = subparsers.add_parser("agent", help="Rovo agent operations")
+    agent_subparsers = agent_parser.add_subparsers(dest="agent_command", required=True)
+
+    # agent create
+    agent_create = agent_subparsers.add_parser("create", help="Create a new Rovo agent")
+    agent_create.add_argument("name", help="Agent display name")
+    agent_create.add_argument("platform", choices=["jira", "confluence"], help="Target platform")
+    agent_create.add_argument("--data", help="Additional agent data as JSON")
+    agent_create.add_argument("--directory", default=".", help="Base directory")
+    agent_create.set_defaults(func=handle_agent_create)
+
+    # agent get
+    agent_get = agent_subparsers.add_parser("get", help="Get agent by slug")
+    agent_get.add_argument("slug", help="Agent directory slug")
+    agent_get.add_argument("--directory", default=".", help="Base directory")
+    agent_get.set_defaults(func=handle_agent_get)
+
+    # agent query
+    agent_query = agent_subparsers.add_parser("query", help="Query agents")
+    agent_query.add_argument("--platform", choices=["jira", "confluence"], help="Filter by platform")
+    agent_query.add_argument("--status", choices=["draft", "published", "archived"], help="Filter by status")
+    agent_query.add_argument("--directory", default=".", help="Base directory")
+    agent_query.set_defaults(func=handle_agent_query)
+
+    # agent update
+    agent_update = agent_subparsers.add_parser("update", help="Update an agent")
+    agent_update.add_argument("slug", help="Agent directory slug")
+    agent_update.add_argument("--data", help="Update data as JSON")
+    agent_update.add_argument("--directory", default=".", help="Base directory")
+    agent_update.set_defaults(func=handle_agent_update)
 
     return parser
 
