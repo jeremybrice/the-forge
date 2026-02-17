@@ -299,6 +299,39 @@ def handle_memory_set_taxonomy(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_memory_create_knowledge(args):
+    """Create a new knowledge entry."""
+    try:
+        data = json.loads(args.data) if args.data else {}
+        if args.name:
+            name_field = 'term' if args.type == 'glossary' else 'name'
+            data[name_field] = args.name
+        result = memory_ops.create_knowledge_entry(args.type, data, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json({"error": f"Invalid JSON in --data: {e}"}, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_query_knowledge(args):
+    """Query knowledge entries."""
+    try:
+        filters = {}
+        if args.type:
+            filters['type'] = args.type
+        results = memory_ops.query_knowledge(directory=args.directory, filters=filters)
+        output_json(results, success=True)
+    except Exception as e:
+        output_json({"error": f"Unexpected error: {e}"}, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
 def handle_session_init(args):
     """Initialize sessions directory structure"""
     try:
@@ -814,6 +847,20 @@ def create_parser():
     memory_set_group.add_argument("--remove", help="Remove taxonomy entry")
     memory_set.add_argument("--directory", default=".", help="Target directory")
     memory_set.set_defaults(func=handle_memory_set_taxonomy)
+
+    # memory create-knowledge
+    mem_create_knowledge = memory_subparsers.add_parser('create-knowledge', help='Create a knowledge entry')
+    mem_create_knowledge.add_argument('type', choices=['person', 'project', 'glossary'], help='Knowledge type')
+    mem_create_knowledge.add_argument('name', nargs='?', help='Entry name (or term for glossary)')
+    mem_create_knowledge.add_argument('--data', help='Additional data as JSON')
+    mem_create_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_create_knowledge.set_defaults(func=handle_memory_create_knowledge)
+
+    # memory query-knowledge
+    mem_query_knowledge = memory_subparsers.add_parser('query-knowledge', help='Query knowledge entries')
+    mem_query_knowledge.add_argument('--type', choices=['person', 'project', 'glossary'], help='Filter by type')
+    mem_query_knowledge.add_argument('--directory', default='.', help='Base directory')
+    mem_query_knowledge.set_defaults(func=handle_memory_query_knowledge)
 
     # ==================== SESSION COMMANDS ====================
     session_parser = subparsers.add_parser("session", help="Session operations")
