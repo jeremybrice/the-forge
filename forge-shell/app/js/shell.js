@@ -15,6 +15,7 @@ const PLUGINS = [
   { id: 'memory',              label: 'Memory',           icon: 'fa-solid fa-brain',          requiredDir: 'memory' },
   { id: 'rovo-agent-forge',    label: 'Rovo Agent Forge', icon: 'fa-solid fa-robot',          requiredDir: 'rovo-agents' },
   { id: 'report-forge',        label: 'Report Forge',     icon: 'fa-solid fa-file-lines',     requiredDir: 'reports' },
+  { id: 'slack-forge',         label: 'Slack Forge',      icon: 'fa-brands fa-slack',         requiredDir: 'slack-forge' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -317,6 +318,8 @@ const Shell = {
       pluginToRefresh = 'roadmap';
     } else if (path.includes('/reports/')) {
       pluginToRefresh = 'report-forge';
+    } else if (path.includes('/slack-forge/')) {
+      pluginToRefresh = 'slack-forge';
     }
 
     // If a relevant plugin is active, refresh it

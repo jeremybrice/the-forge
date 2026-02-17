@@ -187,7 +187,8 @@ SUPPORTED_SCHEMAS = [
     "release-note",
     "task",
     "session",
-    "report"
+    "report",
+    "harvest"
 ]
 
 
