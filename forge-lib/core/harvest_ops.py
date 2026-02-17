@@ -11,14 +11,13 @@ Harvests are markdown files with YAML frontmatter stored in the slack-forge/ dir
 """
 
 import json
-import os
 import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import jinja2
 
-from . import frontmatter, slug, validator, index_ops
+from . import frontmatter, validator, index_ops
 
 
 class HarvestError(Exception):
@@ -248,6 +247,9 @@ def create_harvest(
         >>> result['filename']
         '2026-02-17-task-harvest-001.md'
     """
+    # Don't mutate caller's dict
+    data = data.copy()
+
     # Require harvest_type — needed for filename generation
     if 'harvest_type' not in data:
         raise HarvestError("harvest_type is required for harvest creation")
@@ -290,12 +292,20 @@ def create_harvest(
     if 'updated' not in data:
         data['updated'] = today
 
+    # Separate template-only fields before schema validation
+    # These are used by the Jinja2 template but not part of the frontmatter schema
+    _TEMPLATE_ONLY_FIELDS = {'content', 'source_context', 'action_items', 'jira_events'}
+    template_extras = {k: data.pop(k) for k in _TEMPLATE_ONLY_FIELDS if k in data}
+
     # Validate data against schema
     if validate:
         try:
             validator.validate(data, 'harvest')
         except validator.ValidationError as e:
             raise HarvestError(f"Validation failed: {e}")
+
+    # Merge template-only fields back for rendering
+    data.update(template_extras)
 
     # Get harvest directory and ensure it exists
     harvest_dir = _get_harvest_directory(directory)
@@ -324,26 +334,29 @@ def create_harvest(
 
     # Add to index
     try:
+        # Normalize dates for index serialization
+        normalized_data = _normalize_dates(data)
+
         # Build index entry
         entry = {
             'file': filename,
             'type': 'harvest',
-            'title': data['title'],
-            'status': data['status'],
-            'harvest_type': data['harvest_type'],
-            'source_channel': data['source_channel'],
-            'confidence': data['confidence'],
-            'created': data['created'],
-            'updated': data['updated']
+            'title': normalized_data['title'],
+            'status': normalized_data['status'],
+            'harvest_type': normalized_data['harvest_type'],
+            'source_channel': normalized_data['source_channel'],
+            'confidence': normalized_data['confidence'],
+            'created': normalized_data['created'],
+            'updated': normalized_data['updated']
         }
-        # Add additional fields from data
-        for key, value in data.items():
-            if key not in entry:
+        # Add additional schema fields (exclude template-only and already-added fields)
+        for key, value in normalized_data.items():
+            if key not in entry and key not in _TEMPLATE_ONLY_FIELDS:
                 entry[key] = value
 
         index_ops.create_index_entry(str(harvest_dir), entry)
-    except index_ops.IndexError as e:
-        # Non-fatal: index update failed, but harvest was created
+    except index_ops.IndexError:
+        # Non-fatal: index is a cache; markdown file is the source of truth
         pass
 
     return {
@@ -583,14 +596,16 @@ def update_harvest(
             'created': normalized_fm['created'],
             'updated': normalized_fm['updated']
         }
-        # Add additional fields from normalized_fm
+        # Add additional schema fields (exclude template-only fields)
+        _TEMPLATE_ONLY_FIELDS = {'content', 'source_context', 'action_items', 'jira_events'}
         for key, value in normalized_fm.items():
-            if key not in entry:
+            if key not in entry and key not in _TEMPLATE_ONLY_FIELDS:
                 entry[key] = value
 
         index_ops.update_index_entry(str(harvest_dir), filename, entry)
-    except index_ops.IndexError as e:
-        raise HarvestError(f"Index update failed: {e}")
+    except index_ops.IndexError:
+        # Non-fatal: index is a cache; markdown file is the source of truth
+        pass
 
     return {
         'filename': filename,
