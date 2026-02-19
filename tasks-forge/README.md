@@ -9,7 +9,7 @@ Tasks Forge provides a lightweight, git-friendly task management system that sto
 **Key Features:**
 - Sequential task numbering (task-001.md, task-002.md, ...)
 - Status state machine with validated transitions
-- Priority-based organization (High/Medium/Low)
+- Priority-based organization (1-5 scale)
 - External system integration (Linear, Asana, Jira, GitHub via MCP)
 - Interactive triage workflows
 - JSON index for fast queries
@@ -62,14 +62,14 @@ Interactively add a new task with guided prompts.
 **Interactive Prompts:**
 - Title (required)
 - Description (optional)
-- Priority (High/Medium/Low, default: Medium)
+- Priority (1-5, default: 3)
 - Due date (YYYY-MM-DD, optional)
 
 **Example:**
 ```
 Title: Review API spec for Phoenix project
 Description: Focus on authentication flow and rate limiting
-Priority: High
+Priority: 1
 Due date: 2026-02-20
 ```
 
@@ -77,7 +77,7 @@ Creates: `tasks/task-003.md` with status "Open"
 
 **forge-lib command:**
 ```bash
-forge task create "Review API spec" --data '{"priority": "High", "due_date": "2026-02-20"}'
+forge task create "Review API spec" --data '{"priority": 1, "due_date": "2026-02-20"}'
 ```
 
 ---
@@ -89,7 +89,7 @@ Update task status, priority, or run triage workflows.
 **Usage:**
 ```
 /tasks:update task-003 --status "In Progress"
-/tasks:update task-003 --priority High
+/tasks:update task-003 --priority 1
 /tasks:update --triage
 ```
 
@@ -117,7 +117,7 @@ For each flagged task, prompts for action:
 1. Mark completed
 2. Update status
 3. Reschedule due date
-4. Move to low priority
+4. Move to lower priority
 5. Skip
 
 #### 3. External Sync (requires MCP)
@@ -157,9 +157,9 @@ Cancelled ← Blocked → (reopen)
 ```
 
 **Priority Guidelines:**
-- **High**: Urgent + important, deadline ≤3 days, blocks others (5-10% of tasks)
-- **Medium**: Standard workflow items, deadline >3 days (default)
-- **Low**: Nice to have, no deadline, can defer indefinitely
+- **1-2**: Urgent + important, deadline ≤3 days, blocks others (5-10% of tasks)
+- **3**: Standard workflow items, deadline >3 days (default)
+- **4-5**: Nice to have, no deadline, can defer indefinitely
 
 **Triage Reasoning:**
 - Overdue? → Reschedule, complete, or cancel
@@ -177,7 +177,7 @@ All task files are created and managed by forge-lib using the task schema.
 title: "Review API spec for Phoenix project"
 type: "task"
 status: "In Progress"
-priority: "High"
+priority: 1
 assignee: ""
 created: "2026-02-14"
 updated: "2026-02-14"
@@ -202,9 +202,9 @@ Focus areas:
 - `Cancelled` - Decided not to pursue
 
 **Priority Values:**
-- `High` - Urgent and important
-- `Medium` - Standard priority
-- `Low` - Nice to have, no urgency
+- `1` - Highest urgency/importance
+- `3` - Standard priority
+- `5` - Lowest urgency/importance
 
 ## forge-lib CLI Reference
 
@@ -215,7 +215,7 @@ forge task init
 
 **Create task:**
 ```bash
-forge task create "Task title" --data '{"priority": "Medium", "status": "Open"}'
+forge task create "Task title" --data '{"priority": 3, "status": "Open"}'
 forge task create "Task title" --data '{"description": "Details", "due_date": "2026-02-20"}'
 ```
 
@@ -223,7 +223,7 @@ forge task create "Task title" --data '{"description": "Details", "due_date": "2
 ```bash
 forge task query
 forge task query --status Open
-forge task query --priority High
+forge task query --priority 1
 ```
 
 **Get task:**
@@ -234,7 +234,7 @@ forge task get task-003
 **Update task:**
 ```bash
 forge task update task-003 --data '{"status": "In Progress"}'
-forge task update task-003 --data '{"priority": "High", "due_date": "2026-02-25"}'
+forge task update task-003 --data '{"priority": 1, "due_date": "2026-02-25"}'
 ```
 
 All commands return JSON for easy parsing and integration.
@@ -286,7 +286,7 @@ When MCP tools are configured (Linear, Asana, Jira, GitHub):
 # Add tasks interactively
 /tasks:add
 > Title: Implement user authentication
-> Priority: High
+> Priority: 1
 > Due date: 2026-02-28
 
 # Update task status
@@ -297,7 +297,7 @@ When MCP tools are configured (Linear, Asana, Jira, GitHub):
 > [Review flagged tasks and take actions]
 
 # Query via CLI
-forge task query --status Open --priority High
+forge task query --status Open --priority 1
 ```
 
 ## Verification

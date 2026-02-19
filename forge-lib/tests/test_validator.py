@@ -311,7 +311,7 @@ class TestSupportedSchemasList:
     """Tests for SUPPORTED_SCHEMAS constant."""
 
     def test_all_entity_types_included(self):
-        """Should include all 10 entity types."""
+        """Should include all supported entity types."""
         expected = [
             "initiative",
             "epic",
@@ -322,10 +322,11 @@ class TestSupportedSchemasList:
             "release-note",
             "task",
             "session",
-            "report"
+            "report",
+            "harvest"
         ]
         assert set(validator.SUPPORTED_SCHEMAS) == set(expected)
-        assert len(validator.SUPPORTED_SCHEMAS) == 10
+        assert len(validator.SUPPORTED_SCHEMAS) == 11
 
 
 class TestErrorMessages:

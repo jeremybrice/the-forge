@@ -282,9 +282,8 @@ python forge.py card create initiative \
 python forge.py card query initiative --status "Approved"
 
 # Create a task with sequential numbering
-python forge.py task create \
-  --title "Implement email notifications" \
-  --data '{"priority": "P2", "status": "Ready"}'
+python forge.py task create "Implement email notifications" \
+  --data '{"priority": 2, "status": "Open"}'
 
 # Link child to parent (bidirectional update)
 python forge.py relationship link \

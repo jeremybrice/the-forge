@@ -187,9 +187,11 @@ def handle_task_init(args):
 def handle_task_create(args):
     """Create a new task"""
     try:
-        # Parse JSON data if provided
+        # Parse JSON data if provided and preserve CLI title unless overridden in JSON
         if args.data:
             data = json.loads(args.data)
+            if 'title' not in data:
+                data['title'] = args.title
         else:
             data = {"title": args.title}
 

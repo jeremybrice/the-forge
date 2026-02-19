@@ -11,7 +11,7 @@ Update existing tasks or sync from external sources.
 
 ```bash
 /tasks:update task-003 --status "In Progress"
-/tasks:update task-003 --priority High
+/tasks:update task-003 --priority 1
 /tasks:update --triage
 ```
 
@@ -44,7 +44,7 @@ If transition is invalid, warn the user and suggest valid transitions.
 Build the update command:
 
 ```bash
-forge task update task-003 --data '{"status": "In Progress", "priority": "High"}'
+forge task update task-003 --data '{"status": "In Progress", "priority": 1}'
 ```
 
 Check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and do not proceed.
@@ -53,7 +53,7 @@ Parse the successful JSON response and confirm:
 ```
 Task updated: task-003.md
 - Status: Open → In Progress
-- Priority: Medium → High
+- Priority: 3 → 1
 ```
 
 ### Mode 2: Triage Mode (`--triage`)
@@ -103,7 +103,7 @@ Based on user input:
 - **Completed**: `forge task update task-012 --data '{"status": "Completed"}'`
 - **Update status**: Prompt for new status, then update
 - **Reschedule**: Prompt for new due date, then `forge task update task-012 --data '{"due_date": "YYYY-MM-DD"}'`
-- **Move to someday**: `forge task update task-012 --data '{"priority": "Low"}'`
+- **Move to someday**: `forge task update task-012 --data '{"priority": 5}'`
 - **Skip**: Continue to next
 
 For each triage update, check the `success` field in the JSON response. If `success` is `false`, report the `error` field to the user and continue to the next task.
