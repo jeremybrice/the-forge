@@ -24,7 +24,7 @@ Let's add a new task.
 
 Title: [wait for input]
 Description (optional): [wait for input]
-Priority (High/Medium/Low, default Medium): [wait for input]
+Priority (1-5, default 3): [wait for input]
 Due date (YYYY-MM-DD, or leave blank): [wait for input]
 ```
 
@@ -32,10 +32,10 @@ Due date (YYYY-MM-DD, or leave blank): [wait for input]
 
 - **Title**: Required, use as provided
 - **Description**: Optional, can be empty
-- **Priority**: Map user input to schema values:
-  - "High" / "high" / "H" → "High"
-  - "Low" / "low" / "L" → "Low"
-  - Default or "Medium" → "Medium"
+- **Priority**: Must be an integer from 1 to 5
+  - `1` = highest priority
+  - `3` = default
+  - `5` = lowest priority
 - **Due date**: If provided, validate YYYY-MM-DD format
 
 ### 4. Create Task via forge-lib
@@ -44,12 +44,12 @@ Build the task creation command:
 
 ```bash
 forge task create "{title}" \
-  --data '{"priority": "{priority}", "status": "Open", "description": "{description}", "due_date": "{due_date}"}'
+  --data '{"priority": {priority}, "status": "Open", "description": "{description}", "due_date": "{due_date}"}'
 ```
 
 Notes:
-- Omit `--description` if empty
-- Omit `--due-date` if not provided
+- Omit `description` from JSON if empty
+- Omit `due_date` from JSON if not provided
 - Status always starts as "Open"
 - forge-lib handles sequential numbering (task-001.md, task-002.md, etc.)
 
@@ -66,7 +66,7 @@ The forge-lib command returns JSON on success:
     "id": "task-003",
     "title": "Review API spec",
     "status": "Open",
-    "priority": "High"
+    "priority": 2
   }
 }
 ```
@@ -76,7 +76,7 @@ The forge-lib command returns JSON on success:
 ```
 Task added: {filename}
 - Title: {title}
-- Priority: {priority}
+- Priority: {priority} (1 highest, 5 lowest)
 - Due: {due_date or "none"}
 - Status: Open
 

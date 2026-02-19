@@ -1,6 +1,7 @@
 """Tests for relationship_ops module."""
 
 import pytest
+import json
 import os
 import tempfile
 import shutil
@@ -478,3 +479,46 @@ def test_link_updates_parent_date(temp_card_dir):
 
     # The updated date should be today's date (different from original if it was older)
     assert updated_data['updated'] == result['parent_updated']
+
+
+def test_link_to_parent_updates_index_entry(temp_card_dir):
+    """Linking a child should create/update the parent index entry."""
+    relationship_ops.link_to_parent(
+        'epics/epic-001-auth.md',
+        'initiatives/customer-portal.md',
+        temp_card_dir
+    )
+
+    index_path = Path(temp_card_dir) / 'initiatives' / 'index.json'
+    assert index_path.exists()
+
+    index_data = json.loads(index_path.read_text(encoding='utf-8'))
+    entries = index_data.get('entries', [])
+    parent_entry = next((e for e in entries if e.get('file') == 'customer-portal.md'), None)
+
+    assert parent_entry is not None
+    assert 'epic-001-auth.md' in parent_entry.get('children', [])
+
+
+def test_unlink_from_parent_updates_index_entry(temp_card_dir):
+    """Unlinking a child should remove it from parent index children."""
+    relationship_ops.link_to_parent(
+        'epics/epic-001-auth.md',
+        'initiatives/customer-portal.md',
+        temp_card_dir
+    )
+    relationship_ops.unlink_from_parent(
+        'epics/epic-001-auth.md',
+        'initiatives/customer-portal.md',
+        temp_card_dir
+    )
+
+    index_path = Path(temp_card_dir) / 'initiatives' / 'index.json'
+    assert index_path.exists()
+
+    index_data = json.loads(index_path.read_text(encoding='utf-8'))
+    entries = index_data.get('entries', [])
+    parent_entry = next((e for e in entries if e.get('file') == 'customer-portal.md'), None)
+
+    assert parent_entry is not None
+    assert 'epic-001-auth.md' not in parent_entry.get('children', [])

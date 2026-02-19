@@ -149,14 +149,13 @@ See main README for full command reference.
 ### task create
 
 ```bash
-python forge.py task create \
-  --title "Implement email notification templates" \
-  --data '{"priority": "P2", "status": "Ready", "due_date": "2026-03-01"}'
+python forge.py task create "Implement email notification templates" \
+  --data '{"priority": 2, "status": "Open", "due_date": "2026-03-01"}'
 ```
 
-**Status workflow:** Ready → In Progress → Done (plus Blocked state)
+**Status workflow:** Open → In Progress → Completed (plus Blocked/Cancelled states)
 
-**Priority values:** P0, P1, P2, P3, P4
+**Priority values:** 1 (highest) through 5 (lowest)
 
 See main README for full command reference.
 

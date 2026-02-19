@@ -8,10 +8,9 @@ Relationships are bidirectional:
 - Parent cards have a 'children' array listing child filenames
 """
 
-import os
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 
 from . import frontmatter, index_ops
 
@@ -31,6 +30,45 @@ VALID_RELATIONSHIPS = {
     'decision': [],
     'release-note': []
 }
+
+
+def _sync_parent_index(parent_path: Path, parent_data: Dict[str, Any]) -> None:
+    """Update or create the parent card index entry."""
+    index_dir = str(parent_path.parent)
+    file_path = parent_path.name
+    updates = {
+        'children': parent_data.get('children', []),
+        'updated': parent_data.get('updated')
+    }
+
+    try:
+        index_ops.update_index_entry(index_dir, file_path, updates)
+        return
+    except index_ops.IndexError:
+        # Fallback: create a new entry if index entry doesn't exist yet.
+        pass
+    except Exception as e:
+        raise RelationshipError(f"Failed to update parent index entry: {e}") from e
+
+    card_type = parent_data.get('type')
+    title = parent_data.get('title')
+    if not card_type or not title:
+        raise RelationshipError(
+            "Cannot create missing index entry: parent card frontmatter "
+            "must include both 'type' and 'title'"
+        )
+
+    entry = {
+        'file': file_path,
+        'type': card_type,
+        'title': title,
+        **updates
+    }
+
+    try:
+        index_ops.create_index_entry(index_dir, entry)
+    except Exception as e:
+        raise RelationshipError(f"Failed to create parent index entry: {e}") from e
 
 
 def link_to_parent(
@@ -128,15 +166,7 @@ def link_to_parent(
         raise RelationshipError(f"Failed to update parent card: {e}")
 
     # Update parent's index entry
-    try:
-        index_ops.update_index_entry(str(parent_path.parent), {
-            'filename': parent_path.name,
-            'children': children,
-            'updated': parent_data['updated']
-        })
-    except Exception as e:
-        # Log warning but don't fail the operation
-        pass
+    _sync_parent_index(parent_path, parent_data)
 
     return {
         'parent': parent_filepath,
@@ -214,15 +244,7 @@ def unlink_from_parent(
         raise RelationshipError(f"Failed to update parent card: {e}")
 
     # Update parent's index entry
-    try:
-        index_ops.update_index_entry(str(parent_path.parent), {
-            'filename': parent_path.name,
-            'children': children,
-            'updated': parent_data['updated']
-        })
-    except Exception as e:
-        # Log warning but don't fail the operation
-        pass
+    _sync_parent_index(parent_path, parent_data)
 
     return {
         'parent': parent_filepath,

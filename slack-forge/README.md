@@ -119,7 +119,7 @@ Push approved items to tasks-forge and/or forge-memory via existing forge-lib co
 **forge-lib commands:**
 ```bash
 forge harvest query --status approved
-forge task create "Task title" --data '{"priority": "Medium", "status": "Open"}'
+forge task create "Task title" --data '{"priority": 3, "status": "Open"}'
 forge memory create-knowledge person "Jane Smith" --data '{"role": "Backend Engineer"}'
 forge harvest update {filename} --data '{"status": "promoted"}'
 ```

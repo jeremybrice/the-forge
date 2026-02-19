@@ -33,20 +33,25 @@ Cancelled ← Blocked → (reopen)
 
 ## Priority Guidelines
 
-**High Priority:**
+Use numeric priorities on a `1-5` scale:
+- `1` = highest urgency/importance
+- `3` = default for most tasks
+- `5` = lowest urgency/importance
+
+**Priority 1-2:**
 - Urgent AND important
 - Has a deadline within 3 days
 - Blocks other people's work
 - Critical business impact
 - Use sparingly (5-10% of tasks max)
 
-**Medium Priority:**
+**Priority 3:**
 - Default for most tasks
 - Important but not urgent
 - Has a deadline beyond 3 days
 - Standard workflow items
 
-**Low Priority:**
+**Priority 4-5:**
 - Nice to have
 - No deadline
 - Exploratory or research work
@@ -62,7 +67,7 @@ When triaging tasks, consider:
 - Waiting on blocker? → Mark as Blocked
 
 **Stale Tasks (Open 30+ days):**
-- Forgotten or deprioritized? → Move to Low priority
+- Forgotten or deprioritized? → Move to priority 5
 - No longer relevant? → Cancel
 - Ready to start? → Keep as is or move to In Progress
 
@@ -125,8 +130,8 @@ When triaging tasks, consider:
 ## Workflow Prompts
 
 **When user asks "what should I work on?"**
-1. Show High priority Open tasks first
-2. Show Medium priority Open tasks
+1. Show priority 1-2 Open tasks first
+2. Show priority 3 Open tasks
 3. Highlight anything overdue
 4. Suggest unblocking Blocked tasks if possible
 

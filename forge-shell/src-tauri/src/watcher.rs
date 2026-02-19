@@ -1,18 +1,53 @@
-use notify::{RecursiveMode, Watcher};
-use notify_debouncer_mini::{new_debouncer, DebouncedEvent, DebounceEventResult};
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_mini::{new_debouncer, DebounceEventResult, Debouncer};
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
+
+struct ActiveWatcher {
+    path: String,
+    _debouncer: Debouncer<RecommendedWatcher>,
+}
+
+pub struct WatcherState {
+    watcher: Mutex<Option<ActiveWatcher>>,
+}
+
+impl WatcherState {
+    pub fn new() -> Self {
+        Self {
+            watcher: Mutex::new(None),
+        }
+    }
+}
 
 /// Start watching a directory for changes
 #[tauri::command]
 pub fn watch_directory(
     path: String,
     app_handle: AppHandle,
+    state: State<WatcherState>,
 ) -> Result<(), String> {
     log::info!("Starting file watcher for: {}", path);
 
-    let path_clone = path.clone();
+    let mut guard = state
+        .watcher
+        .lock()
+        .map_err(|_| "Watcher state lock poisoned".to_string())?;
+
+    // Idempotent for the same path.
+    if let Some(active) = guard.as_ref() {
+        if active.path == path {
+            log::info!("Watcher already active for: {}", path);
+            return Ok(());
+        }
+    }
+
+    // Drop existing watcher by replacing it.
+    if let Some(active) = guard.take() {
+        log::info!("Replacing existing watcher for: {}", active.path);
+    }
 
     // Create a debounced watcher with 500ms debounce
     let mut debouncer = new_debouncer(
@@ -51,18 +86,30 @@ pub fn watch_directory(
 
     log::info!("File watcher successfully started for: {}", path);
 
-    // Keep the debouncer alive by storing it somewhere
-    // In a real implementation, you'd want to store this in app state
-    // For now, we'll let it live as long as the app does
-    std::mem::forget(debouncer);
+    *guard = Some(ActiveWatcher {
+        path: path.clone(),
+        _debouncer: debouncer,
+    });
 
     Ok(())
 }
 
-/// Stop watching a directory (placeholder for cleanup)
+/// Stop watching a directory
 #[tauri::command]
-pub fn unwatch_directory(path: String) -> Result<(), String> {
+pub fn unwatch_directory(path: String, state: State<WatcherState>) -> Result<(), String> {
     log::info!("Stopping file watcher for: {}", path);
-    // In a production app, you'd track watchers and stop them here
-    Ok(())
+
+    let mut guard = state
+        .watcher
+        .lock()
+        .map_err(|_| "Watcher state lock poisoned".to_string())?;
+
+    match guard.as_ref() {
+        None => Ok(()),
+        Some(active) if active.path == path => {
+            guard.take();
+            Ok(())
+        }
+        Some(_) => Ok(()),
+    }
 }

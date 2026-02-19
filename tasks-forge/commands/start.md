@@ -56,12 +56,12 @@ If yes:
 2. Parse sections using these patterns:
    - `## Active` section → status: "Open"
    - `## Waiting On` section → status: "Blocked"
-   - `## Someday` section → status: "Open" with priority: "Low"
+   - `## Someday` section → status: "Open" with priority: `5`
    - `## Done` section → status: "Completed"
 3. Extract tasks matching pattern: `- [ ] **Title** - note` or `- [x] ~~Title~~ (date) - note`
 4. For each task, prepare task data and call:
    ```bash
-   forge task create "Task Title" --data '{"status": "Open", "priority": "Medium", "description": "note content"}'
+   forge task create "Task Title" --data '{"status": "Open", "priority": 3, "description": "note content"}'
    ```
    Check the `success` field in each JSON response. If `success` is `false`, report the `error` field to the user and skip that task (continue migrating remaining tasks).
 5. Move TASKS.md to TASKS.md.legacy
