@@ -1,207 +1,105 @@
 # Slack Forge
 
-Slack intelligence harvester with review-first workflow for extracting tasks, knowledge, and JIRA activity.
+Slack intelligence pipeline with a transcript-first harvest workflow.
 
 ## Overview
 
-Slack Forge scans monitored Slack channels for actionable intelligence — tasks people mention, knowledge worth preserving, and JIRA activity summaries. All extracted items go through a **review-first model**: nothing is promoted to tasks-forge or forge-memory without explicit human approval.
+Slack Forge uses a two-stage model:
 
-**Key Features:**
-- Channel discovery and configuration via Slack MCP tools
-- 3 sequential sub-agents for scanning (task harvester, knowledge harvester, JIRA digest)
-- Review-first workflow: pending → approved/rejected → promoted
-- Promotion routes items to tasks-forge and forge-memory via existing forge-lib commands
-- Configurable time frames (24h, 72h, 1 week, custom)
-- Confidence scoring (high/medium/low) for each extracted item
+1. **Scan stage (`/slack-forge:scan`)**
+- Primary agent uses Slack MCP tools.
+- Pulls messages from configured scope.
+- Writes local transcript snapshots under `slack-forge/transcripts/`.
 
-## Architecture
+2. **Capture stage (`/slack-forge:capture`)**
+- Local-only subagents read transcript files.
+- Extract tasks, knowledge, and JIRA digests.
+- Create pending harvest records for human review.
 
-**V2 vs V1:**
-- **V1**: LLM directly reads/writes harvest files, manages YAML, handles numbering
-- **V2**: forge-lib CLI handles all file operations, LLM focuses on workflow and conversation
+Nothing is promoted to tasks-forge or forge-memory without explicit review.
 
-**Commands → forge-lib delegation:**
-- `/slack-forge:init` → `forge harvest init` + `forge harvest config`
-- `/slack-forge:scan` → `forge harvest create` (via sub-agents)
-- `/slack-forge:review` → `forge harvest query` + `forge harvest update`
-- `/slack-forge:promote` → `forge harvest query` + `forge task create` / `forge memory create-knowledge` + `forge harvest update`
+## Key Features
 
-**Skills:**
-- `task-harvester`: Reasoning-only skill for identifying actionable tasks in Slack messages
-- `knowledge-harvester`: Reasoning-only skill for identifying knowledge worth preserving
-- `jira-digest`: Reasoning-only skill for summarizing JIRA bot activity
+- MCP-based Slack retrieval by primary agent during scan
+- Local-file harvesting by subagents during capture
+- Review-first workflow: pending -> approved/rejected -> promoted
+- Optional scan chaining: scan-only, scan-then-ask-capture, scan-and-auto-capture
+- Configurable scan windows (24h, 72h, 1 week, custom)
+- Confidence scoring for extracted items
 
 ## Commands
 
-### `/slack-forge:init` - Initialize Slack Forge
+### `/slack-forge:init`
+Initialize Slack Forge and configure monitored channels.
 
-Discover Slack channels, let user select which to monitor, save configuration. Re-runnable to update channel list.
+### `/slack-forge:scan`
+Primary-agent MCP command. Produces transcript files only.
 
-**Usage:**
-```
-/slack-forge:init
-```
+Expected outputs (as available):
+- `slack-forge/transcripts/{scan-date}-{timeframe}-public-channels.md`
+- `slack-forge/transcripts/{scan-date}-{timeframe}-dms.md`
+- `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot.md`
 
-**What it does:**
-1. Creates `slack-forge/` directory structure via `forge harvest init`
-2. Discovers accessible channels via Slack MCP tools
-3. Lets user select channels to monitor
-4. Identifies JIRA bot feed channel (if any)
-5. Saves configuration via `forge harvest config`
+Execution modes:
+- Scan only
+- Scan then ask before capture
+- Scan and auto-run capture
 
-**When to use:**
-- First-time setup in a new project
-- Updating monitored channel list
+### `/slack-forge:capture`
+Local transcript harvesting command. Creates harvest records via forge-lib:
+- task harvests
+- knowledge harvests
+- jira-digest harvests
 
----
+### `/slack-forge:review`
+Review pending harvests and approve/reject/edit.
 
-### `/slack-forge:scan` - Scan Slack Channels
+### `/slack-forge:promote`
+Promote approved harvests to tasks-forge and forge-memory.
 
-Orchestrator command — asks for time frame, then runs 3 sequential sub-agents to extract tasks, knowledge, and JIRA activity. Creates harvest records for each item found.
+## Architecture
 
-**Usage:**
-```
-/slack-forge:scan
-```
+### Data Flow
 
-**Interactive Prompts:**
-- Time frame: 24h / 72h / 1 week / custom date range
+1. `/slack-forge:init` writes `slack-forge/config.json`
+2. `/slack-forge:scan` uses MCP and writes transcript snapshots
+3. `/slack-forge:capture` reads transcript snapshots and writes harvest files
+4. `/slack-forge:review` updates harvest statuses
+5. `/slack-forge:promote` routes approved items downstream
 
-**Sub-agents (run sequentially):**
-1. **Task Harvester** — Reads monitored channels, identifies actionable tasks
-2. **Knowledge Harvester** — Reads monitored channels, identifies knowledge items
-3. **JIRA Digest** — Reads JIRA bot channel, summarizes ticket activity
+### Command to forge-lib delegation
 
-**forge-lib command (per extracted item):**
-```bash
-forge harvest create "Task title" --harvest-type task --data '{"source_channel": "eng-team", "confidence": "high"}'
-```
-
----
-
-### `/slack-forge:review` - Review Pending Harvests
-
-Present pending harvest records for human review. Each item can be approved, rejected, edited, or skipped.
-
-**Usage:**
-```
-/slack-forge:review
-```
-
-**Interactive Review:**
-- Items grouped by harvest_type (tasks, knowledge, JIRA digests)
-- For each item: Approve / Reject / Edit / Skip
-- Edit allows modifying title and content before approving
-
-**forge-lib commands:**
-```bash
-forge harvest query --status pending
-forge harvest update {filename} --data '{"status": "approved"}'
-forge harvest update {filename} --data '{"status": "rejected"}'
-```
-
----
-
-### `/slack-forge:promote` - Promote Approved Harvests
-
-Push approved items to tasks-forge and/or forge-memory via existing forge-lib commands.
-
-**Usage:**
-```
-/slack-forge:promote
-```
-
-**Routing by harvest_type:**
-- **task** → `forge task create` (creates task in tasks-forge)
-- **knowledge** → `forge memory create-knowledge` (creates knowledge entry in forge-memory)
-- **jira-digest** → Informational only, marked as promoted directly
-
-**forge-lib commands:**
-```bash
-forge harvest query --status approved
-forge task create "Task title" --data '{"priority": 3, "status": "Open"}'
-forge memory create-knowledge person "Jane Smith" --data '{"role": "Backend Engineer"}'
-forge harvest update {filename} --data '{"status": "promoted"}'
-```
+- `/slack-forge:init` -> `forge harvest init` + `forge harvest config`
+- `/slack-forge:scan` -> transcript generation only (no harvest creation)
+- `/slack-forge:capture` -> `forge harvest create` (via local-only subagents)
+- `/slack-forge:review` -> `forge harvest query` + `forge harvest update`
+- `/slack-forge:promote` -> `forge harvest query` + downstream create + `forge harvest update`
 
 ## Skills
 
-### task-harvester
+- `task-harvester`: extraction rules for actionable tasks from transcript text
+- `knowledge-harvester`: extraction rules for durable organizational knowledge from transcript text
+- `jira-digest`: JIRA event parsing/summarization from transcript text
 
-**Purpose:** Reasoning-only guidance for identifying actionable tasks in Slack messages.
-
-**Provides:**
-- Criteria for what constitutes an actionable task vs. casual conversation
-- Confidence scoring logic (high/medium/low)
-- Field extraction rules (title, assignee, due date, priority)
-- Deduplication reasoning (avoid harvesting the same task twice)
-
-**Does NOT provide:**
-- File format details (handled by forge-lib)
-- YAML parsing instructions (handled by forge-lib)
-- Directory structure (handled by forge-lib)
-
-### knowledge-harvester
-
-**Purpose:** Reasoning-only guidance for identifying knowledge worth preserving.
-
-**Provides:**
-- Criteria for knowledge types (person expertise, project context, glossary terms, general knowledge)
-- Memory type classification (person/project/glossary/general)
-- Confidence scoring logic
-- Context extraction rules
-
-### jira-digest
-
-**Purpose:** Reasoning-only guidance for summarizing JIRA bot activity.
-
-**Provides:**
-- JIRA event type classification (created, transitioned, commented, resolved)
-- Summary generation logic for batches of JIRA events
-- Priority inference from ticket patterns
-- Sprint and epic grouping reasoning
+Skills and agents do not perform MCP retrieval.
 
 ## Data Model
 
 ### Harvest Record
 
-All harvest files are created and managed by forge-lib using the harvest schema.
+Harvest files are managed by forge-lib using `type: harvest` and `harvest_type`:
+- `task`
+- `knowledge`
+- `jira-digest`
 
-**Example harvest file:**
-```yaml
----
-title: "Implement rate limiting for API gateway"
-type: "harvest"
-harvest_type: "task"
-status: "pending"
-source_channel: "eng-team"
-source_channel_id: "C01ABC123"
-source_author: "jane.smith"
-source_timestamp: "2026-02-17T14:30:00Z"
-scan_timeframe: "24h"
-scan_date: "2026-02-17"
-confidence: "high"
-tags: ["api", "rate-limiting"]
-created: "2026-02-17"
-updated: "2026-02-17"
----
+Each harvest includes source attribution fields and review status.
 
-## Extracted Content
-
-Jane mentioned we need rate limiting on the API gateway before the v2 launch.
-
-## Source Context
-
-> @channel heads up — we need to get rate limiting in place before the v2 launch next week. I'll draft a design doc but someone needs to own the implementation.
-```
-
-### Configuration (config.json)
+### Configuration (`config.json`)
 
 ```json
 {
   "channels": [
     {"id": "C01ABC123", "name": "eng-team", "type": "public", "monitor": true},
-    {"id": "C02DEF456", "name": "product-updates", "type": "public", "monitor": true},
     {"id": "C03GHI789", "name": "jira-notifications", "type": "public", "monitor": true, "role": "jira"}
   ],
   "jira_channel": "C03GHI789",
@@ -209,182 +107,83 @@ Jane mentioned we need rate limiting on the API gateway before the v2 launch.
 }
 ```
 
-### File Naming Pattern
-
-```
-YYYY-MM-DD-{harvest_type}-NNN.md
-```
-
-**Examples:**
-- `2026-02-17-task-harvest-001.md`
-- `2026-02-17-knowledge-harvest-001.md`
-- `2026-02-17-jira-digest-001.md`
-
 ## Status Workflow
 
 ```
-pending → approved → promoted
-    ↓
- rejected
+pending -> approved -> promoted
+    \
+     -> rejected
 ```
 
-- **pending**: Newly created by scan, awaiting human review
-- **approved**: Human confirmed the item is valid
-- **rejected**: Human dismissed the item (terminal)
-- **promoted**: Successfully pushed to tasks-forge or forge-memory (terminal)
+## Dependencies
 
-## forge-lib CLI Reference
+- **forge-lib** — Python CLI for all file operations. Install from `forge-lib/`:
+  ```bash
+  pip install -r requirements.txt
+  python forge.py --help
+  ```
+- **Slack MCP** — Required by the primary agent during `scan` only. Sub-agents do not require MCP.
 
-**Initialize slack-forge directory:**
+## CLI Reference
+
+### Setup
+
 ```bash
 forge harvest init
+forge harvest config --get
+forge harvest config --set channels '[{"id":"C01ABC123","name":"eng-team","monitor":true}]'
 ```
 
-**Create harvest record:**
+### Creating harvest records (used by sub-agents during capture)
+
 ```bash
-forge harvest create "Item title" --harvest-type task --data '{"source_channel": "eng-team", "confidence": "high"}'
-forge harvest create "Knowledge item" --harvest-type knowledge --data '{"source_channel": "eng-team", "confidence": "medium"}'
-forge harvest create "JIRA Weekly Digest" --harvest-type jira-digest --data '{"source_channel": "jira-notifications", "confidence": "high"}'
+forge harvest create "{title}" --harvest-type task --data '{...}'
+forge harvest create "{title}" --harvest-type knowledge --data '{...}'
+forge harvest create "{title}" --harvest-type jira-digest --data '{...}'
 ```
 
-**Get harvest record:**
-```bash
-forge harvest get 2026-02-17-task-harvest-001
-```
+### Reviewing
 
-**Query harvest records:**
 ```bash
-forge harvest query
 forge harvest query --status pending
 forge harvest query --harvest-type task
+forge harvest update 2026-02-17-task-harvest-001.md --data '{"status":"approved"}'
+forge harvest update 2026-02-17-task-harvest-001.md --data '{"status":"rejected"}'
 ```
 
-**Update harvest record:**
+### Promoting
+
 ```bash
-forge harvest update 2026-02-17-task-harvest-001 --data '{"status": "approved"}'
-forge harvest update 2026-02-17-task-harvest-001 --data '{"status": "promoted"}'
-```
-
-**Manage channel config:**
-```bash
-forge harvest config --get
-forge harvest config --set-channels '[{"id": "C01ABC123", "name": "eng-team", "type": "public", "monitor": true}]'
-forge harvest config --set-jira-channel "C03GHI789"
-```
-
-All commands return JSON for easy parsing and integration.
-
-## Scan Orchestration Flow
-
-The `/slack-forge:scan` command runs 3 sub-agents sequentially:
-
-```
-1. Task Harvester
-   - Read each monitored channel via slack_read_channel
-   - Apply task-harvester skill reasoning
-   - Create harvest records (--harvest-type task)
-   - Report: "Found X potential tasks"
-
-2. Knowledge Harvester
-   - Read same channels (reuse cached content)
-   - Apply knowledge-harvester skill reasoning
-   - Create harvest records (--harvest-type knowledge)
-   - Report: "Found X knowledge items"
-
-3. JIRA Digest
-   - Read JIRA bot channel only
-   - Apply jira-digest skill reasoning
-   - Create harvest record(s) (--harvest-type jira-digest)
-   - Report: "Summarized X JIRA events"
-```
-
-## Time Frame Options
-
-| Option | Description | Slack API Parameter |
-|--------|-------------|-------------------|
-| 24h | Last 24 hours | `oldest` = now - 86400 |
-| 72h | Last 3 days | `oldest` = now - 259200 |
-| 1 week | Last 7 days | `oldest` = now - 604800 |
-| Custom | User-specified date range | `oldest` / `latest` from user input |
-
-## Workflow Example
-
-```
-# 1. Initialize — discover and select channels
-/slack-forge:init
-> Found 12 accessible channels
-> Select channels to monitor: [eng-team, product-updates, design-sync]
-> JIRA bot channel: jira-notifications
-> Configuration saved (3 channels + 1 JIRA feed)
-
-# 2. Scan — extract intelligence from Slack
-/slack-forge:scan
-> Time frame? 24h
-> Agent 1: Task Harvester — found 4 potential tasks
-> Agent 2: Knowledge Harvester — found 2 knowledge items
-> Agent 3: JIRA Digest — summarized 8 JIRA events
-> Total: 7 harvest records created. Run /slack-forge:review to review.
-
-# 3. Review — approve or reject each item
-/slack-forge:review
-> [Task] "Implement rate limiting" (high confidence) — Approve
-> [Task] "Update onboarding docs" (medium confidence) — Approve
-> [Task] "Fix CSS on login page" (low confidence) — Reject
-> [Task] "Deploy to staging" (medium confidence) — Skip
-> [Knowledge] "Jane Smith — API gateway expert" (high confidence) — Approve
-> [Knowledge] "Phoenix project uses Redis caching" (medium confidence) — Approve
-> [JIRA Digest] "Feb 17 — 8 events" (high confidence) — Approve
-> Summary: 5 approved, 1 rejected, 1 skipped
-
-# 4. Promote — push approved items to forge plugins
-/slack-forge:promote
-> [Task] "Implement rate limiting" → tasks/task-012.md (Open, High)
-> [Task] "Update onboarding docs" → tasks/task-013.md (Open, Medium)
-> [Knowledge] "Jane Smith" → memory/people/jane-smith.md
-> [Knowledge] "Phoenix project" → memory/projects/phoenix-project.md
-> [JIRA Digest] "Feb 17" → marked promoted (informational only)
-> Summary: 5 items promoted
+forge harvest query --status approved
+# then run /slack-forge:promote
 ```
 
 ## Verification
 
-After installation, verify the plugin is working:
+After setup, verify the pipeline end-to-end:
 
-1. **Initialize slack-forge directory:**
-   ```
-   /slack-forge:init
-   ```
-   Expected: Creates `slack-forge/` directory with `config.json`
+```bash
+# 1. Confirm forge-lib is available
+python forge.py --help
 
-2. **Run a scan:**
-   ```
-   /slack-forge:scan
-   ```
-   Expected: Interactive scan creates harvest records in `slack-forge/`
+# 2. Initialize slack-forge
+# Run: /slack-forge:init
 
-3. **Review pending items:**
-   ```
-   /slack-forge:review
-   ```
-   Expected: Interactive review of pending harvest records
+# 3. Confirm config was written
+forge harvest config --get
 
-4. **Verify forge-lib integration:**
-   ```bash
-   python forge-lib/forge.py harvest query --directory .
-   ```
-   Expected: Returns JSON with `{"success": true, "data": {"harvests": [...]}}`
+# 4. Run a scan (requires Slack MCP)
+# Run: /slack-forge:scan
 
-## Dependencies
+# 5. Confirm transcript files were written
+ls slack-forge/transcripts/
 
-- **forge-lib** v2.0.0+ with harvest operations support
-- Python 3.9+
-- Claude AI Slack MCP tools (`slack_search_channels`, `slack_search_users`, `slack_read_channel`)
+# 6. Run capture to create harvest records
+# Run: /slack-forge:capture
 
-## Notes
+# 7. Confirm harvest records exist
+forge harvest query --status pending
 
-- Harvest numbers are sequential per type and permanent (001, 002, 003...)
-- Rejected and promoted harvests remain in slack-forge/ directory for audit trail
-- All schema validation handled by forge-lib
-- Safe to edit harvest files manually (forge-lib validates on read)
-- Index automatically rebuilds when files change
-- Config can be updated at any time by re-running `/slack-forge:init`
+# 8. Review and approve/reject
+# Run: /slack-forge:review
+```

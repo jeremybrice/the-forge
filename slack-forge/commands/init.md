@@ -32,6 +32,7 @@ Would you like to update your channel configuration? (yes/no)
 If user says no, show next steps and exit:
 ```
 - To scan channels: /slack-forge:scan
+- To capture harvests from transcripts: /slack-forge:capture
 - To review harvests: /slack-forge:review
 ```
 
@@ -142,6 +143,7 @@ Slack Forge configured:
 
 Next steps:
 - Scan channels: /slack-forge:scan
+- Capture harvests from local transcripts: /slack-forge:capture
 - CLI: forge harvest --help
 ```
 
