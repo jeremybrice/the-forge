@@ -95,7 +95,7 @@ Expected transcript outputs (as available):
 - `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot.md`
 
 Transcript requirements:
-- Include scan metadata block (`Scan Date`, `Timeframe`, `Generated`).
+- Write **YAML frontmatter** between `---` delimiters at the very top of the file with fields `scan_date` (YYYY-MM-DD), `timeframe` (24h / 72h / 1w / custom), and `generated` (ISO 8601 timestamp). Do NOT use markdown headings or `**bold**` text for this metadata — the sub-agents that read transcripts require YAML frontmatter. The format block below is the exact contract.
 - Include channel headers with IDs.
 - Include message author and source timestamp.
 

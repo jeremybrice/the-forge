@@ -74,6 +74,22 @@
   --status-teal: #1abc9c;
   --status-gray: #95a5a6;
   --status-yellow: #f39c12;
+
+  /* Slack Forge harvest type colors */
+  --sf-type-task: #3498db;
+  --sf-type-knowledge: #9b59b6;
+  --sf-type-jira: #e67e22;
+
+  /* Slack Forge status colors */
+  --sf-status-pending: #f39c12;
+  --sf-status-approved: #27ae60;
+  --sf-status-promoted: #3498db;
+  --sf-status-rejected: #e74c3c;
+
+  /* Slack Forge confidence colors */
+  --sf-confidence-high: #27ae60;
+  --sf-confidence-medium: #f39c12;
+  --sf-confidence-low: #e74c3c;
 }
 
 [data-theme="dark"] {
@@ -105,6 +121,18 @@
   --rf-cat-competitive: #f472b6;
   --rf-cat-user: #818cf8;
   --rf-cat-business: #38bdf8;
+
+  /* Slack Forge (dark) */
+  --sf-type-task: #60a5fa;
+  --sf-type-knowledge: #c084fc;
+  --sf-type-jira: #fb923c;
+  --sf-status-pending: #fbbf24;
+  --sf-status-approved: #34d399;
+  --sf-status-promoted: #60a5fa;
+  --sf-status-rejected: #f87171;
+  --sf-confidence-high: #34d399;
+  --sf-confidence-medium: #fbbf24;
+  --sf-confidence-low: #f87171;
 }
 
 /* ═══════════════════════════════════════════════════════════
