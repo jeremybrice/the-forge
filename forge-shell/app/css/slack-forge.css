@@ -1,0 +1,251 @@
+/* ═══════════════════════════════════════════════════════════
+   Slack Forge View Styles
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Main Grid Layout ── */
+.sf-layout {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr;
+  grid-template-columns: var(--plugin-sidebar-width) 1fr;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.sf-layout > .plugin-toolbar { grid-column: 1 / -1; }
+
+/* ── Sidebar ── */
+.sf-sidebar {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+/* ── Sidebar Header (with compact status badges) ── */
+.sf-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+}
+
+.sf-sidebar-header-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.sf-status-badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.sf-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sf-status-badge.pending  { background: var(--sf-status-pending); }
+.sf-status-badge.approved { background: var(--sf-status-approved); }
+.sf-status-badge.promoted { background: var(--sf-status-promoted); }
+.sf-status-badge.rejected { background: var(--sf-status-rejected); }
+
+/* ── Harvest / Transcript Lists ── */
+.sf-harvest-list,
+.sf-transcript-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.sf-empty-list {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Config Bar (sidebar footer) ── */
+.sf-config-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sf-config-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sf-config-item strong {
+  color: var(--text-secondary);
+}
+
+/* ── Transcript Timeframe Chip ── */
+.sf-transcript-timeframe {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* ── Detail Panel ── */
+.sf-detail-panel {
+  grid-row: 2;
+  grid-column: 2;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+/* ── Harvest Detail ── */
+.sf-harvest-detail,
+.sf-transcript-detail {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.sf-title-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sf-title-header h1 {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sf-transcript-title-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sf-transcript-title-header h1 {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ── Filter Panel (slide-out from right, overlays detail panel) ── */
+.sf-filter-panel {
+  position: absolute;
+  top: var(--toolbar-height);
+  right: 0;
+  bottom: 0;
+  width: 220px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  overflow-y: auto;
+}
+
+.sf-filter-panel.open {
+  transform: translateX(0);
+  box-shadow: var(--shadow-md);
+}
+
+.sf-filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.sf-filter-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.sf-filter-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.sf-filter-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.sf-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sf-filter-group .filter-btn { text-align: left; flex: none; }
+
+/* Per-status active colors within filter panel */
+.sf-filter-group .filter-btn.active[data-sf-filter-status="pending"]  { background: var(--sf-status-pending);  border-color: var(--sf-status-pending); }
+.sf-filter-group .filter-btn.active[data-sf-filter-status="approved"] { background: var(--sf-status-approved); border-color: var(--sf-status-approved); }
+.sf-filter-group .filter-btn.active[data-sf-filter-status="promoted"] { background: var(--sf-status-promoted); border-color: var(--sf-status-promoted); }
+.sf-filter-group .filter-btn.active[data-sf-filter-status="rejected"] { background: var(--sf-status-rejected); border-color: var(--sf-status-rejected); }
+
+/* ── Mobile sidebar toggle (hidden by default) ── */
+.sf-toolbar-toggle { display: none !important; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sf-layout { grid-template-columns: 1fr; }
+  .sf-sidebar { display: none; }
+  .sf-layout.sf-sidebar-open .sf-sidebar {
+    display: flex;
+    position: absolute;
+    top: var(--toolbar-height);
+    left: 0;
+    bottom: 0;
+    width: var(--plugin-sidebar-width);
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+  .sf-detail-panel { grid-column: 1; }
+  .sf-toolbar-toggle { display: inline-flex !important; }
+}
