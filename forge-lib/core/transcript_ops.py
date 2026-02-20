@@ -27,7 +27,7 @@ def _strip_url_tracking_params(text: str) -> str:
     Returns:
         Text with tracking params removed from Jira URLs
     """
-    pattern = r'(https://365retailmarkets\.atlassian\.net/browse/[A-Z]+-\d+)\?[^\s)]*'
+    pattern = r'(https://365retailmarkets\.atlassian\.net/browse/[A-Z]+-\d+)\?[^\s)|]*'
     return re.sub(pattern, r'\1', text)
 
 
@@ -152,6 +152,51 @@ def _normalize_jira_links(text: str) -> str:
     return re.sub(pattern, r'*\2 (\1)*', text)
 
 
-def clean_jira_transcript(text: str, source: Optional[str] = None) -> str:
-    """Apply all cleanup rules to a JIRA transcript. (Not yet implemented)"""
-    raise NotImplementedError("clean_jira_transcript is not yet implemented")
+def clean_jira_transcript(raw_text: str) -> str:
+    """Apply all 6 cleanup rules sequentially to JIRA transcript.
+
+    This is the main entry point for transcript cleanup. It applies the following
+    transformations in order:
+    1. Strip URL tracking parameters
+    2. Strip image URLs (gravatar, CDN)
+    3. Strip Slack user protocol links
+    4. Strip JIRA metadata lines
+    5. Clean HTML entities
+    6. Normalize Jira link markdown
+
+    If cleanup fails or produces invalid output (empty, larger than input, or
+    removes >90% of content), returns the original raw text to preserve data.
+
+    Args:
+        raw_text: Raw JIRA bot transcript text from Slack MCP
+
+    Returns:
+        Cleaned transcript text (40-60% smaller) or original text if cleanup fails
+    """
+    try:
+        # Apply all 6 rules in sequence
+        text = raw_text
+        text = _strip_url_tracking_params(text)
+        text = _strip_image_urls(text)
+        text = _strip_slack_user_protocol(text)
+        text = _strip_jira_metadata_lines(text)
+        text = _clean_html_entities(text)
+        text = _normalize_jira_links(text)
+
+        # Sanity checks - fall back to raw if cleanup failed
+        if len(text) == 0:
+            return raw_text
+
+        if len(text) > len(raw_text):
+            # Cleanup should reduce size, not increase it
+            return raw_text
+
+        if len(text) < len(raw_text) * 0.1:
+            # Cleanup removed >90% of content - too aggressive
+            return raw_text
+
+        return text
+
+    except Exception:
+        # If anything goes wrong, preserve original data
+        return raw_text

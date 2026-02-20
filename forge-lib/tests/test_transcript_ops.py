@@ -180,3 +180,62 @@ def test_normalize_jira_links_preserves_plain_urls():
     """Verify plain URLs and non-Jira links are unchanged"""
     input_text = "See https://example.com and VMS-123"
     assert _normalize_jira_links(input_text) == input_text
+
+
+def test_clean_jira_transcript_integration():
+    """Test all 6 rules applied in sequence"""
+    raw = """[2026-02-19 16:23 UTC] @jira-bot: *<slack://user?team=T07PAS6KY&id=U123|@Joshua Alexander> created a Review Subtask*
+*<https://365retailmarkets.atlassian.net/browse/VMS-14645?atlOrigin=abc123|VMS-14645 review for VMS-13063>*
+Status: *To Do*
+Type: *Review Subtask*
+Joshua Alexander
+https://secure.gravatar.com/avatar/83686969bb...
+Assignee: *Joshua Alexander*
+Medium
+https://product-integrations-cdn.atl-paas.net/jira-priority/medium.png
+Priority: *Medium*
+>>> Comment: 5 &gt; 3 &amp; useful"""
+
+    cleaned = clean_jira_transcript(raw)
+
+    # Verify all rules applied
+    assert "?atlOrigin" not in cleaned  # Rule 1
+    assert "gravatar.com" not in cleaned  # Rule 2
+    assert "product-integrations-cdn" not in cleaned  # Rule 2
+    assert "slack://user?" not in cleaned  # Rule 3
+    assert "@Joshua Alexander" in cleaned  # Rule 3 preserved display name
+    assert "Status: *To Do*" not in cleaned  # Rule 4
+    assert "Type: *Review Subtask*" not in cleaned  # Rule 4
+    assert "&gt;" not in cleaned  # Rule 5
+    assert "&amp;" not in cleaned  # Rule 5
+    assert ">>>" not in cleaned  # Rule 5
+    assert "5 > 3 & useful" in cleaned  # Rule 5 decoded
+    assert "<https://" not in cleaned  # Rule 6
+    assert "VMS-14645 review for VMS-13063 (https://365retailmarkets.atlassian.net/browse/VMS-14645)" in cleaned  # Rule 6
+
+    # Verify data preservation
+    assert "VMS-14645" in cleaned
+    assert "@Joshua Alexander created" in cleaned
+
+
+def test_clean_jira_transcript_error_handling_empty():
+    """Verify cleanup handles empty input gracefully"""
+    assert clean_jira_transcript("") == ""
+    assert clean_jira_transcript("   ") == "   "
+
+
+def test_clean_jira_transcript_error_handling_size_check():
+    """Verify cleanup doesn't return empty result for valid input"""
+    input_text = "[2026-02-19 10:00 UTC] @jira-bot: VMS-123 updated"
+    result = clean_jira_transcript(input_text)
+
+    # Should preserve valid content
+    assert len(result) > 0
+    assert "VMS-123" in result
+
+
+def test_clean_jira_transcript_preserves_non_jira_content():
+    """Verify cleanup doesn't break non-JIRA messages"""
+    input_text = "[2026-02-19 10:00 UTC] @alice: Regular message about work"
+    cleaned = clean_jira_transcript(input_text)
+    assert cleaned == input_text
