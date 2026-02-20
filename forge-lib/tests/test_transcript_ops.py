@@ -82,3 +82,50 @@ def test_strip_slack_user_protocol_preserves_plain_mentions():
     """Verify plain @mentions are unchanged"""
     input_text = "@Alice sent a message to @Bob"
     assert _strip_slack_user_protocol(input_text) == input_text
+
+
+def test_strip_jira_metadata_lines_basic():
+    """Verify metadata lines are removed from created events"""
+    input_text = """[2026-02-19 16:23 UTC] @jira-bot: *@Joshua Alexander created a Review Subtask*
+*VMS-14645 review for VMS-13063 (https://365retailmarkets.atlassian.net/browse/VMS-14645)*
+Status: *To Do*
+Type: *Review Subtask*
+Assignee: *Joshua Alexander*
+Priority: *Medium*"""
+
+    result = _strip_jira_metadata_lines(input_text)
+
+    # Should keep action lines
+    assert "@Joshua Alexander created" in result
+    assert "VMS-14645" in result
+
+    # Should remove metadata
+    assert "Status: *To Do*" not in result
+    assert "Type: *Review Subtask*" not in result
+    assert "Assignee: *Joshua Alexander*" not in result
+    assert "Priority: *Medium*" not in result
+
+
+def test_strip_jira_metadata_lines_priority_words():
+    """Verify bare priority words are removed"""
+    input_text = """VMS-123 updated
+Medium
+https://example.com"""
+
+    result = _strip_jira_metadata_lines(input_text)
+    assert "VMS-123" in result
+    assert "Medium" not in result or "Medium" in result.split('\n')[0]  # Allow if part of message
+
+
+def test_strip_jira_metadata_lines_names_between_metadata():
+    """Verify bare names between metadata lines are removed"""
+    input_text = """Status: *To Do*
+Joshua Alexander
+Assignee: *Joshua Alexander*"""
+
+    result = _strip_jira_metadata_lines(input_text)
+    assert "Status:" not in result
+    assert "Assignee:" not in result
+    # Bare name should be removed (it's between metadata)
+    lines = [line.strip() for line in result.split('\n') if line.strip()]
+    assert "Joshua Alexander" not in lines

@@ -69,8 +69,46 @@ def _strip_slack_user_protocol(text: str) -> str:
 
 
 def _strip_jira_metadata_lines(text: str) -> str:
-    """Strip JIRA metadata lines from transcript text. (Not yet implemented)"""
-    raise NotImplementedError("_strip_jira_metadata_lines is not yet implemented")
+    """Remove redundant JIRA metadata lines from created events.
+
+    Removes lines matching:
+    - Status: *...*
+    - Type: *...*
+    - Assignee: *...*
+    - Priority: *...*
+    - Bare priority words (Low, Medium, High, Critical, Blocker)
+    - Bare names appearing between metadata lines
+
+    These are redundant because the action line already contains the key information.
+
+    Args:
+        text: Input text potentially containing JIRA metadata lines
+
+    Returns:
+        Text with metadata lines removed
+    """
+    lines = text.split('\n')
+    filtered = []
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Skip metadata field lines
+        if re.match(r'^(Status|Type|Assignee|Priority):\s+\*.*\*$', stripped):
+            continue
+
+        # Skip bare priority words
+        if stripped in ['Low', 'Medium', 'High', 'Critical', 'Blocker']:
+            continue
+
+        # Skip lines that are just a person's name (between metadata)
+        # Heuristic: capitalized words, less than 50 chars
+        if re.match(r'^[A-Z][a-z]+(\s[A-Z][a-z]+)+$', stripped) and len(stripped) < 50:
+            continue
+
+        filtered.append(line)
+
+    return '\n'.join(filtered)
 
 
 def _clean_html_entities(text: str) -> str:
