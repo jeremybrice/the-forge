@@ -129,3 +129,29 @@ Assignee: *Joshua Alexander*"""
     # Bare name should be removed (it's between metadata)
     lines = [line.strip() for line in result.split('\n') if line.strip()]
     assert "Joshua Alexander" not in lines
+
+
+def test_clean_html_entities_basic():
+    """Verify HTML entities are decoded"""
+    input_text = "Result: 5 &gt; 3 &amp; 2 &lt; 10"
+    expected = "Result: 5 > 3 & 2 < 10"
+    assert _clean_html_entities(input_text) == expected
+
+
+def test_clean_html_entities_blockquote():
+    """Verify Slack blockquote markers are removed"""
+    input_text = ">>> This is a quote\nRegular text"
+    result = _clean_html_entities(input_text)
+    assert ">>>" not in result
+    assert "This is a quote" in result
+
+
+def test_clean_html_entities_combined():
+    """Verify both entity decoding and blockquote removal"""
+    input_text = ">>> Comment: VMS-123 &amp; VMS-456\nFollowup: 10 &gt; 5"
+    result = _clean_html_entities(input_text)
+    assert "&amp;" not in result
+    assert "&gt;" not in result
+    assert ">>>" not in result
+    assert "VMS-123 & VMS-456" in result
+    assert "10 > 5" in result

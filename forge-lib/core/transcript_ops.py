@@ -112,8 +112,27 @@ def _strip_jira_metadata_lines(text: str) -> str:
 
 
 def _clean_html_entities(text: str) -> str:
-    """Clean HTML entities from transcript text. (Not yet implemented)"""
-    raise NotImplementedError("_clean_html_entities is not yet implemented")
+    """Decode HTML entities and remove Slack formatting markers.
+
+    Converts:
+    - &amp; → &
+    - &gt; → >
+    - &lt; → <
+    - Removes >>> (Slack blockquote marker)
+
+    Args:
+        text: Input text potentially containing HTML entities
+
+    Returns:
+        Text with HTML entities decoded and blockquotes removed
+    """
+    # Decode HTML entities
+    text = html.unescape(text)
+
+    # Remove Slack blockquote markers
+    text = text.replace('>>>', '')
+
+    return text
 
 
 def _normalize_jira_links(text: str) -> str:
