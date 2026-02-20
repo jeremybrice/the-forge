@@ -155,3 +155,28 @@ def test_clean_html_entities_combined():
     assert ">>>" not in result
     assert "VMS-123 & VMS-456" in result
     assert "10 > 5" in result
+
+
+def test_normalize_jira_links_basic():
+    """Verify Slack-style links are normalized to markdown"""
+    input_text = "*<https://365retailmarkets.atlassian.net/browse/VMS-14572|VMS-14572 Some title>*"
+    expected = "*VMS-14572 Some title (https://365retailmarkets.atlassian.net/browse/VMS-14572)*"
+    assert _normalize_jira_links(input_text) == expected
+
+
+def test_normalize_jira_links_multiple():
+    """Verify multiple Jira links are normalized"""
+    input_text = """See *<https://365retailmarkets.atlassian.net/browse/VMS-123|VMS-123 First>* and
+*<https://365retailmarkets.atlassian.net/browse/VMS-456|VMS-456 Second>*"""
+
+    result = _normalize_jira_links(input_text)
+
+    assert "*VMS-123 First (https://365retailmarkets.atlassian.net/browse/VMS-123)*" in result
+    assert "*VMS-456 Second (https://365retailmarkets.atlassian.net/browse/VMS-456)*" in result
+    assert "<https://" not in result  # No Slack-style links remain
+
+
+def test_normalize_jira_links_preserves_plain_urls():
+    """Verify plain URLs and non-Jira links are unchanged"""
+    input_text = "See https://example.com and VMS-123"
+    assert _normalize_jira_links(input_text) == input_text

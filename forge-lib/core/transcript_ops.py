@@ -136,8 +136,20 @@ def _clean_html_entities(text: str) -> str:
 
 
 def _normalize_jira_links(text: str) -> str:
-    """Normalize JIRA links in transcript text. (Not yet implemented)"""
-    raise NotImplementedError("_normalize_jira_links is not yet implemented")
+    """Convert Slack-style Jira links to markdown format.
+
+    Example:
+        Input:  *<https://...atlassian.net/browse/VMS-123|VMS-123 Title>*
+        Output: *VMS-123 Title (https://...atlassian.net/browse/VMS-123)*
+
+    Args:
+        text: Input text potentially containing Slack-style Jira links
+
+    Returns:
+        Text with Jira links normalized to markdown format
+    """
+    pattern = r'\*<(https://365retailmarkets\.atlassian\.net/browse/[^|]+)\|([^>]+)>\*'
+    return re.sub(pattern, r'*\2 (\1)*', text)
 
 
 def clean_jira_transcript(text: str, source: Optional[str] = None) -> str:
