@@ -1149,7 +1149,7 @@ def create_parser():
         'transcript',
         help='Transcript cleanup operations'
     )
-    transcript_subparsers = transcript_parser.add_subparsers(dest='transcript_command')
+    transcript_subparsers = transcript_parser.add_subparsers(dest='transcript_command', required=True)
 
     # transcript clean
     clean_parser = transcript_subparsers.add_parser(
