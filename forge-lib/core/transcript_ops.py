@@ -52,8 +52,20 @@ def _strip_image_urls(text: str) -> str:
 
 
 def _strip_slack_user_protocol(text: str) -> str:
-    """Strip Slack user protocol strings from transcript text. (Not yet implemented)"""
-    raise NotImplementedError("_strip_slack_user_protocol is not yet implemented")
+    """Convert Slack user protocol links to plain @mentions.
+
+    Example:
+        Input:  <slack://user?team=T07PAS6KY&id=U07G34CNTH8|@Vasilij Orlov>
+        Output: @Vasilij Orlov
+
+    Args:
+        text: Input text potentially containing Slack user protocol links
+
+    Returns:
+        Text with user protocol links converted to plain @mentions
+    """
+    pattern = r'<slack://user\?[^|]+\|(@[^>]+)>'
+    return re.sub(pattern, r'\1', text)
 
 
 def _strip_jira_metadata_lines(text: str) -> str:

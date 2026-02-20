@@ -62,3 +62,23 @@ Also see: https://example.com/docs"""
     assert "365retailmarkets.atlassian.net" in result
     assert "example.com" in result
     assert "gravatar.com" not in result
+
+
+def test_strip_slack_user_protocol_basic():
+    """Verify Slack user protocol links are converted to plain @mentions"""
+    input_text = "<slack://user?team=T07PAS6KY&id=U07G34CNTH8|@Vasilij Orlov> created VMS-123"
+    expected = "@Vasilij Orlov created VMS-123"
+    assert _strip_slack_user_protocol(input_text) == expected
+
+
+def test_strip_slack_user_protocol_multiple():
+    """Verify multiple Slack user links are converted"""
+    input_text = """<slack://user?team=T07PAS6KY&id=U123|@Alice> mentioned <slack://user?team=T07PAS6KY&id=U456|@Bob> in VMS-789"""
+    expected = """@Alice mentioned @Bob in VMS-789"""
+    assert _strip_slack_user_protocol(input_text) == expected
+
+
+def test_strip_slack_user_protocol_preserves_plain_mentions():
+    """Verify plain @mentions are unchanged"""
+    input_text = "@Alice sent a message to @Bob"
+    assert _strip_slack_user_protocol(input_text) == input_text
