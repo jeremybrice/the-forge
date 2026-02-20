@@ -32,8 +32,23 @@ def _strip_url_tracking_params(text: str) -> str:
 
 
 def _strip_image_urls(text: str) -> str:
-    """Strip image URLs from transcript text. (Not yet implemented)"""
-    raise NotImplementedError("_strip_image_urls is not yet implemented")
+    """Remove lines containing gravatar or CDN image URLs.
+
+    These are Jira card rendering artifacts with no transcript value.
+
+    Args:
+        text: Input text potentially containing image URL lines
+
+    Returns:
+        Text with image URL lines removed
+    """
+    lines = text.split('\n')
+    filtered = [
+        line for line in lines
+        if not re.search(r'https://secure\.gravatar\.com/avatar/', line)
+        and not re.search(r'https://product-integrations-cdn\.atl-paas\.net/', line)
+    ]
+    return '\n'.join(filtered)
 
 
 def _strip_slack_user_protocol(text: str) -> str:

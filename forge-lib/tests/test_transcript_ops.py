@@ -30,3 +30,35 @@ def test_strip_url_tracking_params_multiple():
     assert "?atlOrigin" not in result
     assert "https://365retailmarkets.atlassian.net/browse/VMS-123" in result
     assert "https://365retailmarkets.atlassian.net/browse/VMS-456" in result
+
+
+def test_strip_image_urls_gravatar():
+    """Verify gravatar URLs are removed"""
+    input_text = """Some text here
+https://secure.gravatar.com/avatar/83686969bb...
+More important text"""
+    expected = """Some text here
+More important text"""
+    assert _strip_image_urls(input_text) == expected
+
+
+def test_strip_image_urls_cdn():
+    """Verify CDN image URLs are removed"""
+    input_text = """Priority: High
+https://product-integrations-cdn.atl-paas.net/jira-priority/medium.png
+Assignee: John"""
+    result = _strip_image_urls(input_text)
+    assert "product-integrations-cdn" not in result
+    assert "Priority: High" in result
+    assert "Assignee: John" in result
+
+
+def test_strip_image_urls_preserves_other_urls():
+    """Verify non-image URLs are preserved"""
+    input_text = """Check ticket: https://365retailmarkets.atlassian.net/browse/VMS-123
+https://secure.gravatar.com/avatar/abc123
+Also see: https://example.com/docs"""
+    result = _strip_image_urls(input_text)
+    assert "365retailmarkets.atlassian.net" in result
+    assert "example.com" in result
+    assert "gravatar.com" not in result
