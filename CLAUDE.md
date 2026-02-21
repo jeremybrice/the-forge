@@ -27,7 +27,7 @@ python forge.py --help
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
-| **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/` + `slack-forge/index.json` + `slack-forge/config.json` |
+| **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/harvests/` + `slack-forge/harvests/index.json` + `slack-forge/config.json` |
 
 ## Architecture
 
