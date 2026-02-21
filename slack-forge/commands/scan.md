@@ -125,6 +125,28 @@ Sub-agents extract provenance from this structure:
 
 If any source has no messages in window, include an explicit "No messages" section.
 
+**JIRA transcript cleanup:**
+
+For JIRA bot transcripts specifically, apply cleanup immediately after MCP retrieval to reduce token bloat:
+
+1. Write raw MCP output to temp file: `/tmp/raw-jira-transcript-{timestamp}.txt`
+2. Call cleanup utility:
+   ```bash
+   forge transcript clean --input /tmp/raw-jira-transcript-{timestamp}.txt --output /tmp/cleaned-jira-transcript-{timestamp}.txt --type jira
+   ```
+3. If cleanup succeeds and produces valid output, use cleaned transcript
+4. If cleanup fails or produces invalid output, fall back to raw transcript
+5. Delete temp files after transcript is written
+
+The cleanup should reduce JIRA transcript size by 40-60% by removing:
+- URL tracking parameters
+- Avatar and priority image URLs
+- Slack user protocol links
+- Redundant metadata lines
+- HTML entities
+
+Use the cleaned transcript content when writing to `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot.md`.
+
 ### 6. Present Scan Summary
 
 ```

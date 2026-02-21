@@ -630,6 +630,44 @@ def handle_harvest_config(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_transcript_clean(args):
+    """Clean a raw transcript by removing noise and formatting artifacts"""
+    from core.transcript_ops import clean_jira_transcript
+
+    # Read raw transcript
+    try:
+        with open(args.input, 'r', encoding='utf-8') as f:
+            raw_text = f.read()
+    except OSError as e:
+        print(f"Error reading input file: {e}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    # Apply cleanup
+    if args.type == 'jira':
+        cleaned_text = clean_jira_transcript(raw_text)
+    else:
+        print(f"Unsupported transcript type: {args.type}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    # Write cleaned transcript
+    try:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            f.write(cleaned_text)
+    except OSError as e:
+        print(f"Error writing output file: {e}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    # Report results
+    original_size = len(raw_text)
+    cleaned_size = len(cleaned_text)
+    reduction_pct = ((original_size - cleaned_size) / original_size) * 100 if original_size > 0 else 0
+
+    print(f"Transcript cleaned successfully")
+    print(f"Original size: {original_size} chars")
+    print(f"Cleaned size: {cleaned_size} chars")
+    print(f"Reduction: {reduction_pct:.1f}%")
+
+
 def handle_index_rebuild(args):
     """Rebuild index.json from markdown files"""
     try:
@@ -1105,6 +1143,36 @@ def create_parser():
     harvest_config_group.add_argument("--set-channels", dest="set_channels", help="Set channels JSON array")
     harvest_config_group.add_argument("--set-jira-channel", dest="set_jira_channel", help="Set JIRA bot channel ID")
     harvest_config.set_defaults(func=handle_harvest_config)
+
+    # ==================== TRANSCRIPT COMMANDS ====================
+    transcript_parser = subparsers.add_parser(
+        'transcript',
+        help='Transcript cleanup operations'
+    )
+    transcript_subparsers = transcript_parser.add_subparsers(dest='transcript_command', required=True)
+
+    # transcript clean
+    clean_parser = transcript_subparsers.add_parser(
+        'clean',
+        help='Clean raw transcript by removing noise and formatting artifacts'
+    )
+    clean_parser.add_argument(
+        '--input',
+        required=True,
+        help='Path to raw transcript file'
+    )
+    clean_parser.add_argument(
+        '--output',
+        required=True,
+        help='Path to write cleaned transcript'
+    )
+    clean_parser.add_argument(
+        '--type',
+        default='jira',
+        choices=['jira'],
+        help='Transcript type (currently only jira supported)'
+    )
+    clean_parser.set_defaults(func=handle_transcript_clean)
 
     # ==================== INDEX COMMANDS ====================
     index_parser = subparsers.add_parser("index", help="Index operations")

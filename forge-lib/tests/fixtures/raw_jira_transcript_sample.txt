@@ -1,0 +1,13 @@
+[2026-02-19 16:23 UTC] @jira-bot: *<slack://user?team=T07PAS6KY&id=U07G34CNTH8|@Joshua Alexander> created a Review Subtask*
+*<https://365retailmarkets.atlassian.net/browse/VMS-14645?atlOrigin=eyJpIjoiY2Y5OTAzMGNiODc3NGQ4NWFlNzkzOWJlM2VmZDdhZDYiLCJwIjoiamlyYS1zbGFjay1pbnQifQ&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel|VMS-14645 review for VMS-13063>*
+Status: *To Do*
+Type: *Review Subtask*
+Joshua Alexander
+https://secure.gravatar.com/avatar/83686969bb5a4ccf6ac0e5e3e47a1d2c?d=https%3A%2F%2Favatar-management.services.atlassian.com%2Fdefault%2F48
+Assignee: *Joshua Alexander*
+Medium
+https://product-integrations-cdn.atl-paas.net/jira-slack-integration/icons/priorities/medium.png
+Priority: *Medium*
+
+[2026-02-19 16:25 UTC] @jira-bot: >>> <slack://user?team=T07PAS6KY&id=U08H45DLMN2|@Vasilij Orlov> commented on *<https://365retailmarkets.atlassian.net/browse/VMS-14572?atlOrigin=eyJpIjoiY2Y5OTAzMGNiODc3NGQ4NWFlNzkzOWJlM2VmZDdhZDYiLCJwIjoiamlyYS1zbGFjay1pbnQifQ&focusedCommentId=1112170&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-1112170|VMS-14572 - API Gateway timeout issue>*:
+This looks related to VMS-13063. 5 &gt; 3 requests failing &amp; needs investigation.
