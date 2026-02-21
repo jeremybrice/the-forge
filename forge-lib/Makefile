@@ -1,6 +1,6 @@
 # Makefile for forge-lib development and testing
 
-.PHONY: help test test-unit test-integration test-coverage test-watch clean install lint format check
+.PHONY: help test test-unit test-integration test-coverage test-watch clean install link lint format check
 
 # Default target
 help:
@@ -12,6 +12,7 @@ help:
 	@echo "  make test-watch        - Run tests in watch mode"
 	@echo "  make clean             - Remove generated files"
 	@echo "  make install           - Install dependencies"
+	@echo "  make link              - Symlink forge CLI to /usr/local/bin"
 	@echo "  make lint              - Run linters (flake8, mypy)"
 	@echo "  make format            - Format code with black"
 	@echo "  make check             - Run all checks (test + lint)"
@@ -50,6 +51,13 @@ clean:
 # Install dependencies
 install:
 	pip3 install -r requirements.txt
+
+# Symlink forge CLI to ~/.local/bin so 'forge' is on PATH
+link:
+	@chmod +x bin/forge
+	@mkdir -p $(HOME)/.local/bin
+	@ln -sf "$(CURDIR)/bin/forge" $(HOME)/.local/bin/forge
+	@forge --version && echo "forge CLI linked successfully" || echo "link failed"
 
 # Install dev dependencies
 install-dev:

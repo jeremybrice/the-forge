@@ -89,13 +89,23 @@ Proceed? (yes/no)
 
 Use Slack MCP tools to retrieve messages for configured scope.
 
+**Before writing each transcript, resolve its filename via the CLI to avoid overwriting previous scan runs:**
+
+```bash
+forge transcript filename --scan-date {scan-date} --timeframe {timeframe} --type {type} --dir slack-forge/transcripts
+```
+
+Where `{type}` is one of: `public-channels`, `dms`, `jira-bot`.
+
+The command prints the next available filename (e.g. `2026-02-20-24h-public-channels-001.md`). Use this exact filename when writing the transcript.
+
 Expected transcript outputs (as available):
-- `slack-forge/transcripts/{scan-date}-{timeframe}-public-channels.md`
-- `slack-forge/transcripts/{scan-date}-{timeframe}-dms.md`
-- `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot.md`
+- `slack-forge/transcripts/{scan-date}-{timeframe}-public-channels-NNN.md`
+- `slack-forge/transcripts/{scan-date}-{timeframe}-dms-NNN.md`
+- `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot-NNN.md`
 
 Transcript requirements:
-- Write **YAML frontmatter** between `---` delimiters at the very top of the file with fields `scan_date` (YYYY-MM-DD), `timeframe` (24h / 72h / 1w / custom), and `generated` (ISO 8601 timestamp). Do NOT use markdown headings or `**bold**` text for this metadata — the sub-agents that read transcripts require YAML frontmatter. The format block below is the exact contract.
+- Write **YAML frontmatter** between `---` delimiters at the very top of the file with fields `scan_date` (YYYY-MM-DD), `timeframe` (24h / 72h / 1w / custom), `scan_run` (the NNN sequence number from the resolved filename, as an integer), and `generated` (ISO 8601 timestamp). Do NOT use markdown headings or `**bold**` text for this metadata — the sub-agents that read transcripts require YAML frontmatter. The format block below is the exact contract.
 - Include channel headers with IDs.
 - Include message author and source timestamp.
 
@@ -105,6 +115,7 @@ Transcript requirements:
 ---
 scan_date: 2026-02-17
 timeframe: 72h
+scan_run: 1
 generated: 2026-02-17T14:30:00Z
 ---
 
@@ -145,7 +156,7 @@ The cleanup should reduce JIRA transcript size by 40-60% by removing:
 - Redundant metadata lines
 - HTML entities
 
-Use the cleaned transcript content when writing to `slack-forge/transcripts/{scan-date}-{timeframe}-jira-bot.md`.
+Use the cleaned transcript content when writing to the JIRA transcript file (filename resolved via `forge transcript filename`).
 
 ### 6. Present Scan Summary
 
@@ -182,5 +193,5 @@ To harvest tasks/knowledge/JIRA digests from these transcripts, run /slack-forge
 
 - `scan` is MCP retrieval + transcript generation only.
 - Primary agent performs MCP calls; local-only subagents do not.
-- Re-running scan is safe and creates a new time-window snapshot.
+- Re-running scan is safe — sequential filenames (`-NNN`) prevent overwriting previous runs.
 - Review and promotion happen after capture (`/slack-forge:review`, `/slack-forge:promote`).

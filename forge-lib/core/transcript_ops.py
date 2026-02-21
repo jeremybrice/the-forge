@@ -9,7 +9,70 @@ by 40-60% while preserving all ticket data and events.
 
 import re
 import html
+from pathlib import Path
 from typing import Optional
+
+
+class TranscriptError(Exception):
+    """Raised when transcript operations fail."""
+    pass
+
+
+# Mapping from transcript type to filename segment
+TRANSCRIPT_TYPE_FILENAME_MAP = {
+    'public-channels': 'public-channels',
+    'dms': 'dms',
+    'jira-bot': 'jira-bot',
+}
+
+
+def generate_transcript_filename(directory: Path, scan_date: str, timeframe: str, transcript_type: str) -> str:
+    """Generate sequential filename for a transcript file.
+
+    Filenames follow the pattern: {scan_date}-{timeframe}-{type}-NNN.md
+    Examples:
+        2026-02-20-24h-public-channels-001.md
+        2026-02-20-72h-jira-bot-001.md
+
+    Args:
+        directory: Transcript directory (slack-forge/transcripts/)
+        scan_date: Date string in YYYY-MM-DD format
+        timeframe: Scan timeframe label (24h, 72h, 1w, custom)
+        transcript_type: One of 'public-channels', 'dms', 'jira-bot'
+
+    Returns:
+        Filename with .md extension
+
+    Raises:
+        TranscriptError: If transcript_type is invalid or filename generation fails
+    """
+    if transcript_type not in TRANSCRIPT_TYPE_FILENAME_MAP:
+        raise TranscriptError(
+            f"Invalid transcript_type: {transcript_type}. "
+            f"Must be one of {list(TRANSCRIPT_TYPE_FILENAME_MAP.keys())}"
+        )
+
+    type_segment = TRANSCRIPT_TYPE_FILENAME_MAP[transcript_type]
+
+    # Build regex to match existing files for this date+timeframe+type
+    # Pattern: {scan_date}-{timeframe}-{type_segment}-NNN.md
+    escaped_date = re.escape(scan_date)
+    escaped_timeframe = re.escape(timeframe)
+    escaped_segment = re.escape(type_segment)
+    pattern = re.compile(
+        r'^' + escaped_date + r'-' + escaped_timeframe + r'-' + escaped_segment + r'-(\d{3})\.md$'
+    )
+
+    max_num = 0
+    if directory.exists():
+        for entry in directory.iterdir():
+            match = pattern.match(entry.name)
+            if match:
+                num = int(match.group(1))
+                max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"{scan_date}-{timeframe}-{type_segment}-{next_num:03d}.md"
 
 
 def _strip_url_tracking_params(text: str) -> str:

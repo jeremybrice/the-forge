@@ -1,9 +1,12 @@
-"""Tests for transcript cleanup operations."""
+"""Tests for transcript cleanup and filename operations."""
 
 import pytest
 import re
+from pathlib import Path
 from core.transcript_ops import (
     clean_jira_transcript,
+    generate_transcript_filename,
+    TranscriptError,
     _strip_url_tracking_params,
     _strip_image_urls,
     _strip_slack_user_protocol,
@@ -239,3 +242,68 @@ def test_clean_jira_transcript_preserves_non_jira_content():
     input_text = "[2026-02-19 10:00 UTC] @alice: Regular message about work"
     cleaned = clean_jira_transcript(input_text)
     assert cleaned == input_text
+
+
+# ======================================================================
+# Transcript Filename Generation
+# ======================================================================
+
+def test_generate_transcript_filename_first_file(tmp_path):
+    """First transcript for a date+timeframe+type gets -001"""
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'public-channels')
+    assert result == '2026-02-20-24h-public-channels-001.md'
+
+
+def test_generate_transcript_filename_sequential(tmp_path):
+    """Second transcript increments to -002"""
+    (tmp_path / '2026-02-20-24h-public-channels-001.md').touch()
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'public-channels')
+    assert result == '2026-02-20-24h-public-channels-002.md'
+
+
+def test_generate_transcript_filename_gap_fills_max(tmp_path):
+    """Sequence number uses max existing, not count"""
+    (tmp_path / '2026-02-20-24h-public-channels-001.md').touch()
+    (tmp_path / '2026-02-20-24h-public-channels-003.md').touch()
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'public-channels')
+    assert result == '2026-02-20-24h-public-channels-004.md'
+
+
+def test_generate_transcript_filename_different_types_independent(tmp_path):
+    """Different transcript types have independent sequences"""
+    (tmp_path / '2026-02-20-24h-public-channels-001.md').touch()
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'jira-bot')
+    assert result == '2026-02-20-24h-jira-bot-001.md'
+
+
+def test_generate_transcript_filename_different_dates_independent(tmp_path):
+    """Different dates have independent sequences"""
+    (tmp_path / '2026-02-19-24h-public-channels-001.md').touch()
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'public-channels')
+    assert result == '2026-02-20-24h-public-channels-001.md'
+
+
+def test_generate_transcript_filename_different_timeframes_independent(tmp_path):
+    """Different timeframes have independent sequences"""
+    (tmp_path / '2026-02-20-24h-public-channels-001.md').touch()
+    result = generate_transcript_filename(tmp_path, '2026-02-20', '72h', 'public-channels')
+    assert result == '2026-02-20-72h-public-channels-001.md'
+
+
+def test_generate_transcript_filename_all_types(tmp_path):
+    """All three transcript types produce valid filenames"""
+    for ttype in ['public-channels', 'dms', 'jira-bot']:
+        result = generate_transcript_filename(tmp_path, '2026-02-20', '24h', ttype)
+        assert result == f'2026-02-20-24h-{ttype}-001.md'
+
+
+def test_generate_transcript_filename_invalid_type(tmp_path):
+    """Invalid transcript type raises TranscriptError"""
+    with pytest.raises(TranscriptError, match="Invalid transcript_type"):
+        generate_transcript_filename(tmp_path, '2026-02-20', '24h', 'invalid')
+
+
+def test_generate_transcript_filename_nonexistent_directory():
+    """Non-existent directory returns -001 (no existing files)"""
+    result = generate_transcript_filename(Path('/tmp/nonexistent-dir-abc123'), '2026-02-20', '24h', 'dms')
+    assert result == '2026-02-20-24h-dms-001.md'

@@ -653,12 +653,14 @@ window.SlackForgeView = (function () {
     const label     = fm.title || transcriptLabel(selectedTranscript.filename);
     const scanDate  = fm.scan_date  ? String(fm.scan_date) : '';
     const timeframe = fm.timeframe  || '';
+    const scanRun   = fm.scan_run   ? String(fm.scan_run) : '';
     const generated = fm.generated  ? String(fm.generated) : '';
     const rendered  = ForgeUtils.MD.render(selectedTranscript.body);
 
     const metaRows = [
       scanDate  ? `<span class="meta-label">Scan Date</span><span class="meta-value">${esc(scanDate)}</span>`  : '',
       timeframe ? `<span class="meta-label">Timeframe</span><span class="meta-value">${esc(timeframe)}</span>` : '',
+      scanRun   ? `<span class="meta-label">Scan Run</span><span class="meta-value">#${esc(scanRun)}</span>`   : '',
       generated ? `<span class="meta-label">Generated</span><span class="meta-value">${esc(generated)}</span>` : ''
     ].filter(Boolean).map(row => `<div style="display:contents;">${row}</div>`).join('');
 

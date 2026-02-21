@@ -668,6 +668,26 @@ def handle_transcript_clean(args):
     print(f"Reduction: {reduction_pct:.1f}%")
 
 
+def handle_transcript_filename(args):
+    """Generate a sequential transcript filename that avoids collisions"""
+    from pathlib import Path
+    from core.transcript_ops import generate_transcript_filename, TranscriptError
+
+    directory = Path(args.dir)
+
+    try:
+        filename = generate_transcript_filename(
+            directory=directory,
+            scan_date=args.scan_date,
+            timeframe=args.timeframe,
+            transcript_type=args.type,
+        )
+        print(filename)
+    except TranscriptError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+
 def handle_index_rebuild(args):
     """Rebuild index.json from markdown files"""
     try:
@@ -1173,6 +1193,34 @@ def create_parser():
         help='Transcript type (currently only jira supported)'
     )
     clean_parser.set_defaults(func=handle_transcript_clean)
+
+    # transcript filename
+    filename_parser = transcript_subparsers.add_parser(
+        'filename',
+        help='Generate a sequential transcript filename that avoids collisions'
+    )
+    filename_parser.add_argument(
+        '--scan-date',
+        required=True,
+        help='Scan date in YYYY-MM-DD format'
+    )
+    filename_parser.add_argument(
+        '--timeframe',
+        required=True,
+        help='Scan timeframe label (24h, 72h, 1w, custom)'
+    )
+    filename_parser.add_argument(
+        '--type',
+        required=True,
+        choices=['public-channels', 'dms', 'jira-bot'],
+        help='Transcript type'
+    )
+    filename_parser.add_argument(
+        '--dir',
+        default='slack-forge/transcripts',
+        help='Transcript directory (default: slack-forge/transcripts)'
+    )
+    filename_parser.set_defaults(func=handle_transcript_filename)
 
     # ==================== INDEX COMMANDS ====================
     index_parser = subparsers.add_parser("index", help="Index operations")

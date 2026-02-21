@@ -36,7 +36,7 @@ Which transcript window should I capture?
 Select (1-2):
 ```
 
-Resolve "most recent scan" by selecting transcript files with the most recent date prefix in their filename (`slack-forge/transcripts/YYYY-MM-DD-*`). If multiple dates are present, use the latest date only.
+Resolve "most recent scan" by selecting transcript files with the most recent date prefix in their filename (`slack-forge/transcripts/YYYY-MM-DD-*`). If multiple dates are present, use the latest date only. Within the same date and timeframe, select files with the highest `-NNN` sequence number — this represents the most recent scan run.
 
 Resolve transcript file set:
 - public channels transcript (optional)
