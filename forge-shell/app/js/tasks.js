@@ -696,7 +696,9 @@ window.TasksView = (function () {
     }
 
     // Group tasks by status
-    var statuses = ['active', 'waiting', 'someday', 'done'];
+    var statuses = hideDone
+      ? ['active', 'waiting', 'someday']
+      : ['active', 'waiting', 'someday', 'done'];
     var statusLabels = {
       'active': 'Active',
       'waiting': 'Waiting On',
@@ -1699,7 +1701,8 @@ window.TasksView = (function () {
     var withDates = [];
     var noDates = [];
 
-    tasks.forEach(function (t) {
+    var timelineTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    timelineTasks.forEach(function (t) {
       if (t.created && t.due_date && t.due_date !== 'null') withDates.push(t);
       else noDates.push(t);
     });
@@ -2046,7 +2049,8 @@ window.TasksView = (function () {
     var lanes = {};
     var unassigned = [];
 
-    tasks.forEach(function (t) {
+    var workloadTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    workloadTasks.forEach(function (t) {
       if (t.assignee && t.assignee !== 'null') {
         if (!lanes[t.assignee]) lanes[t.assignee] = [];
         lanes[t.assignee].push(t);
@@ -2057,7 +2061,7 @@ window.TasksView = (function () {
 
     var names = Object.keys(lanes).sort();
     var totalAssignees = names.length;
-    var totalAssigned = tasks.length - unassigned.length;
+    var totalAssigned = workloadTasks.length - unassigned.length;
 
     // Imbalance check
     var avgLoad = totalAssignees > 0 ? totalAssigned / totalAssignees : 0;
@@ -2071,7 +2075,7 @@ window.TasksView = (function () {
     // Summary bar
     html += '<div class="prod-wl-summary-bar">';
     html += '<span class="prod-wl-summary-stat"><i class="fa-solid fa-users"></i> ' + totalAssignees + ' assignee' + (totalAssignees !== 1 ? 's' : '') + '</span>';
-    html += '<span class="prod-wl-summary-stat"><i class="fa-solid fa-list-check"></i> ' + tasks.length + ' task' + (tasks.length !== 1 ? 's' : '') + '</span>';
+    html += '<span class="prod-wl-summary-stat"><i class="fa-solid fa-list-check"></i> ' + workloadTasks.length + ' task' + (workloadTasks.length !== 1 ? 's' : '') + '</span>';
     if (imbalanced) {
       html += '<span class="prod-wl-summary-warn"><i class="fa-solid fa-triangle-exclamation"></i> Workload imbalance detected</span>';
     }
@@ -2167,7 +2171,9 @@ window.TasksView = (function () {
     }
 
     var priorities = ['high', 'medium', 'low'];
-    var statuses = ['active', 'waiting', 'someday', 'done'];
+    var statuses = hideDone
+      ? ['active', 'waiting', 'someday']
+      : ['active', 'waiting', 'someday', 'done'];
     var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
@@ -2184,7 +2190,8 @@ window.TasksView = (function () {
     });
     statuses.forEach(function (s) { colTotals[s] = 0; });
 
-    tasks.forEach(function (t) {
+    var matrixTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    matrixTasks.forEach(function (t) {
       var p = (t.priority || 'medium').toLowerCase();
       var s = t.status || 'active';
       if (!matrix[p]) matrix[p] = {};
