@@ -48,6 +48,9 @@ window.TasksView = (function () {
   };
   let viewEditMode = false;
 
+  /* Hide-done toggle */
+  let hideDone = false;
+
   var VIEW_TABS = [
     { key: 'board', icon: 'fa-table-columns', label: 'Board' },
     { key: 'timeline', icon: 'fa-chart-gantt', label: 'Timeline' },
@@ -173,6 +176,7 @@ window.TasksView = (function () {
           '<span class="refresh-indicator" data-ref="refresh-indicator"></span>' +
           '<button class="btn-icon" data-action="view-edit-mode" title="Customize Views"><i class="fa-solid fa-pen"></i></button>' +
           '<button class="btn-icon" data-action="field-settings" title="Filter Fields"><i class="fa-solid fa-filter"></i></button>' +
+          '<button class="btn-icon" data-action="hide-done" title="Hide Done Tasks"><i class="fa-solid fa-circle-check"></i></button>' +
           '<button class="btn-icon" data-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
         '</div>' +
 
@@ -259,6 +263,7 @@ window.TasksView = (function () {
       else if (action === 'save-edit') editModal.save();
       else if (action === 'toggle-diff') editModal.toggleDiff();
       else if (action === 'view-edit-mode') toggleViewEditMode();
+      else if (action === 'hide-done') toggleHideDone();
     });
 
     /* View tab switching (with eye toggle interception) */
@@ -1042,6 +1047,18 @@ window.TasksView = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  function loadHideDone() {
+    try {
+      hideDone = localStorage.getItem('forge-shell-tasks-hide-done') === 'true';
+    } catch (e) { /* ignore */ }
+  }
+
+  function saveHideDone() {
+    try {
+      localStorage.setItem('forge-shell-tasks-hide-done', String(hideDone));
+    } catch (e) { /* ignore */ }
+  }
+
   function toggleViewEditMode() {
     viewEditMode = !viewEditMode;
 
@@ -1070,6 +1087,19 @@ window.TasksView = (function () {
     }
 
     syncViewTabs();
+  }
+
+  function toggleHideDone() {
+    hideDone = !hideDone;
+    saveHideDone();
+
+    var btn = $('[data-action="hide-done"]');
+    if (btn) {
+      btn.classList.toggle('rm-active', hideDone);
+      btn.title = hideDone ? 'Show Done Tasks' : 'Hide Done Tasks';
+    }
+
+    renderActiveView();
   }
 
   function toggleViewVisibility(viewName) {
@@ -2243,6 +2273,7 @@ window.TasksView = (function () {
       loadFieldVisibility();
       loadViewVisibility();
       loadActiveView();
+      loadHideDone();
       initialized = true;
     }
 
@@ -2254,6 +2285,13 @@ window.TasksView = (function () {
     /* Sync active view UI */
     syncActiveView();
     syncViewTabs();
+
+    /* Sync hide-done button state */
+    var hideDoneBtn = document.querySelector('#view-tasks [data-action="hide-done"]');
+    if (hideDoneBtn) {
+      hideDoneBtn.classList.toggle('rm-active', hideDone);
+      hideDoneBtn.title = hideDone ? 'Show Done Tasks' : 'Hide Done Tasks';
+    }
 
     if (!rootHandle) {
       renderTasks();
