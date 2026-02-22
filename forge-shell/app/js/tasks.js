@@ -172,7 +172,7 @@ window.TasksView = (function () {
           '<span class="spacer"></span>' +
           '<span class="refresh-indicator" data-ref="refresh-indicator"></span>' +
           '<button class="btn-icon" data-action="view-edit-mode" title="Customize Views"><i class="fa-solid fa-pen"></i></button>' +
-          '<button class="btn-icon" data-action="field-settings" title="Customize Fields"><i class="fa-solid fa-sliders"></i></button>' +
+          '<button class="btn-icon" data-action="field-settings" title="Filter Fields"><i class="fa-solid fa-filter"></i></button>' +
           '<button class="btn-icon" data-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
         '</div>' +
 
@@ -201,7 +201,7 @@ window.TasksView = (function () {
               '<button class="btn-icon" data-action="close-settings"><i class="fa-solid fa-xmark"></i></button>' +
             '</div>' +
             '<div class="task-settings-body" data-ref="settings-body">' +
-              '<p style="margin-bottom:16px;color:var(--text-muted);font-size:13px;">Customize which metadata fields appear on task cards.</p>' +
+              '<p style="margin-bottom:16px;color:var(--text-muted);font-size:13px;">Customize which metadata fields appear on task cards and hover tooltips.</p>' +
               '<div class="task-settings-fields" data-ref="settings-fields"></div>' +
             '</div>' +
             '<div class="task-settings-footer">' +
