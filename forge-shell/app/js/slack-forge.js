@@ -327,29 +327,36 @@ window.SlackForgeView = (function () {
       return;
     }
 
-    /* 2. Parse root-level .md files → harvests */
-    const mdFiles = entries.filter(e => e.kind === 'file' && e.name.endsWith('.md'));
-    for (const file of mdFiles) {
+    /* 2. Parse harvests/ subdirectory if present */
+    const hasHarvestDir = entries.some(e => e.kind === 'directory' && e.name === 'harvests');
+    if (hasHarvestDir) {
       try {
-        const content = await ForgeFS.readFile(rootHandle, 'slack-forge/' + file.name);
-        const parsed = ForgeUtils.parseFrontmatter(content);
-        if (parsed) {
-          harvests.push({
-            filename: file.name,
-            frontmatter: parsed.frontmatter || {},
-            body: parsed.body || ''
-          });
+        const harvestEntries = await ForgeFS.readDir(rootHandle, 'slack-forge/harvests');
+        const mdFiles = harvestEntries.filter(e => e.kind === 'file' && e.name.endsWith('.md'));
+        for (const file of mdFiles) {
+          try {
+            const content = await ForgeFS.readFile(rootHandle, 'slack-forge/harvests/' + file.name);
+            const parsed = ForgeUtils.parseFrontmatter(content);
+            if (parsed) {
+              harvests.push({
+                filename: file.name,
+                frontmatter: parsed.frontmatter || {},
+                body: parsed.body || ''
+              });
+            }
+          } catch (e) {
+            console.warn('[SlackForge] Failed to parse harvest:', file.name, e);
+          }
         }
+        harvests.sort((a, b) => {
+          const dA = String(a.frontmatter.scan_date || '');
+          const dB = String(b.frontmatter.scan_date || '');
+          return dB.localeCompare(dA);
+        });
       } catch (e) {
-        console.warn('[SlackForge] Failed to parse harvest:', file.name, e);
+        console.warn('[SlackForge] Failed to read harvests/:', e);
       }
     }
-
-    harvests.sort((a, b) => {
-      const dA = String(a.frontmatter.scan_date || '');
-      const dB = String(b.frontmatter.scan_date || '');
-      return dB.localeCompare(dA);
-    });
 
     /* 3. Parse transcripts/ subdirectory if present */
     const hasTxDir = entries.some(e => e.kind === 'directory' && e.name === 'transcripts');

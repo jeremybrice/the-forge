@@ -7,7 +7,7 @@ Slack channels using a review-first workflow.
 Harvest files use date-prefixed sequential naming:
   YYYY-MM-DD-{harvest_type}-NNN.md
 
-Harvests are markdown files with YAML frontmatter stored in the slack-forge/ directory.
+Harvests are markdown files with YAML frontmatter stored in the slack-forge/harvests/ directory.
 """
 
 import json
@@ -68,8 +68,8 @@ def _normalize_dates(data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_harvest_directory(directory: str = '.') -> Path:
-    """Get the slack-forge directory path.
+def _get_slack_forge_directory(directory: str = '.') -> Path:
+    """Get the slack-forge root directory path.
 
     Args:
         directory: Base directory containing slack-forge directory
@@ -78,6 +78,18 @@ def _get_harvest_directory(directory: str = '.') -> Path:
         Path to slack-forge directory
     """
     return Path(directory) / 'slack-forge'
+
+
+def _get_harvest_directory(directory: str = '.') -> Path:
+    """Get the slack-forge/harvests directory path.
+
+    Args:
+        directory: Base directory containing slack-forge directory
+
+    Returns:
+        Path to slack-forge/harvests directory
+    """
+    return _get_slack_forge_directory(directory) / 'harvests'
 
 
 def _generate_harvest_filename(directory: Path, harvest_type: str) -> str:
@@ -172,7 +184,7 @@ def _validate_status_transition(from_status: str, to_status: str) -> bool:
 def harvest_init(directory: str = '.') -> Dict[str, Any]:
     """Initialize slack-forge directory structure.
 
-    Creates the slack-forge/ directory if it doesn't exist.
+    Creates the slack-forge/ and slack-forge/harvests/ directories if they don't exist.
 
     Args:
         directory: Base directory for harvest storage
@@ -181,7 +193,7 @@ def harvest_init(directory: str = '.') -> Dict[str, Any]:
         Dictionary with initialization status:
         {
             'success': True,
-            'directory': '/path/to/slack-forge',
+            'directory': '/path/to/slack-forge/harvests',
             'created': True/False
         }
 
@@ -193,10 +205,11 @@ def harvest_init(directory: str = '.') -> Dict[str, Any]:
     created = False
     if not harvest_dir.exists():
         try:
+            # parents=True creates slack-forge/ and slack-forge/harvests/
             harvest_dir.mkdir(parents=True, exist_ok=True)
             created = True
         except OSError as e:
-            raise HarvestError(f"Failed to create slack-forge directory: {e}")
+            raise HarvestError(f"Failed to create slack-forge/harvests directory: {e}")
 
     return {
         'success': True,
@@ -472,7 +485,7 @@ def _scan_harvest_files(harvest_dir: Path) -> List[Dict[str, Any]]:
     Looks for files matching *-harvest-*.md and *-digest-*.md patterns.
 
     Args:
-        harvest_dir: Path to slack-forge directory
+        harvest_dir: Path to slack-forge/harvests directory
 
     Returns:
         List of harvest dictionaries
@@ -638,8 +651,8 @@ def get_config(directory: str = '.') -> Dict[str, Any]:
     Raises:
         HarvestError: If config file exists but can't be read or parsed
     """
-    harvest_dir = _get_harvest_directory(directory)
-    config_path = harvest_dir / 'config.json'
+    slack_forge_dir = _get_slack_forge_directory(directory)
+    config_path = slack_forge_dir / 'config.json'
 
     # Return default config if file doesn't exist
     if not config_path.exists():
@@ -681,19 +694,19 @@ def set_config(directory: str = '.', config_data: Optional[Dict[str, Any]] = Non
     if config_data is None:
         config_data = {}
 
-    harvest_dir = _get_harvest_directory(directory)
+    slack_forge_dir = _get_slack_forge_directory(directory)
 
     # Ensure directory exists
-    if not harvest_dir.exists():
+    if not slack_forge_dir.exists():
         raise HarvestError(
-            f"slack-forge directory does not exist: {harvest_dir}. "
+            f"slack-forge directory does not exist: {slack_forge_dir}. "
             "Run harvest_init first."
         )
 
     # Auto-set updated timestamp
     config_data['updated'] = date.today().strftime("%Y-%m-%d")
 
-    config_path = harvest_dir / 'config.json'
+    config_path = slack_forge_dir / 'config.json'
 
     try:
         with open(config_path, 'w', encoding='utf-8') as f:
