@@ -122,14 +122,23 @@ window.TasksView = (function () {
     var prio = (task.priority || 'medium').toLowerCase();
     var statusLabel = (task.status || 'active').charAt(0).toUpperCase() + (task.status || 'active').slice(1);
     var html = '<div class="prod-tooltip-title">' + esc(task.title) + '</div>';
-    html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>' + esc(prio.charAt(0).toUpperCase() + prio.slice(1)) + ' &middot; ' + esc(statusLabel) + '</div>';
-    if (task.assignee && task.assignee !== 'null') {
+
+    if (fieldVisibility.priority) {
+      html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>' + esc(prio.charAt(0).toUpperCase() + prio.slice(1)) + ' &middot; ' + esc(statusLabel) + '</div>';
+    }
+    if (fieldVisibility.assignee && task.assignee && task.assignee !== 'null') {
       html += '<div class="prod-tooltip-row"><i class="fa-regular fa-user" style="width:14px;text-align:center;"></i> ' + esc(task.assignee) + '</div>';
     }
-    if (task.due_date && task.due_date !== 'null') {
+    if (fieldVisibility.due_date && task.due_date && task.due_date !== 'null') {
       var today = new Date().toISOString().split('T')[0];
       var isOverdue = task.due_date < today && task.status !== 'done';
       html += '<div class="prod-tooltip-row' + (isOverdue ? ' prod-tooltip-overdue' : '') + '"><i class="fa-regular fa-calendar" style="width:14px;text-align:center;"></i> ' + esc(task.due_date) + (isOverdue ? ' (overdue)' : '') + '</div>';
+    }
+    if (fieldVisibility.tags && task.tags && task.tags.length > 0) {
+      html += '<div class="prod-tooltip-row"><i class="fa-solid fa-tag" style="width:14px;text-align:center;"></i> ' + esc(task.tags.join(', ')) + '</div>';
+    }
+    if (fieldVisibility.type && task.type && task.type !== 'task' && task.type !== 'null') {
+      html += '<div class="prod-tooltip-row"><i class="fa-solid fa-shapes" style="width:14px;text-align:center;"></i> ' + esc(task.type) + '</div>';
     }
     return html;
   }
