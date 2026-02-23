@@ -32,13 +32,13 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 
 | | Plugin | What it does |
 |---|--------|-------------|
-| :clipboard: | **[Product Forge](product-forge/README.md)** | Initiatives, epics, stories — full product hierarchy with auto-linked relationships |
-| :white_check_mark: | **[Tasks Forge](tasks-forge/README.md)** | Sequential task tracking with status workflow and priority management |
-| :brain: | **[Cognitive Forge](cognitive-forge/README.md)** | Multi-agent debates and explorations with 5 specialized reasoning agents |
-| :bulb: | **[Forge Memory](forge-memory/README.md)** | Organizational knowledge with taxonomy — products, modules, teams, integrations |
-| :bar_chart: | **[Report Forge](report-forge/README.md)** | 8 report types generated via multi-agent orchestration |
-| :robot: | **[Rovo Forge](rovo-forge/README.md)** | Interactive builders for Atlassian Rovo Jira & Confluence agents |
-| :speech_balloon: | **[Slack Forge](slack-forge/README.md)** | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
+| <img src="docs/images/clipboard-regular.svg" width="20" /> | **[Product Forge](product-forge/README.md)** | Initiatives, epics, stories — full product hierarchy with auto-linked relationships |
+| <img src="docs/images/square-check-regular.svg" width="20" /> | **[Tasks Forge](tasks-forge/README.md)** | Sequential task tracking with status workflow and priority management |
+| <img src="docs/images/brain-solid.svg" width="20" /> | **[Cognitive Forge](cognitive-forge/README.md)** | Multi-agent debates and explorations with 5 specialized reasoning agents |
+| <img src="docs/images/lightbulb-regular.svg" width="20" /> | **[Forge Memory](forge-memory/README.md)** | Organizational knowledge with taxonomy — products, modules, teams, integrations |
+| <img src="docs/images/chart-bar-regular.svg" width="20" /> | **[Report Forge](report-forge/README.md)** | 8 report types generated via multi-agent orchestration |
+| <img src="docs/images/robot-solid.svg" width="20" /> | **[Rovo Forge](rovo-forge/README.md)** | Interactive builders for Atlassian Rovo Jira & Confluence agents |
+| <img src="docs/images/slack-brands-solid.svg" width="20" /> | **[Slack Forge](slack-forge/README.md)** | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
 
 ---
 
