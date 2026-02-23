@@ -45,40 +45,52 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 ## Architecture
 
 ```mermaid
-graph TB
-    subgraph "Claude Code"
-        A["LLM Reasoning Layer"] --> B["Plugin Commands<br/>80–100 lines each"]
+graph LR
+    subgraph LLM ["Claude Code"]
+        A["LLM Reasoning"]
     end
 
-    subgraph "7 Plugins"
-        B --> C1["Product Forge"]
-        B --> C2["Tasks Forge"]
-        B --> C3["Cognitive Forge"]
-        B --> C4["Forge Memory"]
-        B --> C5["Report Forge"]
-        B --> C6["Rovo Forge"]
-        B --> C7["Slack Forge"]
+    subgraph Plugins ["7 Plugins"]
+        direction TB
+        C1["Product Forge"]
+        C2["Tasks Forge"]
+        C3["Cognitive Forge"]
+        C4["Forge Memory"]
+        C5["Report Forge"]
+        C6["Rovo Forge"]
+        C7["Slack Forge"]
     end
 
-    subgraph "forge-lib · Python CLI"
-        C1 & C2 & C3 & C4 & C5 & C6 & C7 --> D["forge.py"]
-        D --> E1["JSON Schema Validation"]
-        D --> E2["Jinja2 Templates"]
-        D --> E3["Index Operations"]
-        D --> E4["Relationship Linking"]
+    subgraph Lib ["forge-lib · Python CLI"]
+        direction TB
+        D["forge.py"]
+        E1["Schema Validation"]
+        E2["Jinja2 Templates"]
+        E3["Index Ops"]
+        E4["Relationship Linking"]
+        D --- E1
+        D --- E2
+        D --- E3
+        D --- E4
     end
 
-    subgraph "Data Layer"
-        E1 & E2 & E3 & E4 --> F1["cards/"]
-        E1 & E2 & E3 & E4 --> F2["tasks/"]
-        E1 & E2 & E3 & E4 --> F3["sessions/"]
-        E1 & E2 & E3 & E4 --> F4["memory/"]
-        E1 & E2 & E3 & E4 --> F5["reports/"]
+    subgraph Data ["Markdown + JSON"]
+        direction TB
+        F1["cards/"]
+        F2["tasks/"]
+        F3["sessions/"]
+        F4["memory/"]
+        F5["reports/"]
     end
 
-    subgraph "Forge Shell · Tauri Desktop App"
-        G["Vanilla JS + Rust"] --> F1 & F2 & F3 & F4 & F5
+    subgraph Shell ["Forge Shell"]
+        G["Tauri Desktop App"]
     end
+
+    A --> Plugins
+    Plugins --> D
+    Lib --> Data
+    G --> Data
 ```
 
 **Key design principle:** LLM handles conversation, Python handles data. Commands dropped from 250–300 lines (v1) to 80–100 lines (v2) by delegating all file operations, validation, and templating to `forge-lib`.
