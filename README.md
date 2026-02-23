@@ -45,52 +45,24 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 ## Architecture
 
 ```mermaid
-graph LR
-    subgraph LLM ["Claude Code"]
-        A["LLM Reasoning"]
+graph TD
+    subgraph CC ["Claude Code"]
+        A["LLM Reasoning Layer"]
     end
 
-    subgraph Plugins ["7 Plugins"]
-        direction TB
-        C1["Product Forge"]
-        C2["Tasks Forge"]
-        C3["Cognitive Forge"]
-        C4["Forge Memory"]
-        C5["Report Forge"]
-        C6["Rovo Forge"]
-        C7["Slack Forge"]
+    A --> B["Plugin Commands · 80–100 lines each"]
+
+    B --> C1["Product Forge"] & C2["Tasks Forge"] & C3["Cognitive Forge"] & C4["Forge Memory"] & C5["Report Forge"] & C6["Rovo Forge"] & C7["Slack Forge"]
+
+    C1 & C2 & C3 & C4 & C5 & C6 & C7 --> D
+
+    subgraph FL ["forge-lib · Python CLI"]
+        D["forge.py"] --> E1["Validation"] & E2["Templates"] & E3["Indexing"] & E4["Relationships"]
     end
 
-    subgraph Lib ["forge-lib · Python CLI"]
-        direction TB
-        D["forge.py"]
-        E1["Schema Validation"]
-        E2["Jinja2 Templates"]
-        E3["Index Ops"]
-        E4["Relationship Linking"]
-        D --- E1
-        D --- E2
-        D --- E3
-        D --- E4
-    end
+    FL --> F["cards/ · tasks/ · sessions/ · memory/ · reports/"]
 
-    subgraph Data ["Markdown + JSON"]
-        direction TB
-        F1["cards/"]
-        F2["tasks/"]
-        F3["sessions/"]
-        F4["memory/"]
-        F5["reports/"]
-    end
-
-    subgraph Shell ["Forge Shell"]
-        G["Tauri Desktop App"]
-    end
-
-    A --> Plugins
-    Plugins --> D
-    Lib --> Data
-    G --> Data
+    G["Forge Shell · Tauri Desktop App"] -.->|reads| F
 ```
 
 **Key design principle:** LLM handles conversation, Python handles data. Commands dropped from 250–300 lines (v1) to 80–100 lines (v2) by delegating all file operations, validation, and templating to `forge-lib`.
