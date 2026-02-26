@@ -587,3 +587,129 @@ def query_knowledge(
         return index_ops.query_index(str(memory_dir), filters=filters)
     except Exception:
         return []
+
+
+# =============================================================================
+# Decay Engine
+# =============================================================================
+
+def derive_lifecycle_status(importance: int) -> str:
+    """Derive lifecycle status from importance score.
+
+    Thresholds:
+        >= 40: trusted
+        10-39: probationary
+        < 10:  sunset
+
+    Args:
+        importance: Current importance score (0-100)
+
+    Returns:
+        Lifecycle status string: "trusted", "probationary", or "sunset"
+    """
+    if importance >= 40:
+        return "trusted"
+    elif importance >= 10:
+        return "probationary"
+    else:
+        return "sunset"
+
+
+def compute_decay(importance: int, last_recalled) -> int:
+    """Compute decayed importance score based on inactivity period.
+
+    Stepped decay thresholds (cumulative penalty):
+        0-30 days:    0 (grace period)
+        31-60 days:  -10
+        61-90 days:  -25
+        91-180 days: -45
+        180+ days:   -70
+
+    Args:
+        importance: Current importance score (0-100)
+        last_recalled: Date of last recall (date object or ISO format string)
+
+    Returns:
+        Integer importance score floored at 0.
+    """
+    if isinstance(last_recalled, str):
+        last_recalled = date.fromisoformat(last_recalled)
+
+    days_inactive = (date.today() - last_recalled).days
+    decay = 0
+
+    if days_inactive > 180:
+        decay = 70
+    elif days_inactive > 90:
+        decay = 45
+    elif days_inactive > 60:
+        decay = 25
+    elif days_inactive > 30:
+        decay = 10
+
+    return max(0, importance - decay)
+
+
+def run_decay(directory: str = ".") -> Dict[str, Any]:
+    """Run decay evaluation across all memory knowledge entries.
+
+    Scans memory/people/, memory/projects/, memory/glossary/ for .md files.
+    Computes new importance based on last_recalled date.
+    Updates frontmatter in place if score changed.
+
+    Args:
+        directory: Base directory containing the memory folder
+
+    Returns:
+        Summary report dict with keys:
+            entries_scanned: Total .md files examined
+            entries_decayed: Number of files whose importance changed
+            transitions: List of lifecycle status changes
+    """
+    knowledge_dirs = ["people", "projects", "glossary"]
+    base_path = Path(directory)
+    entries_scanned = 0
+    entries_decayed = 0
+    transitions = []
+
+    for subdir in knowledge_dirs:
+        dir_path = base_path / "memory" / subdir
+        if not dir_path.exists():
+            continue
+        for md_file in dir_path.glob("*.md"):
+            entries_scanned += 1
+            content = md_file.read_text()
+            metadata, body = frontmatter.parse(content)
+
+            importance = metadata.get("importance", 45)
+            last_recalled_str = metadata.get(
+                "last_recalled",
+                metadata.get("created", date.today().isoformat())
+            )
+            old_status = metadata.get("lifecycle_status", "trusted")
+
+            new_score = compute_decay(importance, last_recalled_str)
+            new_status = derive_lifecycle_status(new_score)
+
+            if new_score != importance or new_status != old_status:
+                entries_decayed += 1
+                metadata["importance"] = new_score
+                metadata["lifecycle_status"] = new_status
+                metadata["updated"] = date.today().isoformat()
+                updated_content = frontmatter.dumps(metadata, body)
+                md_file.write_text(updated_content)
+
+                if old_status != new_status:
+                    transitions.append({
+                        "file": str(md_file.relative_to(base_path)),
+                        "name": metadata.get("name", metadata.get("term", "")),
+                        "from": old_status,
+                        "to": new_status,
+                        "score": new_score
+                    })
+
+    return {
+        "entries_scanned": entries_scanned,
+        "entries_decayed": entries_decayed,
+        "transitions": transitions
+    }
