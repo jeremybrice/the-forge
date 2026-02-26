@@ -4,6 +4,11 @@ type: person
 role: "{{ role }}"
 team: {{ team if team else 'null' }}
 context: {{ ('"' ~ context ~ '"') if context else 'null' }}
+importance: {{ importance | default(45) }}
+lifecycle_status: {{ lifecycle_status | default('trusted') }}
+source: {{ source | default('frontmatter') }}
+last_recalled: {{ last_recalled | default(created) }}
+recall_count: {{ recall_count | default(0) }}
 created: {{ created }}
 updated: {{ updated }}
 ---

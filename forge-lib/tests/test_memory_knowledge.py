@@ -148,3 +148,84 @@ class TestLifecycleFields:
         }
         with pytest.raises(MemoryError):
             create_knowledge_entry("person", data, str(temp_dir))
+
+
+class TestLifecycleRendering:
+    """Tests for lifecycle fields in rendered markdown."""
+
+    def test_person_renders_lifecycle_in_frontmatter(self, temp_dir):
+        """Person entry includes lifecycle fields in YAML frontmatter."""
+        from core.memory_ops import create_knowledge_entry, init_memory
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {
+            "name": "Jane Smith",
+            "role": "Engineer",
+            "importance": 70,
+            "source": "manual",
+        }
+        result = create_knowledge_entry("person", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        content = filepath.read_text()
+        metadata, _ = fm.parse(content)
+        assert metadata["importance"] == 70
+        assert metadata["source"] == "manual"
+        assert metadata["lifecycle_status"] == "trusted"
+        assert metadata["recall_count"] == 0
+        assert "last_recalled" in metadata
+
+    def test_person_renders_lifecycle_defaults(self, temp_dir):
+        """Person entry renders correct defaults when lifecycle fields omitted."""
+        from core.memory_ops import create_knowledge_entry, init_memory
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Bob Default", "role": "Tester"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        content = filepath.read_text()
+        metadata, _ = fm.parse(content)
+        assert metadata["importance"] == 45
+        assert metadata["source"] == "frontmatter"
+        assert metadata["lifecycle_status"] == "trusted"
+        assert metadata["recall_count"] == 0
+        assert metadata["last_recalled"] == metadata["created"]
+
+    def test_project_renders_lifecycle_in_frontmatter(self, temp_dir):
+        """Project entry includes lifecycle fields in YAML frontmatter."""
+        from core.memory_ops import create_knowledge_entry, init_memory
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {
+            "name": "Test Project",
+            "description": "A test project.",
+            "status": "active",
+            "people": [],
+            "importance": 80,
+            "source": "manual",
+        }
+        result = create_knowledge_entry("project", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        content = filepath.read_text()
+        metadata, _ = fm.parse(content)
+        assert metadata["importance"] == 80
+        assert metadata["source"] == "manual"
+        assert metadata["lifecycle_status"] == "trusted"
+        assert metadata["recall_count"] == 0
+
+    def test_glossary_renders_lifecycle_in_frontmatter(self, temp_dir):
+        """Glossary entry includes lifecycle fields in YAML frontmatter."""
+        from core.memory_ops import create_knowledge_entry, init_memory
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {
+            "term": "TDD",
+            "definition": "Test Driven Development",
+            "importance": 60,
+        }
+        result = create_knowledge_entry("glossary", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        content = filepath.read_text()
+        metadata, _ = fm.parse(content)
+        assert metadata["importance"] == 60
+        assert metadata["lifecycle_status"] == "trusted"
+        assert metadata["recall_count"] == 0
