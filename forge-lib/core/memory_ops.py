@@ -708,6 +708,8 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
                         "score": new_score
                     })
 
+    update_telemetry_snapshot(directory)
+
     return {
         "entries_scanned": entries_scanned,
         "entries_decayed": entries_decayed,
@@ -1041,3 +1043,92 @@ def triage_delete(filepath: str, directory: str = ".") -> Dict[str, Any]:
     full_path.unlink()
 
     return {"action": "deleted", "entry": name}
+
+
+# =============================================================================
+# Telemetry Collection
+# =============================================================================
+
+def _load_telemetry(directory: str) -> Dict[str, Any]:
+    """Load telemetry.json, creating if needed."""
+    path = Path(directory) / "memory" / "telemetry.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    return {
+        "last_decay_run": None,
+        "total_entries": 0,
+        "by_status": {"trusted": 0, "probationary": 0, "sunset": 0},
+        "by_source": {"manual": 0, "frontmatter": 0, "auto-matched": 0, "threshold-promoted": 0},
+        "pending_count": 0,
+        "triage_history": [],
+        "promotions": {"total": 0, "avg_days_to_promote": 0},
+        "archives": {"total": 0, "avg_lifespan_days": 0, "by_source": {}}
+    }
+
+
+def _save_telemetry(directory: str, telemetry: Dict[str, Any]) -> None:
+    """Save telemetry.json."""
+    path = Path(directory) / "memory" / "telemetry.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(telemetry, indent=2))
+
+
+def update_telemetry_snapshot(directory: str) -> None:
+    """Update telemetry with current state of all entries."""
+    base_path = Path(directory)
+    telemetry = _load_telemetry(directory)
+
+    by_status = {"trusted": 0, "probationary": 0, "sunset": 0}
+    by_source = {"manual": 0, "frontmatter": 0, "auto-matched": 0, "threshold-promoted": 0}
+    total = 0
+
+    for subdir in ["people", "projects", "glossary"]:
+        dir_path = base_path / "memory" / subdir
+        if not dir_path.exists():
+            continue
+        for md_file in dir_path.glob("*.md"):
+            content = md_file.read_text()
+            metadata, _ = frontmatter.parse(content)
+            if metadata.get("status") == "archived":
+                continue
+            total += 1
+            status = metadata.get("lifecycle_status", "trusted")
+            source = metadata.get("source", "frontmatter")
+            by_status[status] = by_status.get(status, 0) + 1
+            by_source[source] = by_source.get(source, 0) + 1
+
+    telemetry["total_entries"] = total
+    telemetry["by_status"] = by_status
+    telemetry["by_source"] = by_source
+    telemetry["last_decay_run"] = date.today().isoformat()
+
+    pending = _load_pending(directory)
+    telemetry["pending_count"] = len(pending.get("entities", {}))
+
+    _save_telemetry(directory, telemetry)
+
+
+def record_triage_action(action: str, directory: str) -> None:
+    """Record a triage action to telemetry history."""
+    telemetry = _load_telemetry(directory)
+
+    today = date.today().isoformat()
+    history = telemetry.get("triage_history", [])
+
+    # Find or create today's entry
+    today_entry = None
+    for entry in history:
+        if entry.get("date") == today:
+            today_entry = entry
+            break
+
+    if not today_entry:
+        today_entry = {"date": today, "reviewed": 0, "kept": 0, "merged": 0, "archived": 0, "deleted": 0}
+        history.append(today_entry)
+
+    today_entry["reviewed"] += 1
+    if action in today_entry:
+        today_entry[action] += 1
+
+    telemetry["triage_history"] = history[-30:]  # Keep last 30 days
+    _save_telemetry(directory, telemetry)
