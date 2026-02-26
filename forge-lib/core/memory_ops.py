@@ -715,6 +715,138 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
     }
 
 
+# =============================================================================
+# Harvesting Pipeline
+# =============================================================================
+
+def _load_pending(directory: str) -> Dict[str, Any]:
+    """Load pending.json, creating if needed."""
+    pending_path = Path(directory) / "memory" / "pending.json"
+    if pending_path.exists():
+        return json.loads(pending_path.read_text())
+    return {"entities": {}}
+
+
+def _save_pending(directory: str, pending: Dict[str, Any]) -> None:
+    """Save pending.json."""
+    pending_path = Path(directory) / "memory" / "pending.json"
+    pending_path.parent.mkdir(parents=True, exist_ok=True)
+    pending_path.write_text(json.dumps(pending, indent=2))
+
+
+def _fuzzy_match_entry(entity_name: str, directory: str) -> Optional[Dict[str, Any]]:
+    """Fuzzy match entity_name against existing knowledge entries.
+
+    Returns dict with 'filepath' and 'metadata' if match found, None otherwise.
+    Case-insensitive exact match on name/term fields.
+    """
+    base_path = Path(directory)
+    name_lower = entity_name.lower().strip()
+
+    for subdir in ["people", "projects", "glossary"]:
+        dir_path = base_path / "memory" / subdir
+        if not dir_path.exists():
+            continue
+        for md_file in dir_path.glob("*.md"):
+            content = md_file.read_text()
+            metadata, body = frontmatter.parse(content)
+            entry_name = metadata.get("name", metadata.get("term", "")).lower().strip()
+            if entry_name == name_lower:
+                rel_path = str(md_file.relative_to(base_path))
+                return {"filepath": rel_path, "metadata": metadata}
+
+    return None
+
+
+def harvest_signal(
+    entity_name: str,
+    source_plugin: str,
+    entity_type: str,
+    context: str,
+    directory: str = "."
+) -> Dict[str, Any]:
+    """Process a memory signal from a plugin.
+
+    1. Fuzzy-match against existing entries -> reinforce (boost)
+    2. No match -> track in pending.json
+    3. If pending threshold crossed (3 mentions, 2+ plugins) -> auto-promote
+
+    Returns dict with action: 'reinforced', 'tracked', or 'promoted'
+    """
+    # Try instant track: reinforce existing entry
+    match = _fuzzy_match_entry(entity_name, directory)
+    if match:
+        boost_result = boost_entry(match["filepath"], directory)
+        return {
+            "action": "reinforced",
+            "filepath": match["filepath"],
+            "boosted": boost_result.get("boosted", False),
+            "score": boost_result.get("score")
+        }
+
+    # Threshold track: add to pending
+    pending = _load_pending(directory)
+    slug = _generate_slug(entity_name)
+
+    if slug not in pending["entities"]:
+        pending["entities"][slug] = {
+            "name": entity_name,
+            "entity_type": entity_type,
+            "mentions": 0,
+            "first_seen": date.today().isoformat(),
+            "last_seen": date.today().isoformat(),
+            "sources": [],
+            "context_samples": []
+        }
+
+    entry = pending["entities"][slug]
+    entry["mentions"] += 1
+    entry["last_seen"] = date.today().isoformat()
+    if source_plugin not in entry["sources"]:
+        entry["sources"].append(source_plugin)
+    if len(entry["context_samples"]) < 5:
+        entry["context_samples"].append(context)
+
+    # Check promotion threshold: 3+ mentions from 2+ plugins
+    if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+        # Promote to real entry
+        knowledge_data = {"importance": 15, "source": "threshold-promoted"}
+
+        if entity_type == "person":
+            knowledge_data["name"] = entity_name
+            knowledge_data["role"] = "Unknown"
+            knowledge_data["context"] = "; ".join(entry["context_samples"][:3])
+        elif entity_type == "project":
+            knowledge_data["name"] = entity_name
+            knowledge_data["description"] = "; ".join(entry["context_samples"][:3])
+        elif entity_type == "glossary":
+            knowledge_data["term"] = entity_name
+            knowledge_data["definition"] = "; ".join(entry["context_samples"][:3])
+        else:
+            knowledge_data["name"] = entity_name
+            knowledge_data["role"] = "Unknown"
+            entity_type = "person"
+
+        create_knowledge_entry(entity_type, knowledge_data, directory)
+        del pending["entities"][slug]
+        _save_pending(directory, pending)
+
+        return {
+            "action": "promoted",
+            "entity": entity_name,
+            "starting_score": 15,
+            "type": entity_type
+        }
+
+    _save_pending(directory, pending)
+    return {
+        "action": "tracked",
+        "entity": entity_name,
+        "mentions": entry["mentions"],
+        "sources": entry["sources"]
+    }
+
+
 def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> Dict[str, Any]:
     """Boost a memory entry's importance score on recall.
 
