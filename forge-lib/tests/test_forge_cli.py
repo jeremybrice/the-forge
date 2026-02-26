@@ -55,3 +55,42 @@ def test_task_create_prefers_data_title_when_provided(temp_dir):
     assert payload["success"] is True
     assert payload["data"]["title"] == "JSON Title"
     assert payload["data"]["filename"] == "task-001.md"
+
+
+class TestMemoryDecayCLI:
+    """Tests for memory decay CLI commands."""
+
+    def test_decay_command_exists(self):
+        """forge memory decay should be a valid command."""
+        result = _run_forge_cmd(["memory", "decay", "--help"])
+        assert result.returncode == 0
+
+    def test_harvest_command_exists(self):
+        """forge memory harvest should be a valid command."""
+        result = _run_forge_cmd(["memory", "harvest", "--help"])
+        assert result.returncode == 0
+
+    def test_triage_report_command_exists(self):
+        """forge memory triage-report should be a valid command."""
+        result = _run_forge_cmd(["memory", "triage-report", "--help"])
+        assert result.returncode == 0
+
+    def test_promote_command_exists(self):
+        """forge memory promote should be a valid command."""
+        result = _run_forge_cmd(["memory", "promote", "--help"])
+        assert result.returncode == 0
+
+    def test_triage_keep_command_exists(self):
+        """forge memory triage-keep should be a valid command."""
+        result = _run_forge_cmd(["memory", "triage-keep", "--help"])
+        assert result.returncode == 0
+
+    def test_triage_archive_command_exists(self):
+        """forge memory triage-archive should be a valid command."""
+        result = _run_forge_cmd(["memory", "triage-archive", "--help"])
+        assert result.returncode == 0
+
+    def test_triage_delete_command_exists(self):
+        """forge memory triage-delete should be a valid command."""
+        result = _run_forge_cmd(["memory", "triage-delete", "--help"])
+        assert result.returncode == 0

@@ -335,6 +335,86 @@ def handle_memory_query_knowledge(args):
         sys.exit(EXIT_ERROR)
 
 
+def handle_memory_decay(args):
+    """Handle memory decay command."""
+    try:
+        result = memory_ops.run_decay(directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_harvest(args):
+    """Handle memory harvest command."""
+    try:
+        result = memory_ops.harvest_signal(
+            entity_name=args.entity,
+            source_plugin=args.source,
+            entity_type=args.type,
+            context=args.context or "",
+            directory=args.directory
+        )
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_triage_report(args):
+    """Handle memory triage-report command."""
+    try:
+        result = memory_ops.triage_report(directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_promote(args):
+    """Handle memory promote command."""
+    try:
+        pending = memory_ops._load_pending(args.directory)
+        promotable = []
+        for slug, entry in pending["entities"].items():
+            if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+                promotable.append({"slug": slug, **entry})
+        output_json({"promotable": promotable, "count": len(promotable)}, success=True)
+    except Exception as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_triage_keep(args):
+    """Handle memory triage-keep command."""
+    try:
+        result = memory_ops.triage_keep(filepath=args.filepath, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_triage_archive(args):
+    """Handle memory triage-archive command."""
+    try:
+        result = memory_ops.triage_archive(filepath=args.filepath, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_memory_triage_delete(args):
+    """Handle memory triage-delete command."""
+    try:
+        result = memory_ops.triage_delete(filepath=args.filepath, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
 def handle_session_init(args):
     """Initialize sessions directory structure"""
     try:
@@ -1016,6 +1096,49 @@ def create_parser():
     mem_query_knowledge.add_argument('--type', choices=['person', 'project', 'glossary'], help='Filter by type')
     mem_query_knowledge.add_argument('--directory', default='.', help='Base directory')
     mem_query_knowledge.set_defaults(func=handle_memory_query_knowledge)
+
+    # memory decay
+    decay_parser = memory_subparsers.add_parser("decay", help="Run decay evaluation across all memory entries")
+    decay_parser.add_argument("--directory", default=".", help="Base directory")
+    decay_parser.set_defaults(func=handle_memory_decay)
+
+    # memory harvest
+    harvest_parser = memory_subparsers.add_parser("harvest", help="Process a memory signal from a plugin")
+    harvest_parser.add_argument("--entity", required=True, help="Entity name")
+    harvest_parser.add_argument("--source", required=True, help="Source plugin name")
+    harvest_parser.add_argument("--type", required=True, choices=["person", "project", "glossary"], help="Entity type")
+    harvest_parser.add_argument("--context", default="", help="Context description")
+    harvest_parser.add_argument("--directory", default=".", help="Base directory")
+    harvest_parser.set_defaults(func=handle_memory_harvest)
+
+    # memory triage-report
+    triage_report_parser = memory_subparsers.add_parser("triage-report", help="Generate triage summary")
+    triage_report_parser.add_argument("--directory", default=".", help="Base directory")
+    triage_report_parser.set_defaults(func=handle_memory_triage_report)
+
+    # memory promote
+    promote_parser = memory_subparsers.add_parser("promote", help="Check and promote pending entities")
+    promote_parser.add_argument("--check", action="store_true", help="List promotable entities without promoting")
+    promote_parser.add_argument("--directory", default=".", help="Base directory")
+    promote_parser.set_defaults(func=handle_memory_promote)
+
+    # memory triage-keep
+    triage_keep_parser = memory_subparsers.add_parser("triage-keep", help="Keep a triaged entry (boost +20)")
+    triage_keep_parser.add_argument("filepath", help="Relative path to the entry file")
+    triage_keep_parser.add_argument("--directory", default=".", help="Base directory")
+    triage_keep_parser.set_defaults(func=handle_memory_triage_keep)
+
+    # memory triage-archive
+    triage_archive_parser = memory_subparsers.add_parser("triage-archive", help="Archive a triaged entry")
+    triage_archive_parser.add_argument("filepath", help="Relative path to the entry file")
+    triage_archive_parser.add_argument("--directory", default=".", help="Base directory")
+    triage_archive_parser.set_defaults(func=handle_memory_triage_archive)
+
+    # memory triage-delete
+    triage_delete_parser = memory_subparsers.add_parser("triage-delete", help="Delete a triaged entry")
+    triage_delete_parser.add_argument("filepath", help="Relative path to the entry file")
+    triage_delete_parser.add_argument("--directory", default=".", help="Base directory")
+    triage_delete_parser.set_defaults(func=handle_memory_triage_delete)
 
     # ==================== SESSION COMMANDS ====================
     session_parser = subparsers.add_parser("session", help="Session operations")
