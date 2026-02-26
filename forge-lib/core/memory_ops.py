@@ -970,3 +970,74 @@ def triage_report(directory: str = ".") -> Dict[str, Any]:
         "approaching_sunset": approaching_sunset,
         "total": len(sunset) + len(approaching_sunset)
     }
+
+
+def triage_keep(filepath: str, directory: str = ".") -> Dict[str, Any]:
+    """Keep action: boost by 20 and reset last_recalled."""
+    base_path = Path(directory)
+    full_path = base_path / filepath
+
+    if not full_path.exists():
+        raise MemoryError(f"Entry not found: {filepath}")
+
+    content = full_path.read_text()
+    metadata, body = frontmatter.parse(content)
+
+    old_score = metadata.get("importance", 0)
+    new_score = min(100, old_score + 20)
+    new_status = derive_lifecycle_status(new_score)
+
+    metadata["importance"] = new_score
+    metadata["lifecycle_status"] = new_status
+    metadata["last_recalled"] = date.today().isoformat()
+    metadata["updated"] = date.today().isoformat()
+
+    full_path.write_text(frontmatter.dumps(metadata, body))
+
+    return {"action": "kept", "score": new_score, "status": new_status}
+
+
+def triage_archive(filepath: str, directory: str = ".") -> Dict[str, Any]:
+    """Archive action: move to archived dir, leave stub at original path."""
+    base_path = Path(directory)
+    full_path = base_path / filepath
+
+    if not full_path.exists():
+        raise MemoryError(f"Entry not found: {filepath}")
+
+    # Create archived directory
+    archived_dir = base_path / "memory" / "archived"
+    archived_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy to archived
+    archived_path = archived_dir / full_path.name
+    content = full_path.read_text()
+    archived_path.write_text(content)
+
+    # Replace original with stub
+    metadata, _ = frontmatter.parse(content)
+    stub_metadata = {
+        "name": metadata.get("name", metadata.get("term", "")),
+        "type": metadata.get("type", "unknown"),
+        "status": "archived",
+        "archived_date": date.today().isoformat(),
+        "archived_to": str(archived_path.relative_to(base_path))
+    }
+    stub_body = f"\nThis entry was archived on {date.today().isoformat()}.\n"
+    full_path.write_text(frontmatter.dumps(stub_metadata, stub_body))
+
+    return {"action": "archived", "archived_to": str(archived_path.relative_to(base_path))}
+
+
+def triage_delete(filepath: str, directory: str = ".") -> Dict[str, Any]:
+    """Delete action: remove file entirely."""
+    base_path = Path(directory)
+    full_path = base_path / filepath
+
+    if not full_path.exists():
+        raise MemoryError(f"Entry not found: {filepath}")
+
+    name = full_path.stem
+    full_path.unlink()
+
+    return {"action": "deleted", "entry": name}

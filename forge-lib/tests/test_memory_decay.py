@@ -261,3 +261,53 @@ class TestTriageReport:
         report = triage_report(str(temp_dir))
         assert len(report["sunset"]) == 0
         assert len(report["approaching_sunset"]) == 0
+
+
+class TestTriageActions:
+    """Tests for triage keep, archive, delete actions."""
+
+    def test_keep_boosts_by_20(self, temp_dir):
+        """Keep action should boost score by 20 and reset last_recalled."""
+        from core.memory_ops import triage_keep
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Kept", "role": "Test", "importance": 5, "lifecycle_status": "sunset", "source": "auto-matched"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        triage_keep(result["filepath"], str(temp_dir))
+
+        metadata, _ = fm.parse((temp_dir / result["filepath"]).read_text())
+        assert metadata["importance"] == 25
+        assert metadata["lifecycle_status"] == "probationary"
+        assert metadata["last_recalled"] == date.today().isoformat()
+
+    def test_archive_moves_to_archived_dir(self, temp_dir):
+        """Archive should move file to memory/archived/ and leave stub."""
+        from core.memory_ops import triage_archive
+        init_memory(str(temp_dir))
+        data = {"name": "Archived", "role": "Test", "importance": 3, "source": "threshold-promoted"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        triage_archive(result["filepath"], str(temp_dir))
+
+        # Original should be a stub
+        original = temp_dir / result["filepath"]
+        assert original.exists()
+        from core import frontmatter as fm
+        metadata, _ = fm.parse(original.read_text())
+        assert metadata.get("status") == "archived"
+
+        # Archived copy should exist
+        archived_path = temp_dir / "memory" / "archived" / Path(result["filepath"]).name
+        assert archived_path.exists()
+
+    def test_delete_removes_file(self, temp_dir):
+        """Delete should remove the file entirely."""
+        from core.memory_ops import triage_delete
+        init_memory(str(temp_dir))
+        data = {"name": "Deleted", "role": "Test", "importance": 0, "source": "threshold-promoted"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        triage_delete(result["filepath"], str(temp_dir))
+
+        assert not (temp_dir / result["filepath"]).exists()
