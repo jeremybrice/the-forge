@@ -137,3 +137,71 @@ class TestRunDecay:
         assert "entries_scanned" in report
         assert "entries_decayed" in report
         assert "transitions" in report
+
+
+class TestBoostEntry:
+    """Tests for boosting memory entries on recall."""
+
+    def test_boost_increases_score(self, temp_dir):
+        """Boost should increase importance by 5."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Boostable", "role": "Test", "importance": 30, "source": "auto-matched"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_result = boost_entry(result["filepath"], str(temp_dir))
+
+        filepath = temp_dir / result["filepath"]
+        metadata, _ = fm.parse(filepath.read_text())
+        assert metadata["importance"] == 35
+        assert metadata["recall_count"] == 1
+        assert metadata["last_recalled"] == date.today().isoformat()
+        assert boost_result["boosted"] is True
+
+    def test_boost_caps_at_100(self, temp_dir):
+        """Boost should not exceed 100."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "HighScore", "role": "Test", "importance": 98, "source": "manual"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+
+        filepath = temp_dir / result["filepath"]
+        metadata, _ = fm.parse(filepath.read_text())
+        assert metadata["importance"] == 100
+
+    def test_boost_updates_lifecycle_status(self, temp_dir):
+        """Boosting a probationary entry past 40 should make it trusted."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Rising", "role": "Test", "importance": 38, "lifecycle_status": "probationary", "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+
+        filepath = temp_dir / result["filepath"]
+        metadata, _ = fm.parse(filepath.read_text())
+        assert metadata["importance"] == 43
+        assert metadata["lifecycle_status"] == "trusted"
+
+    def test_boost_daily_cap(self, temp_dir):
+        """Max 2 boosts per entry per day."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Capped", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+        boost_entry(result["filepath"], str(temp_dir))
+        boost_result = boost_entry(result["filepath"], str(temp_dir))
+
+        filepath = temp_dir / result["filepath"]
+        metadata, _ = fm.parse(filepath.read_text())
+        assert metadata["importance"] == 40  # Only 2 boosts applied (+10 total)
+        assert boost_result["boosted"] is False
+        assert boost_result["reason"] == "daily_cap"

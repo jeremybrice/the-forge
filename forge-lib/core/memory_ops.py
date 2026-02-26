@@ -713,3 +713,62 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
         "entries_decayed": entries_decayed,
         "transitions": transitions
     }
+
+
+def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> Dict[str, Any]:
+    """Boost a memory entry's importance score on recall.
+
+    Args:
+        filepath: Path to the memory entry (absolute or relative to directory)
+        directory: Base directory
+        boost_amount: Points to add (default 5)
+
+    Returns:
+        Dict with boosted (bool), reason (str if not boosted), score, status
+    """
+    base_path = Path(directory)
+    full_path = base_path / filepath
+
+    if not full_path.exists():
+        raise MemoryError(f"Entry not found: {filepath}")
+
+    content = full_path.read_text()
+    metadata, body = frontmatter.parse(content)
+
+    today = date.today().isoformat()
+
+    # Check daily cap: max 2 boosts per day
+    last_recalled = metadata.get("last_recalled")
+    recall_count_today = metadata.get("_boosts_today", 0)
+
+    if last_recalled == today and recall_count_today >= 2:
+        return {
+            "boosted": False,
+            "reason": "daily_cap",
+            "score": metadata.get("importance", 45),
+            "status": metadata.get("lifecycle_status", "trusted")
+        }
+
+    # Reset daily counter if new day
+    if last_recalled != today:
+        recall_count_today = 0
+
+    importance = metadata.get("importance", 45)
+    new_score = min(100, importance + boost_amount)
+    new_status = derive_lifecycle_status(new_score)
+
+    metadata["importance"] = new_score
+    metadata["lifecycle_status"] = new_status
+    metadata["last_recalled"] = today
+    metadata["recall_count"] = metadata.get("recall_count", 0) + 1
+    metadata["_boosts_today"] = recall_count_today + 1
+    metadata["updated"] = today
+
+    updated_content = frontmatter.dumps(metadata, body)
+    full_path.write_text(updated_content)
+
+    return {
+        "boosted": True,
+        "score": new_score,
+        "status": new_status
+    }
