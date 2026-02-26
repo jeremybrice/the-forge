@@ -23,7 +23,7 @@ python forge.py --help
 |--------|-----------------|---------------|
 | **product-forge** | `/product-forge:create`, `/product-forge:update`, `/product-forge:review`, `/product-forge:init`, `/product-forge:checkpoint` | `cards/` + `cards/index.json` |
 | **tasks-forge** | `/tasks-forge:start`, `/tasks-forge:add`, `/tasks-forge:update` | `tasks/` + `tasks/index.json` |
-| **forge-memory** | `/forge-memory:start`, `/forge-memory:setup-org`, `/forge-memory:remember`, `/forge-memory:recall` | `memory/` + `CLAUDE.md` |
+| **forge-memory** | `/forge-memory:start`, `/forge-memory:setup-org`, `/forge-memory:remember`, `/forge-memory:recall`, `/forge-memory:triage` | `memory/` + `CLAUDE.md` |
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
