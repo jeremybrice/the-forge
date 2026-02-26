@@ -205,3 +205,59 @@ class TestBoostEntry:
         assert metadata["importance"] == 40  # Only 2 boosts applied (+10 total)
         assert boost_result["boosted"] is False
         assert boost_result["reason"] == "daily_cap"
+
+
+class TestTriageReport:
+    """Tests for triage report generation."""
+
+    def test_triage_report_finds_sunset_entries(self, temp_dir):
+        """Triage report should list sunset entries."""
+        from core.memory_ops import triage_report
+        init_memory(str(temp_dir))
+        data = {
+            "name": "Stale Entry",
+            "role": "Old",
+            "importance": 5,
+            "lifecycle_status": "sunset",
+            "source": "threshold-promoted",
+            "last_recalled": "2025-06-01"
+        }
+        create_knowledge_entry("person", data, str(temp_dir))
+
+        report = triage_report(str(temp_dir))
+        assert len(report["sunset"]) == 1
+        assert report["sunset"][0]["name"] == "Stale Entry"
+
+    def test_triage_report_finds_approaching_sunset(self, temp_dir):
+        """Triage report should list probationary entries with score 10-15."""
+        from core.memory_ops import triage_report
+        init_memory(str(temp_dir))
+        data = {
+            "name": "Fading Entry",
+            "role": "Fading",
+            "importance": 12,
+            "lifecycle_status": "probationary",
+            "source": "auto-matched",
+            "last_recalled": date.today().isoformat()
+        }
+        create_knowledge_entry("person", data, str(temp_dir))
+
+        report = triage_report(str(temp_dir))
+        assert len(report["approaching_sunset"]) == 1
+
+    def test_triage_report_excludes_healthy_entries(self, temp_dir):
+        """Triage report should not list trusted or high probationary entries."""
+        from core.memory_ops import triage_report
+        init_memory(str(temp_dir))
+        data = {
+            "name": "Healthy Entry",
+            "role": "Healthy",
+            "importance": 70,
+            "lifecycle_status": "trusted",
+            "source": "manual"
+        }
+        create_knowledge_entry("person", data, str(temp_dir))
+
+        report = triage_report(str(temp_dir))
+        assert len(report["sunset"]) == 0
+        assert len(report["approaching_sunset"]) == 0

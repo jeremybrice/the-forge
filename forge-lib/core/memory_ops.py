@@ -904,3 +904,69 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
         "score": new_score,
         "status": new_status
     }
+
+
+# =============================================================================
+# Triage System
+# =============================================================================
+
+def triage_report(directory: str = ".") -> Dict[str, Any]:
+    """Generate triage report of entries needing attention.
+
+    First runs decay to ensure scores are current.
+    Then collects sunset entries and approaching-sunset entries (score 10-15).
+
+    Returns dict with 'sunset', 'approaching_sunset' lists and 'total' count.
+    """
+    # Run decay first
+    run_decay(directory)
+
+    base_path = Path(directory)
+    sunset = []
+    approaching_sunset = []
+
+    for subdir in ["people", "projects", "glossary"]:
+        dir_path = base_path / "memory" / subdir
+        if not dir_path.exists():
+            continue
+        for md_file in dir_path.glob("*.md"):
+            content = md_file.read_text()
+            metadata, _ = frontmatter.parse(content)
+
+            importance = metadata.get("importance", 45)
+            status = metadata.get("lifecycle_status", "trusted")
+            name = metadata.get("name", metadata.get("term", md_file.stem))
+
+            entry_info = {
+                "name": name,
+                "type": metadata.get("type", "unknown"),
+                "importance": importance,
+                "source": metadata.get("source", "frontmatter"),
+                "last_recalled": metadata.get("last_recalled", "unknown"),
+                "created": metadata.get("created", "unknown"),
+                "filepath": str(md_file.relative_to(base_path)),
+                "days_since_recall": None
+            }
+
+            last_recalled = metadata.get("last_recalled")
+            if last_recalled:
+                try:
+                    days = (date.today() - date.fromisoformat(last_recalled)).days
+                    entry_info["days_since_recall"] = days
+                except (ValueError, TypeError):
+                    pass
+
+            if status == "sunset" or importance < 10:
+                sunset.append(entry_info)
+            elif importance <= 15 and status == "probationary":
+                approaching_sunset.append(entry_info)
+
+    # Sort by importance ascending (most urgent first)
+    sunset.sort(key=lambda x: x["importance"])
+    approaching_sunset.sort(key=lambda x: x["importance"])
+
+    return {
+        "sunset": sunset,
+        "approaching_sunset": approaching_sunset,
+        "total": len(sunset) + len(approaching_sunset)
+    }
