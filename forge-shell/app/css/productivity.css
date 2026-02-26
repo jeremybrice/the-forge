@@ -2314,6 +2314,68 @@
   color: var(--text-muted);
 }
 
+/* ── Memory Lifecycle States ── */
+.memory-trusted {
+  border-left: 3px solid #22c55e;
+}
+
+.memory-probationary {
+  border-left: 3px solid #f59e0b;
+  opacity: 0.85;
+}
+
+.memory-sunset {
+  border-left: 3px solid #ef4444;
+  opacity: 0.6;
+}
+
+.memory-sunset:hover {
+  opacity: 0.8;
+}
+
+.importance-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  z-index: 1;
+}
+
+/* Shift delete button when importance badge is present */
+.prod-memory-card:has(.importance-badge) .prod-memory-card-delete {
+  right: 48px;
+}
+
+.memory-sort-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.memory-sort-select:hover {
+  border-color: var(--accent);
+}
+
+.prod-memory-tab .prod-tab-badge {
+  background: #ef4444;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
 /* ── Card Hover Micro-interaction ── */
 .prod-task-card:hover,
 .prod-memory-card:hover {

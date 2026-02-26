@@ -23,6 +23,7 @@ window.MemoryView = (function () {
   let memorySignature = '';
   let isMemoryRefreshing = false;
   let activeMemoryTab = null;
+  let memorySortMode = 'name'; // 'name' | 'importance' | 'last_recalled'
 
   /* ══════════════════════════════════════════════════════════
      DOM helpers — all queries scoped to #view-memory
@@ -171,9 +172,21 @@ window.MemoryView = (function () {
       fields: {},
       sections: {},
       tables: [],
-      rawContent: content
+      rawContent: content,
+      frontmatter: null
     };
-    var lines = content.split('\n');
+
+    /* Extract YAML frontmatter if present */
+    var bodyContent = content;
+    var fmResult = ForgeUtils.parseFrontmatter(content);
+    if (fmResult) {
+      parsed.frontmatter = fmResult.frontmatter || {};
+      bodyContent = fmResult.body;
+      /* Pre-populate title from frontmatter if available */
+      if (parsed.frontmatter.title) parsed.title = parsed.frontmatter.title;
+    }
+
+    var lines = bodyContent.split('\n');
     var currentSection = '_intro';
     parsed.sections[currentSection] = [];
 
@@ -192,7 +205,7 @@ window.MemoryView = (function () {
 
     var tableRegex = /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g;
     var match;
-    while ((match = tableRegex.exec(content)) !== null) {
+    while ((match = tableRegex.exec(bodyContent)) !== null) {
       var headers = match[1].split('|').map(function (h) { return h.trim(); }).filter(Boolean);
       var rowLines = match[2].trim().split('\n');
       var rows = rowLines.map(function (row) { return row.split('|').map(function (c) { return c.trim(); }).filter(Boolean); });
@@ -227,6 +240,92 @@ window.MemoryView = (function () {
       || Object.entries(parsed.sections).some(function (pair) {
           return pair[0] !== '_intro' && pair[1] && pair[1].trim();
         });
+  }
+
+  /**
+   * Extract lifecycle CSS class from parsed frontmatter.
+   * Returns one of: 'memory-trusted', 'memory-probationary', 'memory-sunset', or ''.
+   */
+  function getLifecycleClass(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || !fm.lifecycle_status) return '';
+    var status = String(fm.lifecycle_status).toLowerCase();
+    if (status === 'trusted') return 'memory-trusted';
+    if (status === 'probationary') return 'memory-probationary';
+    if (status === 'sunset') return 'memory-sunset';
+    return '';
+  }
+
+  /**
+   * Get importance score from parsed frontmatter (numeric or null).
+   */
+  function getImportance(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || fm.importance === undefined || fm.importance === null) return null;
+    var val = Number(fm.importance);
+    return isNaN(val) ? null : val;
+  }
+
+  /**
+   * Get last_recalled date from parsed frontmatter (ISO string or null).
+   */
+  function getLastRecalled(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || !fm.last_recalled) return null;
+    return String(fm.last_recalled);
+  }
+
+  /**
+   * Count total sunset entries across all memory directories.
+   */
+  function countSunsetEntries() {
+    var count = 0;
+    var dirNames = Object.keys(memoryData.memoryDirs);
+    for (var i = 0; i < dirNames.length; i++) {
+      var files = memoryData.memoryDirs[dirNames[i]];
+      for (var j = 0; j < files.length; j++) {
+        var fm = files[j].parsed.frontmatter;
+        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Sort directory files based on current memorySortMode.
+   * Returns a new sorted array (does not mutate the original).
+   */
+  function sortDirectoryFiles(files) {
+    var sorted = files.slice();
+    if (memorySortMode === 'importance') {
+      sorted.sort(function (a, b) {
+        var ia = getImportance(a.parsed);
+        var ib = getImportance(b.parsed);
+        if (ia === null && ib === null) return 0;
+        if (ia === null) return 1;
+        if (ib === null) return -1;
+        return ib - ia; // descending
+      });
+    } else if (memorySortMode === 'last_recalled') {
+      sorted.sort(function (a, b) {
+        var ra = getLastRecalled(a.parsed) || '';
+        var rb = getLastRecalled(b.parsed) || '';
+        if (!ra && !rb) return 0;
+        if (!ra) return 1;
+        if (!rb) return -1;
+        return rb.localeCompare(ra); // most recent first
+      });
+    } else {
+      // Default: sort by name (alphabetical)
+      sorted.sort(function (a, b) {
+        var na = (a.parsed.title || a.name).toLowerCase();
+        var nb = (b.parsed.title || b.name).toLowerCase();
+        return na.localeCompare(nb);
+      });
+    }
+    return sorted;
   }
 
   function renderMarkdownToHtml(md) {
@@ -451,6 +550,7 @@ window.MemoryView = (function () {
     var tabsEl = $('[data-ref="memory-tabs"]');
     if (!tabsEl) return;
     var html = '';
+    var sunsetCount = countSunsetEntries();
 
     if (memoryData.claudeMd) {
       var isActive = !activeMemoryTab || activeMemoryTab === 'overview';
@@ -471,7 +571,29 @@ window.MemoryView = (function () {
       var dn = dirNames[j];
       var count = memoryData.memoryDirs[dn].length;
       var isAct2 = activeMemoryTab === 'dir-' + dn;
-      html += '<button class="prod-memory-tab' + (isAct2 ? ' prod-active' : '') + '" data-mem-tab="dir-' + esc(dn) + '">' + esc(dn) + ' <span class="prod-tab-count">' + count + '</span></button>';
+
+      /* Count sunset entries in this directory for per-tab badge */
+      var dirSunsetCount = 0;
+      var dirFiles = memoryData.memoryDirs[dn];
+      for (var k = 0; k < dirFiles.length; k++) {
+        var fm = dirFiles[k].parsed.frontmatter;
+        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') dirSunsetCount++;
+      }
+
+      var badgeHtml = dirSunsetCount > 0
+        ? ' <span class="prod-tab-badge" title="' + dirSunsetCount + ' sunset entries need triage">' + dirSunsetCount + '</span>'
+        : '';
+
+      html += '<button class="prod-memory-tab' + (isAct2 ? ' prod-active' : '') + '" data-mem-tab="dir-' + esc(dn) + '">' +
+        esc(dn) + ' <span class="prod-tab-count">' + count + '</span>' + badgeHtml +
+      '</button>';
+    }
+
+    /* Global triage badge shown after all tabs if any sunset entries exist */
+    if (sunsetCount > 0) {
+      html += '<span style="display:flex;align-items:center;margin-left:auto;font-size:12px;color:#ef4444;gap:4px;" title="' + sunsetCount + ' sunset entries across all directories need triage">' +
+        '<i class="fa-solid fa-triangle-exclamation"></i> ' + sunsetCount + ' triage' +
+      '</span>';
     }
 
     tabsEl.innerHTML = html;
@@ -592,14 +714,34 @@ window.MemoryView = (function () {
     bindSearchAndActions(el);
   }
 
+  function renderSortDropdown() {
+    return '<select class="memory-sort-select" data-ref="memory-sort">' +
+      '<option value="name"' + (memorySortMode === 'name' ? ' selected' : '') + '>Sort: Name</option>' +
+      '<option value="importance"' + (memorySortMode === 'importance' ? ' selected' : '') + '>Sort: Importance</option>' +
+      '<option value="last_recalled"' + (memorySortMode === 'last_recalled' ? ' selected' : '') + '>Sort: Last Recalled</option>' +
+    '</select>';
+  }
+
   function renderMemoryDirectory(el, dirName) {
     var files = memoryData.memoryDirs[dirName] || [];
-    var html = renderSearchBox('Search ' + dirName + '...');
+    var sortedFiles = sortDirectoryFiles(files);
+
+    var html = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">' +
+      '<div style="flex:1;">' + renderSearchBox('Search ' + dirName + '...') + '</div>' +
+      renderSortDropdown() +
+    '</div>';
     html += '<div class="prod-memory-grid" data-ref="memory-grid">';
 
-    files.forEach(function (file) {
+    sortedFiles.forEach(function (file) {
       var p = file.parsed;
       var title = p.title || getDisplayName(file.name);
+
+      /* Lifecycle status & importance from frontmatter */
+      var lifecycleClass = getLifecycleClass(p);
+      var importance = getImportance(p);
+      var importanceBadgeHtml = importance !== null
+        ? '<span class="importance-badge" title="Importance: ' + importance + '">' + importance + '</span>'
+        : '';
 
       var fieldsHtml = '';
       var fieldEntries = Object.entries(p.fields).slice(0, 3);
@@ -625,7 +767,8 @@ window.MemoryView = (function () {
       if (!preview) preview = getPreview(p.rawContent, 100);
 
       html +=
-        '<div class="prod-memory-card" data-mem-action="open-dir-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" data-search="' + esc((title + ' ' + JSON.stringify(p.fields) + ' ' + p.rawContent).toLowerCase()) + '">' +
+        '<div class="prod-memory-card' + (lifecycleClass ? ' ' + lifecycleClass : '') + '" data-mem-action="open-dir-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" data-search="' + esc((title + ' ' + JSON.stringify(p.fields) + ' ' + p.rawContent).toLowerCase()) + '">' +
+          importanceBadgeHtml +
           '<button class="prod-memory-card-delete" data-mem-action="delete-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" title="Delete">&times;</button>' +
           '<div class="prod-memory-card-title">' + esc(title) + '</div>' +
           fieldsHtml +
@@ -638,6 +781,7 @@ window.MemoryView = (function () {
 
     el.innerHTML = html;
     bindSearchAndActions(el);
+    bindSortDropdown(el);
   }
 
   function bindSearchAndActions(el) {
@@ -666,6 +810,16 @@ window.MemoryView = (function () {
         else if (action === 'new-file') openNewFileModal(btn.dataset.memDir);
       });
     });
+  }
+
+  function bindSortDropdown(el) {
+    var sortSelect = el.querySelector('[data-ref="memory-sort"]');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function () {
+        memorySortMode = sortSelect.value;
+        renderMemoryContent();
+      });
+    }
   }
 
   function filterMemoryContent(searchTerm) {
