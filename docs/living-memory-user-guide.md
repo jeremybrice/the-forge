@@ -64,7 +64,7 @@ Triage is where you take the wheel. Run `/memory:triage` periodically -- once a 
 
 First, you see **sunset entries**: memories that have already dropped below a score of 10 and are hidden from your recall. These are the most urgent because they are effectively invisible in your day-to-day work.
 
-Next, you see **approaching sunset entries**: memories that are still in the Probationary tier but trending downward. These are your early warnings -- entries you can save before they disappear from recall.
+Next, you see **approaching sunset entries**: memories in the Probationary tier that are close to crossing into Sunset (scoring between 10 and 15). These are your early warnings -- entries you can save before they disappear from recall.
 
 For each entry, you have three choices:
 
@@ -92,7 +92,7 @@ This two-track approach means you do not have to manually enter every piece of k
 
 ## Technical Reference
 
-### 7. Lifecycle Fields
+### Lifecycle Fields
 
 Every memory entry carries these fields in its YAML frontmatter. Together they control how the entry is scored, displayed, and decayed.
 
@@ -127,7 +127,7 @@ updated: "2026-02-25"
 
 In this example, Jane Smith was manually added in October 2025 and has been recalled 12 times since then. Her importance score of 72 places her firmly in the trusted tier. The `last_recalled` date of February 25 means her 30-day grace period runs until March 27 before any decay applies.
 
-### 8. Decay Math
+### Decay Math
 
 Decay is calculated from the number of days since `last_recalled`. The following table shows the exact cumulative penalty at each window and the resulting score from four common starting points.
 
@@ -149,7 +149,7 @@ Scores floor at 0 and never go negative. The penalty is cumulative from the orig
 
 Decay is idempotent. Running it twice in succession produces the same result because the penalty is always calculated from `last_recalled`, not from the time of the last decay run. This means you can safely run decay as often as you like -- during triage, during recall, or on a schedule -- without worrying about double-counting.
 
-### 9. CLI Commands
+### CLI Commands
 
 Complete reference for all `forge memory` subcommands. All commands return JSON output.
 
@@ -195,7 +195,7 @@ forge memory promote [--check] [--directory DIR]
 
 Promote qualifying pending entities into full memory entries. Use `--check` for a dry run that reports what would be promoted without making changes.
 
-### 10. Telemetry
+### Telemetry
 
 The file `memory/telemetry.json` provides a snapshot of the overall health of your memory system. It is updated automatically when decay or triage actions run.
 
@@ -207,7 +207,7 @@ The file `memory/telemetry.json` provides a snapshot of the overall health of yo
   "by_source": { "manual": 15, "frontmatter": 18, "auto-matched": 9, "threshold-promoted": 5 },
   "pending_count": 23,
   "triage_history": [
-    { "date": "2026-02-24", "reviewed": 6, "kept": 2, "archived": 2, "deleted": 1 }
+    { "date": "2026-02-24", "reviewed": 6, "kept": 2, "merged": 1, "archived": 2, "deleted": 1 }
   ]
 }
 ```

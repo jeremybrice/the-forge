@@ -359,7 +359,7 @@ status: "in-progress"
 people:
   - "Jane Smith"
   - "Bob Chen"
-importance: 50
+importance: 45
 lifecycle_status: "trusted"
 source: "frontmatter"
 last_recalled: "2025-12-03"
@@ -375,10 +375,10 @@ updated: "2025-12-03"
 
 - Source: `frontmatter` — structured fields, minimal narrative prose
 - Baseline: 45
-- Recency bonus: +5 (updated 86 days ago, within 60 days)
-- Final: 50 (trusted)
+- Recency bonus: +0 (updated 86 days ago, outside both recency windows)
+- Final: 45 (trusted)
 
-### Example 3 — Glossary (auto-matched source)
+### Example 3 — Glossary (frontmatter source)
 
 **BEFORE:**
 
@@ -407,9 +407,9 @@ term: "Event Sourcing"
 type: glossary
 definition: "Architectural pattern where state changes are stored as immutable sequence of events."
 context: "Core pattern used in API Modernization Initiative"
-importance: 30
-lifecycle_status: "probationary"
-source: "auto-matched"
+importance: 50
+lifecycle_status: "trusted"
+source: "frontmatter"
 last_recalled: "2026-01-05"
 recall_count: 0
 created: "2026-01-05"
@@ -421,10 +421,10 @@ updated: "2026-01-05"
 
 **Scoring rationale:**
 
-- Source: `auto-matched` — short definition, linked to another project entry
-- Baseline: 25
-- Recency bonus: +5 (updated 53 days ago, within 60 days)
-- Final: 30 (probationary)
+- Source: `frontmatter` — structured fields with definition and context, no harvesting provenance metadata
+- Baseline: 45
+- Recency bonus: +5 (updated 53 days ago, within 31-60 day window)
+- Final: 50 (trusted)
 
 ---
 
