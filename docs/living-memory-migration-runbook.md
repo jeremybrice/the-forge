@@ -262,6 +262,188 @@ If any entries failed validation and were reverted:
 
 ---
 
+## Examples — Before and After
+
+Three concrete examples showing legacy entries and their migrated versions with scoring rationale.
+
+### Example 1 — Person (manual source)
+
+**BEFORE:**
+
+```yaml
+---
+name: "Jane Smith"
+type: person
+role: "Principal Engineer"
+team: "Platform"
+context: "Leads architecture decisions for API gateway, deep expertise in distributed systems. Has mentored 5+ engineers on the team."
+created: "2025-10-15"
+updated: "2026-02-10"
+---
+
+## Jane Smith
+
+**Role:** Principal Engineer
+**Team:** Platform
+
+## Context
+
+Leads architecture decisions for API gateway, deep expertise in distributed systems. Has mentored 5+ engineers on the team. Primary reviewer for all infrastructure PRs. Introduced event sourcing pattern to the payment pipeline.
+```
+
+**AFTER:**
+
+```yaml
+---
+name: "Jane Smith"
+type: person
+role: "Principal Engineer"
+team: "Platform"
+context: "Leads architecture decisions for API gateway, deep expertise in distributed systems. Has mentored 5+ engineers on the team."
+importance: 80
+lifecycle_status: "trusted"
+source: "manual"
+last_recalled: "2026-02-10"
+recall_count: 0
+created: "2025-10-15"
+updated: "2026-02-10"
+---
+```
+
+(Body content unchanged)
+
+**Scoring rationale:**
+
+- Source: `manual` — rich narrative with personal observations (>200 words)
+- Baseline: 70
+- Recency bonus: +10 (updated 17 days ago, within 30 days)
+- Final: 80 (trusted)
+
+### Example 2 — Project (frontmatter source)
+
+**BEFORE:**
+
+```yaml
+---
+name: "API Modernization Initiative"
+type: project
+description: "Refactoring legacy monolith to microservices. Phase 1: API gateway extraction."
+status: "in-progress"
+people:
+  - "Jane Smith"
+  - "Bob Chen"
+created: "2025-08-20"
+updated: "2025-12-03"
+---
+
+## API Modernization Initiative
+
+Refactoring legacy monolith to microservices. Phase 1: API gateway extraction. Expected completion Q2 2026.
+
+**Status:** in-progress
+
+## People
+
+- Jane Smith
+- Bob Chen
+```
+
+**AFTER:**
+
+```yaml
+---
+name: "API Modernization Initiative"
+type: project
+description: "Refactoring legacy monolith to microservices. Phase 1: API gateway extraction."
+status: "in-progress"
+people:
+  - "Jane Smith"
+  - "Bob Chen"
+importance: 50
+lifecycle_status: "trusted"
+source: "frontmatter"
+last_recalled: "2025-12-03"
+recall_count: 0
+created: "2025-08-20"
+updated: "2025-12-03"
+---
+```
+
+(Body unchanged)
+
+**Scoring rationale:**
+
+- Source: `frontmatter` — structured fields, minimal narrative prose
+- Baseline: 45
+- Recency bonus: +5 (updated 86 days ago, within 60 days)
+- Final: 50 (trusted)
+
+### Example 3 — Glossary (auto-matched source)
+
+**BEFORE:**
+
+```yaml
+---
+term: "Event Sourcing"
+type: glossary
+definition: "Architectural pattern where state changes are stored as immutable sequence of events."
+context: "Core pattern used in API Modernization Initiative"
+created: "2026-01-05"
+updated: "2026-01-05"
+---
+
+## Event Sourcing
+
+Architectural pattern where state changes are stored as immutable sequence of events. System state rebuilt by replaying events.
+
+**Used in:** Core pattern used in API Modernization Initiative
+```
+
+**AFTER:**
+
+```yaml
+---
+term: "Event Sourcing"
+type: glossary
+definition: "Architectural pattern where state changes are stored as immutable sequence of events."
+context: "Core pattern used in API Modernization Initiative"
+importance: 30
+lifecycle_status: "probationary"
+source: "auto-matched"
+last_recalled: "2026-01-05"
+recall_count: 0
+created: "2026-01-05"
+updated: "2026-01-05"
+---
+```
+
+(Body unchanged)
+
+**Scoring rationale:**
+
+- Source: `auto-matched` — short definition, linked to another project entry
+- Baseline: 25
+- Recency bonus: +5 (updated 53 days ago, within 60 days)
+- Final: 30 (probationary)
+
+---
+
+## Edge Cases
+
+| Situation | Resolution |
+|---|---|
+| Entry has no `updated` date | Use `created` date for `last_recalled` |
+| Entry has no `created` date either | Use today's date as fallback; flag for manual review |
+| Entry has malformed YAML frontmatter | Skip entirely; include in error report |
+| Entry already has `importance` but missing other fields | Preserve existing `importance`; fill only missing fields; derive `lifecycle_status` from existing score |
+| Entry already has all 5 lifecycle fields | Skip — no migration needed |
+| Entry has `importance` > 85 | Preserve as-is (may have been manually set or earned through recall) |
+| Duplicate entries (same name, different files) | Migrate both independently; flag for manual review |
+| Entry in `memory/archived/` directory | Skip — already archived, outside migration scope |
+| Entry file is empty or has no frontmatter | Skip entirely; include in error report |
+
+---
+
 ## Decision Reference
 
 This section consolidates all decision tables for quick reference during implementation.
