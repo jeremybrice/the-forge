@@ -87,3 +87,136 @@ Memories enter the system through two tracks, each designed for a different situ
 Here is a concrete example. Suppose your team starts discussing "Phoenix Project" -- first in a product-forge card describing the initiative, then in a tasks-forge task tracking a deliverable, and finally in a cognitive-forge debate session about the architecture. That is three mentions across three plugins. The system recognizes the pattern and creates a new memory entry for "Phoenix Project" at importance 15. From that point forward, every time a plugin references it, the entry gets boosted. If the project is real and active, it will climb into the Trusted tier within a few weeks of normal use. If it was a passing reference that never comes up again, it will naturally fade through Probationary and into Sunset, where you can archive or remove it during triage.
 
 This two-track approach means you do not have to manually enter every piece of knowledge. The system learns from your work patterns and surfaces candidates for you. Your job is to refine and curate, not to catalog everything from scratch.
+
+---
+
+## Technical Reference
+
+### 7. Lifecycle Fields
+
+Every memory entry carries these fields in its YAML frontmatter. Together they control how the entry is scored, displayed, and decayed.
+
+| Field | Type | Range | Default | Purpose |
+| ----- | ---- | ----- | ------- | ------- |
+| `importance` | integer | 0-100 | 45 | Score determining tier status and decay rate |
+| `lifecycle_status` | enum | trusted / probationary / sunset | trusted | Computed from importance score |
+| `source` | enum | manual / frontmatter / auto-matched / threshold-promoted | frontmatter | How the entry originated |
+| `last_recalled` | date (YYYY-MM-DD) or null | -- | null | Last time entry was boosted via recall |
+| `recall_count` | integer | 0+ | 0 | Cumulative count of successful recalls |
+
+The `importance` score is the single number that drives the entire lifecycle. It determines the tier (via `lifecycle_status`), controls how long the entry survives without use, and dictates when the entry appears in triage. The `source` field is informational -- it records provenance but does not affect scoring. The `last_recalled` date is the anchor for decay calculations: all decay penalties are measured from this date, not from any internal timer.
+
+Here is a complete example entry showing all fields in context:
+
+```yaml
+---
+name: "Jane Smith"
+type: person
+role: "Principal Engineer"
+team: "Platform"
+context: "Leads API gateway architecture"
+importance: 72
+lifecycle_status: "trusted"
+source: "manual"
+last_recalled: "2026-02-25"
+recall_count: 12
+created: "2025-10-15"
+updated: "2026-02-25"
+---
+```
+
+In this example, Jane Smith was manually added in October 2025 and has been recalled 12 times since then. Her importance score of 72 places her firmly in the trusted tier. The `last_recalled` date of February 25 means her 30-day grace period runs until March 27 before any decay applies.
+
+### 8. Decay Math
+
+Decay is calculated from the number of days since `last_recalled`. The following table shows the exact cumulative penalty at each window and the resulting score from four common starting points.
+
+| Days Since Last Recall | Cumulative Penalty | From 70 | From 45 | From 25 | From 15 |
+| ---------------------- | ------------------ | ------- | ------- | ------- | ------- |
+| 0-30 | 0 | 70 (trusted) | 45 (trusted) | 25 (probationary) | 15 (probationary) |
+| 31-60 | -10 | 60 (trusted) | 35 (probationary) | 15 (probationary) | 5 (sunset) |
+| 61-90 | -25 | 45 (trusted) | 20 (probationary) | 0 (sunset) | 0 (sunset) |
+| 91-180 | -45 | 25 (probationary) | 0 (sunset) | 0 (sunset) | 0 (sunset) |
+| 180+ | -70 | 0 (sunset) | 0 (sunset) | 0 (sunset) | 0 (sunset) |
+
+**Status derivation formula:**
+
+- `importance` >= 40 --> trusted
+- `importance` >= 10 --> probationary
+- `importance` < 10 --> sunset
+
+Scores floor at 0 and never go negative. The penalty is cumulative from the original score, not additive across windows. For example, an entry starting at 70 that reaches the 61-90 day window loses 25 total (not 10 + 25).
+
+Decay is idempotent. Running it twice in succession produces the same result because the penalty is always calculated from `last_recalled`, not from the time of the last decay run. This means you can safely run decay as often as you like -- during triage, during recall, or on a schedule -- without worrying about double-counting.
+
+### 9. CLI Commands
+
+Complete reference for all `forge memory` subcommands. All commands return JSON output.
+
+```bash
+forge memory decay [--directory DIR]
+```
+
+Run decay across all entries. Updates `importance` and `lifecycle_status` in place for every entry in the memory directory.
+
+```bash
+forge memory harvest --entity NAME --source PLUGIN --type {person|project|glossary} [--context TEXT] [--directory DIR]
+```
+
+Process a signal from a plugin. If the entity matches an existing memory, it receives an instant-track boost. If the entity is unknown, it is recorded as a pending mention. When the pending mention count crosses the threshold (3 mentions from 2+ plugins), the entity is auto-promoted.
+
+```bash
+forge memory triage-report [--directory DIR]
+```
+
+Generate a report of entries needing attention. Runs decay first to ensure scores are current, then returns sunset and approaching-sunset entries grouped by urgency.
+
+```bash
+forge memory triage-keep FILEPATH [--directory DIR]
+```
+
+Keep action for a triaged entry. Boosts importance by +20 and resets `last_recalled` to today.
+
+```bash
+forge memory triage-archive FILEPATH [--directory DIR]
+```
+
+Archive action for a triaged entry. Moves the file to `memory/archived/` and leaves a stub reference. The original is preserved in git history.
+
+```bash
+forge memory triage-delete FILEPATH [--directory DIR]
+```
+
+Delete action for a triaged entry. Removes the file permanently from the filesystem.
+
+```bash
+forge memory promote [--check] [--directory DIR]
+```
+
+Promote qualifying pending entities into full memory entries. Use `--check` for a dry run that reports what would be promoted without making changes.
+
+### 10. Telemetry
+
+The file `memory/telemetry.json` provides a snapshot of the overall health of your memory system. It is updated automatically when decay or triage actions run.
+
+```json
+{
+  "last_decay_run": "2026-02-27",
+  "total_entries": 47,
+  "by_status": { "trusted": 31, "probationary": 12, "sunset": 4 },
+  "by_source": { "manual": 15, "frontmatter": 18, "auto-matched": 9, "threshold-promoted": 5 },
+  "pending_count": 23,
+  "triage_history": [
+    { "date": "2026-02-24", "reviewed": 6, "kept": 2, "archived": 2, "deleted": 1 }
+  ]
+}
+```
+
+**Field reference:**
+
+- `last_decay_run` -- The date decay was last executed. If this is more than a few days old, scores may not reflect current reality. Running triage or recall will refresh it.
+- `total_entries` -- Count of all active memory files (excludes archived and deleted).
+- `by_status` -- Breakdown by lifecycle tier. A healthy system has most entries in trusted. If probationary or sunset counts are climbing, it may be time for a triage session.
+- `by_source` -- Breakdown by origin. Useful for understanding whether your memory base is primarily manual curation or automated harvesting. A high `threshold-promoted` count relative to `manual` suggests the system is learning well from your work patterns.
+- `pending_count` -- Number of entity mentions that have not yet crossed the promotion threshold. A very high count may indicate the threshold is too strict, or that many one-off references are being recorded.
+- `triage_history` -- Log of past triage sessions with action counts. Use this to track your curation cadence and see whether you tend to keep, archive, or delete most entries. If you consistently keep everything, your threshold for creating memories may be too conservative. If you consistently delete, the auto-promotion threshold may be too aggressive.
