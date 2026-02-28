@@ -60,7 +60,7 @@ One important detail: decay only runs when it is explicitly triggered, not conti
 
 ## Triage: The Curation Moment
 
-Triage is where you take the wheel. Run `/memory:triage` periodically -- once a week is a good rhythm -- and the system presents you with entries that need your attention, grouped by urgency.
+Triage is where you take the wheel. Run `/forge-memory:triage` periodically -- once a week is a good rhythm -- and the system presents you with entries that need your attention, grouped by urgency.
 
 First, you see **sunset entries**: memories that have already dropped below a score of 10 and are hidden from your recall. These are the most urgent because they are effectively invisible in your day-to-day work.
 
@@ -207,7 +207,7 @@ The file `memory/telemetry.json` provides a snapshot of the overall health of yo
   "by_source": { "manual": 15, "frontmatter": 18, "auto-matched": 9, "threshold-promoted": 5 },
   "pending_count": 23,
   "triage_history": [
-    { "date": "2026-02-24", "reviewed": 6, "kept": 2, "merged": 1, "archived": 2, "deleted": 1 }
+    { "date": "2026-02-24", "reviewed": 6, "kept": 2, "archived": 2, "deleted": 1 }
   ]
 }
 ```

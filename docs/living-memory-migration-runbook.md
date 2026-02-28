@@ -238,7 +238,17 @@ Source Distribution:
   threshold-promoted    : <count>
 ```
 
-### 6.2 Commit atomically
+### 6.2 Run bulk validation
+
+After confirming the report looks correct, run decay to verify that all migrated entries parse correctly through the runtime:
+
+```bash
+cd forge-lib && python3 forge.py memory decay --directory ..
+```
+
+Check the output for errors. If any entries fail, their lifecycle fields may be malformed. Report the filepath and error for manual review. Do not proceed to commit until this passes cleanly.
+
+### 6.3 Commit atomically
 
 If any entries were successfully migrated and there are no uncommitted errors to resolve:
 
@@ -252,7 +262,7 @@ fields to <N> memory entries across people, projects, and glossary."
 
 Replace `<N>` with the actual count of migrated entries.
 
-### 6.3 Handle errors
+### 6.4 Handle errors
 
 If any entries failed validation and were reverted:
 
@@ -378,41 +388,41 @@ updated: "2025-12-03"
 - Recency bonus: +0 (updated 86 days ago, outside both recency windows)
 - Final: 45 (trusted)
 
-### Example 3 — Glossary (frontmatter source)
+### Example 3 — Glossary (auto-matched source)
 
 **BEFORE:**
 
 ```yaml
 ---
-term: "Event Sourcing"
+term: "Circuit Breaker"
 type: glossary
-definition: "Architectural pattern where state changes are stored as immutable sequence of events."
-context: "Core pattern used in API Modernization Initiative"
-created: "2026-01-05"
+definition: "Stability pattern that prevents cascading failures."
+harvested_from: "product-forge"
+signal_source: "card-047"
+created: "2025-12-28"
 updated: "2026-01-05"
 ---
 
-## Event Sourcing
+## Circuit Breaker
 
-Architectural pattern where state changes are stored as immutable sequence of events. System state rebuilt by replaying events.
-
-**Used in:** Core pattern used in API Modernization Initiative
+Stability pattern that prevents cascading failures.
 ```
 
 **AFTER:**
 
 ```yaml
 ---
-term: "Event Sourcing"
+term: "Circuit Breaker"
 type: glossary
-definition: "Architectural pattern where state changes are stored as immutable sequence of events."
-context: "Core pattern used in API Modernization Initiative"
-importance: 50
-lifecycle_status: "trusted"
-source: "frontmatter"
+definition: "Stability pattern that prevents cascading failures."
+harvested_from: "product-forge"
+signal_source: "card-047"
+importance: 30
+lifecycle_status: "probationary"
+source: "auto-matched"
 last_recalled: "2026-01-05"
 recall_count: 0
-created: "2026-01-05"
+created: "2025-12-28"
 updated: "2026-01-05"
 ---
 ```
@@ -421,10 +431,10 @@ updated: "2026-01-05"
 
 **Scoring rationale:**
 
-- Source: `frontmatter` — structured fields with definition and context, no harvesting provenance metadata
-- Baseline: 45
-- Recency bonus: +5 (updated 53 days ago, within 31-60 day window)
-- Final: 50 (trusted)
+- Source: `auto-matched` — has `harvested_from` provenance metadata (priority 1 classification rule)
+- Baseline: 25
+- Recency bonus: +5 (updated 54 days ago, within 31-60 day window)
+- Final: 30 (probationary)
 
 ---
 
