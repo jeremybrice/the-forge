@@ -6,7 +6,7 @@ from pathlib import Path
 from core.memory_ops import (
     init_memory, create_knowledge_entry, harvest_signal,
     run_decay, triage_report, triage_keep, triage_archive,
-    triage_delete, boost_entry
+    triage_delete, boost_entry, _save_boost_tracker
 )
 from core import frontmatter as fm
 
@@ -100,9 +100,11 @@ class TestFullLifecycle:
 
         # Backdate and decay to push into probationary/sunset
         meta["last_recalled"] = (date.today() - timedelta(days=100)).isoformat()
-        meta["_boosts_today"] = 0  # Reset daily cap for new "day"
+        meta.pop("_boosts_today", None)  # Clean up any legacy field
         full_path = temp_dir / filepath
         full_path.write_text(fm.dumps(meta, ""))
+        # Clear boost tracker so daily cap resets for the "new day"
+        _save_boost_tracker(d, {})
 
         run_decay(d)
         meta, _ = fm.parse(full_path.read_text())

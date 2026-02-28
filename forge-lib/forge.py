@@ -372,14 +372,24 @@ def handle_memory_triage_report(args):
 
 
 def handle_memory_promote(args):
-    """Handle memory promote command."""
+    """Handle memory promote command.
+
+    --check flag: list promotable entities without promoting (dry run).
+    Without --check: actually promote qualifying entries.
+    """
     try:
-        pending = memory_ops._load_pending(args.directory)
-        promotable = []
-        for slug, entry in pending["entities"].items():
-            if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
-                promotable.append({"slug": slug, **entry})
-        output_json({"promotable": promotable, "count": len(promotable)}, success=True)
+        if args.check:
+            # Dry-run: list promotable entities without side effects
+            pending = memory_ops._load_pending(args.directory)
+            promotable = []
+            for slug, entry in pending["entities"].items():
+                if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+                    promotable.append({"slug": slug, **entry})
+            output_json({"promotable": promotable, "count": len(promotable)}, success=True)
+        else:
+            # Actually promote qualifying entries
+            result = memory_ops.promote_pending_entities(args.directory)
+            output_json(result, success=True)
     except Exception as e:
         output_json({"error": str(e)}, success=False, error=str(e))
         sys.exit(EXIT_ERROR)
@@ -389,6 +399,7 @@ def handle_memory_triage_keep(args):
     """Handle memory triage-keep command."""
     try:
         result = memory_ops.triage_keep(filepath=args.filepath, directory=args.directory)
+        memory_ops.record_triage_action("kept", args.directory)
         output_json(result, success=True)
     except MemoryError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -399,6 +410,7 @@ def handle_memory_triage_archive(args):
     """Handle memory triage-archive command."""
     try:
         result = memory_ops.triage_archive(filepath=args.filepath, directory=args.directory)
+        memory_ops.record_triage_action("archived", args.directory)
         output_json(result, success=True)
     except MemoryError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -409,6 +421,7 @@ def handle_memory_triage_delete(args):
     """Handle memory triage-delete command."""
     try:
         result = memory_ops.triage_delete(filepath=args.filepath, directory=args.directory)
+        memory_ops.record_triage_action("deleted", args.directory)
         output_json(result, success=True)
     except MemoryError as e:
         output_json({"error": str(e)}, success=False, error=str(e))

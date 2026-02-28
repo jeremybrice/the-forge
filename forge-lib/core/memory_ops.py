@@ -849,6 +849,90 @@ def harvest_signal(
     }
 
 
+def promote_pending_entities(directory: str = ".") -> Dict[str, Any]:
+    """Promote all qualifying pending entities to knowledge entries.
+
+    Scans pending.json for entities that meet the promotion threshold
+    (3+ mentions from 2+ plugins) and creates knowledge entries for each.
+
+    Args:
+        directory: Base directory containing the memory folder
+
+    Returns:
+        Dict with:
+            promoted: List of promoted entity dicts (name, type, slug)
+            count: Number of entities promoted
+    """
+    pending = _load_pending(directory)
+    promoted = []
+
+    # Collect slugs to promote first, then mutate
+    slugs_to_promote = []
+    for slug, entry in pending["entities"].items():
+        if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+            slugs_to_promote.append(slug)
+
+    for slug in slugs_to_promote:
+        entry = pending["entities"][slug]
+        entity_type = entry.get("entity_type", "person")
+        entity_name = entry["name"]
+
+        knowledge_data = {"importance": 15, "source": "threshold-promoted"}
+
+        if entity_type == "person":
+            knowledge_data["name"] = entity_name
+            knowledge_data["role"] = "Unknown"
+            knowledge_data["context"] = "; ".join(entry.get("context_samples", [])[:3])
+        elif entity_type == "project":
+            knowledge_data["name"] = entity_name
+            knowledge_data["description"] = "; ".join(entry.get("context_samples", [])[:3])
+        elif entity_type == "glossary":
+            knowledge_data["term"] = entity_name
+            knowledge_data["definition"] = "; ".join(entry.get("context_samples", [])[:3])
+        else:
+            knowledge_data["name"] = entity_name
+            knowledge_data["role"] = "Unknown"
+            entity_type = "person"
+
+        create_knowledge_entry(entity_type, knowledge_data, directory)
+        del pending["entities"][slug]
+
+        promoted.append({
+            "slug": slug,
+            "name": entity_name,
+            "type": entity_type,
+            "starting_score": 15,
+        })
+
+    _save_pending(directory, pending)
+
+    return {
+        "promoted": promoted,
+        "count": len(promoted),
+    }
+
+
+def _load_boost_tracker(directory: str) -> Dict[str, Any]:
+    """Load the boost tracker from memory/.boost-tracker.json.
+
+    Returns an empty dict if the file does not exist.
+    """
+    tracker_path = Path(directory) / "memory" / ".boost-tracker.json"
+    if not tracker_path.exists():
+        return {}
+    try:
+        return json.loads(tracker_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_boost_tracker(directory: str, data: Dict[str, Any]) -> None:
+    """Write the boost tracker to memory/.boost-tracker.json."""
+    tracker_path = Path(directory) / "memory" / ".boost-tracker.json"
+    tracker_path.parent.mkdir(parents=True, exist_ok=True)
+    tracker_path.write_text(json.dumps(data, indent=2))
+
+
 def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> Dict[str, Any]:
     """Boost a memory entry's importance score on recall.
 
@@ -871,21 +955,20 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
 
     today = date.today().isoformat()
 
-    # Check daily cap: max 2 boosts per day
-    last_recalled = metadata.get("last_recalled")
-    recall_count_today = metadata.get("_boosts_today", 0)
+    # Load boost tracker (tracks daily boost counts per file)
+    tracker = _load_boost_tracker(directory)
+    file_key = filepath
+    file_tracker = tracker.get(file_key, {})
+    recall_count_today = file_tracker.get(today, 0)
 
-    if last_recalled == today and recall_count_today >= 2:
+    # Check daily cap: max 2 boosts per day
+    if recall_count_today >= 2:
         return {
             "boosted": False,
             "reason": "daily_cap",
             "score": metadata.get("importance", 45),
             "status": metadata.get("lifecycle_status", "trusted")
         }
-
-    # Reset daily counter if new day
-    if last_recalled != today:
-        recall_count_today = 0
 
     importance = metadata.get("importance", 45)
     new_score = min(100, importance + boost_amount)
@@ -895,11 +978,26 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
     metadata["lifecycle_status"] = new_status
     metadata["last_recalled"] = today
     metadata["recall_count"] = metadata.get("recall_count", 0) + 1
-    metadata["_boosts_today"] = recall_count_today + 1
     metadata["updated"] = today
+    # Do NOT write _boosts_today to frontmatter — tracked externally
+
+    # Strip _boosts_today from frontmatter if it was left over from old code
+    metadata.pop("_boosts_today", None)
 
     updated_content = frontmatter.dumps(metadata, body)
     full_path.write_text(updated_content)
+
+    # Update boost tracker: only keep today's date entries (remove old dates)
+    tracker[file_key] = {today: recall_count_today + 1}
+    # Clean up old date entries from other files too
+    for fk in list(tracker.keys()):
+        entry = tracker[fk]
+        if isinstance(entry, dict):
+            # Keep only today's date key
+            tracker[fk] = {k: v for k, v in entry.items() if k == today}
+            if not tracker[fk]:
+                del tracker[fk]
+    _save_boost_tracker(directory, tracker)
 
     return {
         "boosted": True,

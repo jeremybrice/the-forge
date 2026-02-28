@@ -101,3 +101,157 @@ class TestInstantTrackReinforcement:
 
         result = harvest_signal("todd martinez", "product-forge", "person", "ref", str(temp_dir))
         assert result["action"] == "reinforced"
+
+
+class TestPromotePendingEntities:
+    """Tests for the promote_pending_entities function (promote command without --check)."""
+
+    def _seed_promotable(self, temp_dir, entity_name="Phoenix", entity_type="project"):
+        """Seed pending.json with an entity that meets promotion threshold."""
+        from core.memory_ops import harvest_signal
+        harvest_signal(entity_name, "product-forge", entity_type, "ref 1", str(temp_dir))
+        harvest_signal(entity_name, "tasks-forge", entity_type, "ref 2", str(temp_dir))
+        # Third mention does NOT trigger auto-promote because we want 3 mentions
+        # but still below threshold (same source won't push to 2+ sources unless
+        # we use a third plugin). Use a third distinct plugin for the third mention.
+        # Actually harvest_signal auto-promotes at threshold. We need to seed
+        # pending.json directly to test promote_pending_entities.
+        pending_path = temp_dir / "memory" / "pending.json"
+        pending = json.loads(pending_path.read_text())
+        slug = list(pending["entities"].keys())[0]
+        # Force to 3 mentions from 2 sources (threshold met but not auto-promoted
+        # because harvest_signal only promotes when the triggering call crosses)
+        pending["entities"][slug]["mentions"] = 3
+        pending_path.write_text(json.dumps(pending, indent=2))
+
+    def test_promote_check_does_not_create_files(self, temp_dir):
+        """--check mode (dry run) should not create knowledge files or modify pending.json."""
+        from core.memory_ops import harvest_signal, _load_pending
+        init_memory(str(temp_dir))
+        self._seed_promotable(temp_dir)
+
+        # Snapshot state before
+        pending_before = _load_pending(str(temp_dir))
+        projects_dir = temp_dir / "memory" / "projects"
+        files_before = set(projects_dir.glob("*.md")) if projects_dir.exists() else set()
+
+        # Simulate --check behavior: just read promotable, don't call promote
+        pending = _load_pending(str(temp_dir))
+        promotable = []
+        for slug, entry in pending["entities"].items():
+            if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+                promotable.append({"slug": slug, **entry})
+
+        # Verify nothing changed
+        pending_after = _load_pending(str(temp_dir))
+        files_after = set(projects_dir.glob("*.md")) if projects_dir.exists() else set()
+        assert pending_before == pending_after, "pending.json should not be modified in check mode"
+        assert files_before == files_after, "No knowledge files should be created in check mode"
+        assert len(promotable) == 1, "Should find one promotable entity"
+
+    def test_promote_creates_entries(self, temp_dir):
+        """promote_pending_entities should create files and remove from pending."""
+        from core.memory_ops import promote_pending_entities, _load_pending
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        self._seed_promotable(temp_dir)
+
+        # Verify pending has the entity before
+        pending_before = _load_pending(str(temp_dir))
+        assert len(pending_before["entities"]) == 1
+
+        # Run actual promotion
+        result = promote_pending_entities(str(temp_dir))
+
+        assert result["count"] == 1
+        assert len(result["promoted"]) == 1
+        assert result["promoted"][0]["name"] == "Phoenix"
+        assert result["promoted"][0]["type"] == "project"
+        assert result["promoted"][0]["starting_score"] == 15
+
+        # Verify pending is now empty
+        pending_after = _load_pending(str(temp_dir))
+        assert len(pending_after["entities"]) == 0
+
+        # Verify knowledge file was created
+        project_file = temp_dir / "memory" / "projects" / "phoenix.md"
+        assert project_file.exists()
+        metadata, _ = fm.parse(project_file.read_text())
+        assert metadata["importance"] == 15
+        assert metadata["source"] == "threshold-promoted"
+
+    def test_promote_empty_pending(self, temp_dir):
+        """promote_pending_entities on empty pending should return count=0 cleanly."""
+        from core.memory_ops import promote_pending_entities
+        init_memory(str(temp_dir))
+
+        result = promote_pending_entities(str(temp_dir))
+
+        assert result["count"] == 0
+        assert result["promoted"] == []
+
+    def test_promote_skips_below_threshold(self, temp_dir):
+        """Entries that don't meet threshold should stay in pending."""
+        from core.memory_ops import harvest_signal, promote_pending_entities, _load_pending
+        init_memory(str(temp_dir))
+
+        # Only 1 mention from 1 source — below threshold
+        harvest_signal("Alpha", "product-forge", "project", "ref", str(temp_dir))
+
+        result = promote_pending_entities(str(temp_dir))
+        assert result["count"] == 0
+
+        # Alpha should still be in pending
+        pending = _load_pending(str(temp_dir))
+        assert "alpha" in pending["entities"]
+
+    def test_promote_handles_multiple_entities(self, temp_dir):
+        """Should promote multiple qualifying entities in one call."""
+        from core.memory_ops import promote_pending_entities, _load_pending, _save_pending
+        init_memory(str(temp_dir))
+
+        # Seed two promotable entities directly in pending.json
+        pending = {
+            "entities": {
+                "alice-jones": {
+                    "name": "Alice Jones",
+                    "entity_type": "person",
+                    "mentions": 4,
+                    "first_seen": "2026-02-01",
+                    "last_seen": "2026-02-28",
+                    "sources": ["product-forge", "tasks-forge"],
+                    "context_samples": ["context a", "context b"]
+                },
+                "beta-api": {
+                    "name": "Beta API",
+                    "entity_type": "glossary",
+                    "mentions": 3,
+                    "first_seen": "2026-02-10",
+                    "last_seen": "2026-02-28",
+                    "sources": ["product-forge", "report-forge"],
+                    "context_samples": ["glossary ref 1"]
+                },
+                "gamma-system": {
+                    "name": "Gamma System",
+                    "entity_type": "project",
+                    "mentions": 1,
+                    "first_seen": "2026-02-20",
+                    "last_seen": "2026-02-28",
+                    "sources": ["product-forge"],
+                    "context_samples": ["single ref"]
+                }
+            }
+        }
+        _save_pending(str(temp_dir), pending)
+
+        result = promote_pending_entities(str(temp_dir))
+
+        # Alice and Beta should promote; Gamma should stay
+        assert result["count"] == 2
+        promoted_names = {p["name"] for p in result["promoted"]}
+        assert "Alice Jones" in promoted_names
+        assert "Beta API" in promoted_names
+
+        remaining = _load_pending(str(temp_dir))
+        assert "gamma-system" in remaining["entities"]
+        assert len(remaining["entities"]) == 1

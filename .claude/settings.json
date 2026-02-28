@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat /dev/stdin | bash $CLAUDE_PLUGIN_ROOT/hooks/task-completed.sh"
+          }
+        ]
+      }
     ]
   }
 }

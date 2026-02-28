@@ -206,6 +206,102 @@ class TestBoostEntry:
         assert boost_result["boosted"] is False
         assert boost_result["reason"] == "daily_cap"
 
+    def test_boost_does_not_write_boosts_today_to_frontmatter(self, temp_dir):
+        """_boosts_today must NOT appear in entry frontmatter after boosting."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "CleanFM", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+
+        filepath = temp_dir / result["filepath"]
+        metadata, _ = fm.parse(filepath.read_text())
+        assert "_boosts_today" not in metadata, \
+            "_boosts_today should not be written to frontmatter (schema conflict)"
+
+    def test_boost_creates_tracker_file(self, temp_dir):
+        """Boosting should create memory/.boost-tracker.json with correct structure."""
+        from core.memory_ops import boost_entry
+        init_memory(str(temp_dir))
+        data = {"name": "Tracked", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+
+        tracker_path = temp_dir / "memory" / ".boost-tracker.json"
+        assert tracker_path.exists(), "Boost tracker file should be created"
+
+        tracker = json.loads(tracker_path.read_text())
+        today = date.today().isoformat()
+        assert result["filepath"] in tracker, "Tracker should have an entry for the boosted file"
+        assert tracker[result["filepath"]][today] == 1, "First boost count should be 1"
+
+    def test_boost_tracker_increments_correctly(self, temp_dir):
+        """Tracker should increment boost count per file per day."""
+        from core.memory_ops import boost_entry
+        init_memory(str(temp_dir))
+        data = {"name": "Counter", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        boost_entry(result["filepath"], str(temp_dir))
+        boost_entry(result["filepath"], str(temp_dir))
+
+        tracker_path = temp_dir / "memory" / ".boost-tracker.json"
+        tracker = json.loads(tracker_path.read_text())
+        today = date.today().isoformat()
+        assert tracker[result["filepath"]][today] == 2, "Second boost count should be 2"
+
+    def test_boost_tracker_cleans_old_dates(self, temp_dir):
+        """Tracker should only keep today's date entries, removing stale dates."""
+        from core.memory_ops import boost_entry, _save_boost_tracker
+        init_memory(str(temp_dir))
+        data = {"name": "StaleTrack", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        # Pre-populate tracker with a stale date entry
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        _save_boost_tracker(str(temp_dir), {
+            result["filepath"]: {yesterday: 2}
+        })
+
+        # Boost today -- the old entry should be cleaned up
+        boost_entry(result["filepath"], str(temp_dir))
+
+        tracker_path = temp_dir / "memory" / ".boost-tracker.json"
+        tracker = json.loads(tracker_path.read_text())
+        today = date.today().isoformat()
+
+        file_entry = tracker[result["filepath"]]
+        assert yesterday not in file_entry, "Old date entries should be cleaned up"
+        assert file_entry[today] == 1, "Today's count should be 1"
+
+    def test_boost_strips_legacy_boosts_today_from_frontmatter(self, temp_dir):
+        """If an entry has _boosts_today from old code, boost should strip it."""
+        from core.memory_ops import boost_entry
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        data = {"name": "Legacy", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        # Manually inject legacy _boosts_today field
+        filepath = temp_dir / result["filepath"]
+        metadata, body = fm.parse(filepath.read_text())
+        metadata["_boosts_today"] = 1
+        filepath.write_text(fm.dumps(metadata, body))
+
+        # Verify it was injected
+        metadata2, _ = fm.parse(filepath.read_text())
+        assert "_boosts_today" in metadata2
+
+        # Boost should strip the legacy field
+        boost_entry(result["filepath"], str(temp_dir))
+
+        metadata3, _ = fm.parse(filepath.read_text())
+        assert "_boosts_today" not in metadata3, \
+            "Legacy _boosts_today should be stripped from frontmatter on boost"
+
 
 class TestTriageReport:
     """Tests for triage report generation."""
