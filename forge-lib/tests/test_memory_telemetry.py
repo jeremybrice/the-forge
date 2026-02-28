@@ -1,8 +1,6 @@
 """Tests for memory telemetry collection."""
 import pytest
 import json
-import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 from core.memory_ops import init_memory, create_knowledge_entry
@@ -43,16 +41,6 @@ class TestTelemetryUpdate:
         assert len(telemetry.get("triage_history", [])) >= 1
 
 
-def _forge_cli(*args):
-    """Run forge.py CLI and return parsed JSON output."""
-    forge_py = str(Path(__file__).resolve().parent.parent / "forge.py")
-    result = subprocess.run(
-        [sys.executable, forge_py] + list(args),
-        capture_output=True, text=True
-    )
-    return result
-
-
 def _create_sunset_entry(temp_dir, name="Sunset Person"):
     """Helper: create a person entry with sunset-level importance."""
     init_memory(str(temp_dir))
@@ -72,10 +60,10 @@ def _create_sunset_entry(temp_dir, name="Sunset Person"):
 class TestTriageHandlerRecordsTelemetry:
     """Regression tests: triage CLI handlers must call record_triage_action."""
 
-    def test_triage_keep_records_action(self, temp_dir):
+    def test_triage_keep_records_action(self, temp_dir, forge_cli):
         """forge memory triage-keep should record 'kept' in telemetry.json."""
         filepath = _create_sunset_entry(temp_dir, "Keep Me")
-        result = _forge_cli(
+        result = forge_cli(
             "memory", "triage-keep",
             filepath,
             "--directory", str(temp_dir),
@@ -96,10 +84,10 @@ class TestTriageHandlerRecordsTelemetry:
         assert today_entry["kept"] >= 1, f"kept count is {today_entry['kept']}, expected >= 1"
         assert today_entry["reviewed"] >= 1
 
-    def test_triage_archive_records_action(self, temp_dir):
+    def test_triage_archive_records_action(self, temp_dir, forge_cli):
         """forge memory triage-archive should record 'archived' in telemetry.json."""
         filepath = _create_sunset_entry(temp_dir, "Archive Me")
-        result = _forge_cli(
+        result = forge_cli(
             "memory", "triage-archive",
             filepath,
             "--directory", str(temp_dir),
@@ -120,10 +108,10 @@ class TestTriageHandlerRecordsTelemetry:
         assert today_entry["archived"] >= 1, f"archived count is {today_entry['archived']}, expected >= 1"
         assert today_entry["reviewed"] >= 1
 
-    def test_triage_delete_records_action(self, temp_dir):
+    def test_triage_delete_records_action(self, temp_dir, forge_cli):
         """forge memory triage-delete should record 'deleted' in telemetry.json."""
         filepath = _create_sunset_entry(temp_dir, "Delete Me")
-        result = _forge_cli(
+        result = forge_cli(
             "memory", "triage-delete",
             filepath,
             "--directory", str(temp_dir),

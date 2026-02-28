@@ -244,16 +244,18 @@ window.MemoryView = (function () {
 
   /**
    * Extract lifecycle CSS class from parsed frontmatter.
-   * Returns one of: 'memory-trusted', 'memory-probationary', 'memory-sunset', or ''.
+   * Returns one of: 'prod-memory-trusted', 'prod-memory-probationary', 'prod-memory-sunset', or ''.
    */
+  var LIFECYCLE_CLASSES = {
+    trusted: 'prod-memory-trusted',
+    probationary: 'prod-memory-probationary',
+    sunset: 'prod-memory-sunset'
+  };
+
   function getLifecycleClass(parsed) {
     var fm = parsed.frontmatter;
     if (!fm || !fm.lifecycle_status) return '';
-    var status = String(fm.lifecycle_status).toLowerCase();
-    if (status === 'trusted') return 'memory-trusted';
-    if (status === 'probationary') return 'memory-probationary';
-    if (status === 'sunset') return 'memory-sunset';
-    return '';
+    return LIFECYCLE_CLASSES[String(fm.lifecycle_status).toLowerCase()] || '';
   }
 
   /**
@@ -276,21 +278,23 @@ window.MemoryView = (function () {
   }
 
   /**
-   * Count total sunset entries across all memory directories.
+   * Count sunset entries per directory. Returns an object like {people: 2, glossary: 1}.
+   * Use to derive both per-tab badges and the global triage count.
    */
-  function countSunsetEntries() {
-    var count = 0;
+  function countSunsetByDir() {
+    var counts = {};
     var dirNames = Object.keys(memoryData.memoryDirs);
     for (var i = 0; i < dirNames.length; i++) {
-      var files = memoryData.memoryDirs[dirNames[i]];
+      var dn = dirNames[i];
+      var n = 0;
+      var files = memoryData.memoryDirs[dn];
       for (var j = 0; j < files.length; j++) {
         var fm = files[j].parsed.frontmatter;
-        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') {
-          count++;
-        }
+        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') n++;
       }
+      counts[dn] = n;
     }
-    return count;
+    return counts;
   }
 
   /**
@@ -456,35 +460,46 @@ window.MemoryView = (function () {
      Uses ForgeFS abstraction for dual-mode (browser/Tauri) support
      ══════════════════════════════════════════════════════════ */
   async function buildMemorySignature() {
-    var entries = [];
+    var promises = [];
 
     if (memoryData.claudeMd) {
-      try {
-        var meta = await ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md');
-        entries.push('CLAUDE.md:' + meta.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function () {
+          return ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md')
+            .then(function (meta) { return 'CLAUDE.md:' + meta.modified; })
+            .catch(function () { return null; });
+        })()
+      );
     }
 
     for (var i = 0; i < memoryData.memoryFiles.length; i++) {
-      var mf = memoryData.memoryFiles[i];
-      try {
-        var meta2 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + mf.name);
-        entries.push('memory/' + mf.name + ':' + meta2.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function (name) {
+          var path = 'memory/' + name;
+          return ForgeFS.getFileMeta(memoryDirHandle, path)
+            .then(function (meta) { return path + ':' + meta.modified; })
+            .catch(function () { return null; });
+        })(memoryData.memoryFiles[i].name)
+      );
     }
 
     var dirNames = Object.keys(memoryData.memoryDirs).sort();
     for (var di = 0; di < dirNames.length; di++) {
-      var dirName = dirNames[di];
-      var files = memoryData.memoryDirs[dirName];
+      var files = memoryData.memoryDirs[dirNames[di]];
       for (var j = 0; j < files.length; j++) {
-        try {
-          var meta3 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + dirName + '/' + files[j].name);
-          entries.push('memory/' + dirName + '/' + files[j].name + ':' + meta3.modified);
-        } catch (e) { /* skip */ }
+        promises.push(
+          (function (dirName, fileName) {
+            var path = 'memory/' + dirName + '/' + fileName;
+            return ForgeFS.getFileMeta(memoryDirHandle, path)
+              .then(function (meta) { return path + ':' + meta.modified; })
+              .catch(function () { return null; });
+          })(dirNames[di], files[j].name)
+        );
       }
     }
 
+    var results = await Promise.all(promises);
+    var entries = results.filter(function (e) { return e !== null; });
     entries.sort();
     return entries.join('|');
   }
@@ -550,7 +565,9 @@ window.MemoryView = (function () {
     var tabsEl = $('[data-ref="memory-tabs"]');
     if (!tabsEl) return;
     var html = '';
-    var sunsetCount = countSunsetEntries();
+    var sunsetByDir = countSunsetByDir();
+    var sunsetTotal = 0;
+    for (var sd in sunsetByDir) sunsetTotal += sunsetByDir[sd];
 
     if (memoryData.claudeMd) {
       var isActive = !activeMemoryTab || activeMemoryTab === 'overview';
@@ -572,14 +589,7 @@ window.MemoryView = (function () {
       var count = memoryData.memoryDirs[dn].length;
       var isAct2 = activeMemoryTab === 'dir-' + dn;
 
-      /* Count sunset entries in this directory for per-tab badge */
-      var dirSunsetCount = 0;
-      var dirFiles = memoryData.memoryDirs[dn];
-      for (var k = 0; k < dirFiles.length; k++) {
-        var fm = dirFiles[k].parsed.frontmatter;
-        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') dirSunsetCount++;
-      }
-
+      var dirSunsetCount = sunsetByDir[dn] || 0;
       var badgeHtml = dirSunsetCount > 0
         ? ' <span class="prod-tab-badge" title="' + dirSunsetCount + ' sunset entries need triage">' + dirSunsetCount + '</span>'
         : '';
@@ -590,9 +600,9 @@ window.MemoryView = (function () {
     }
 
     /* Global triage badge shown after all tabs if any sunset entries exist */
-    if (sunsetCount > 0) {
-      html += '<span style="display:flex;align-items:center;margin-left:auto;font-size:12px;color:#ef4444;gap:4px;" title="' + sunsetCount + ' sunset entries across all directories need triage">' +
-        '<i class="fa-solid fa-triangle-exclamation"></i> ' + sunsetCount + ' triage' +
+    if (sunsetTotal > 0) {
+      html += '<span class="prod-triage-badge" title="' + sunsetTotal + ' sunset entries across all directories need triage">' +
+        '<i class="fa-solid fa-triangle-exclamation"></i> ' + sunsetTotal + ' triage' +
       '</span>';
     }
 
@@ -715,7 +725,7 @@ window.MemoryView = (function () {
   }
 
   function renderSortDropdown() {
-    return '<select class="memory-sort-select" data-ref="memory-sort">' +
+    return '<select class="prod-memory-sort-select" data-ref="memory-sort">' +
       '<option value="name"' + (memorySortMode === 'name' ? ' selected' : '') + '>Sort: Name</option>' +
       '<option value="importance"' + (memorySortMode === 'importance' ? ' selected' : '') + '>Sort: Importance</option>' +
       '<option value="last_recalled"' + (memorySortMode === 'last_recalled' ? ' selected' : '') + '>Sort: Last Recalled</option>' +
@@ -740,7 +750,7 @@ window.MemoryView = (function () {
       var lifecycleClass = getLifecycleClass(p);
       var importance = getImportance(p);
       var importanceBadgeHtml = importance !== null
-        ? '<span class="importance-badge" title="Importance: ' + importance + '">' + importance + '</span>'
+        ? '<span class="prod-importance-badge" title="Importance: ' + importance + '">' + importance + '</span>'
         : '';
 
       var fieldsHtml = '';

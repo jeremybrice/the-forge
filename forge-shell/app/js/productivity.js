@@ -1414,35 +1414,46 @@ window.ProductivityView = (function () {
      Uses ForgeFS abstraction for dual-mode (browser/Tauri) support
      ══════════════════════════════════════════════════════════ */
   async function buildMemorySignature() {
-    var entries = [];
+    var promises = [];
 
     if (memoryData.claudeMd) {
-      try {
-        var meta = await ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md');
-        entries.push('CLAUDE.md:' + meta.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function () {
+          return ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md')
+            .then(function (meta) { return 'CLAUDE.md:' + meta.modified; })
+            .catch(function () { return null; });
+        })()
+      );
     }
 
     for (var i = 0; i < memoryData.memoryFiles.length; i++) {
-      var mf = memoryData.memoryFiles[i];
-      try {
-        var meta2 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + mf.name);
-        entries.push('memory/' + mf.name + ':' + meta2.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function (name) {
+          var path = 'memory/' + name;
+          return ForgeFS.getFileMeta(memoryDirHandle, path)
+            .then(function (meta) { return path + ':' + meta.modified; })
+            .catch(function () { return null; });
+        })(memoryData.memoryFiles[i].name)
+      );
     }
 
     var dirNames = Object.keys(memoryData.memoryDirs).sort();
     for (var di = 0; di < dirNames.length; di++) {
-      var dirName = dirNames[di];
-      var files = memoryData.memoryDirs[dirName];
+      var files = memoryData.memoryDirs[dirNames[di]];
       for (var j = 0; j < files.length; j++) {
-        try {
-          var meta3 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + dirName + '/' + files[j].name);
-          entries.push('memory/' + dirName + '/' + files[j].name + ':' + meta3.modified);
-        } catch (e) { /* skip */ }
+        promises.push(
+          (function (dirName, fileName) {
+            var path = 'memory/' + dirName + '/' + fileName;
+            return ForgeFS.getFileMeta(memoryDirHandle, path)
+              .then(function (meta) { return path + ':' + meta.modified; })
+              .catch(function () { return null; });
+          })(dirNames[di], files[j].name)
+        );
       }
     }
 
+    var results = await Promise.all(promises);
+    var entries = results.filter(function (e) { return e !== null; });
     entries.sort();
     return entries.join('|');
   }

@@ -6,7 +6,6 @@ stored in memory/context/ directory with YAML frontmatter.
 """
 
 import os
-import re
 import json
 from datetime import date
 from pathlib import Path
@@ -17,6 +16,7 @@ import jinja2
 from core import frontmatter
 from core import validator
 from core import index_ops
+from core.slug import generate_slug
 
 
 # Taxonomy type to file mappings
@@ -406,31 +406,65 @@ KNOWLEDGE_TYPES = {
     'glossary': {'directory': 'glossary', 'schema': 'glossary', 'template': 'glossary', 'name_field': 'term'},
 }
 
+# Derived from KNOWLEDGE_TYPES — the subdirectory names under memory/
+KNOWLEDGE_DIRS = [cfg['directory'] for cfg in KNOWLEDGE_TYPES.values()]
 
-def _generate_slug(name: str) -> str:
-    """Convert a name/term to a URL-safe slug.
+# Lifecycle status constants and thresholds
+STATUS_TRUSTED = "trusted"
+STATUS_PROBATIONARY = "probationary"
+STATUS_SUNSET = "sunset"
+THRESHOLD_TRUSTED = 40
+THRESHOLD_PROBATIONARY = 10
 
-    Lowercases, replaces spaces with hyphens, strips non-alphanumeric/hyphen
-    characters, collapses multiple hyphens, and trims leading/trailing hyphens.
 
-    Args:
-        name: Display name or term
+def _get_entry_name(metadata: Dict[str, Any], fallback: str = "") -> str:
+    """Extract display name from a knowledge entry's metadata."""
+    return metadata.get("name", metadata.get("term", fallback))
 
-    Returns:
-        URL-safe slug string
 
-    Examples:
-        >>> _generate_slug('Jane Smith')
-        'jane-smith'
-        >>> _generate_slug('API Platform')
-        'api-platform'
+def _build_promotion_data(
+    entity_type: str, entity_name: str, context_samples: List[str]
+) -> tuple:
+    """Build knowledge_data dict for promoting a pending entity.
+
+    Returns (entity_type, knowledge_data) — entity_type may be normalised
+    to 'person' for unknown types.
     """
-    slug = name.lower()
-    slug = slug.replace(' ', '-')
-    slug = re.sub(r'[^a-z0-9-]', '', slug)
-    slug = re.sub(r'-+', '-', slug)
-    slug = slug.strip('-')
-    return slug
+    knowledge_data: Dict[str, Any] = {"importance": 15, "source": "threshold-promoted"}
+    context_str = "; ".join(context_samples[:3])
+
+    if entity_type == "person":
+        knowledge_data["name"] = entity_name
+        knowledge_data["role"] = "Unknown"
+        knowledge_data["context"] = context_str
+    elif entity_type == "project":
+        knowledge_data["name"] = entity_name
+        knowledge_data["description"] = context_str
+    elif entity_type == "glossary":
+        knowledge_data["term"] = entity_name
+        knowledge_data["definition"] = context_str
+    else:
+        knowledge_data["name"] = entity_name
+        knowledge_data["role"] = "Unknown"
+        entity_type = "person"
+
+    return entity_type, knowledge_data
+
+
+def _load_json_file(directory: str, filename: str, default: Dict[str, Any]) -> Dict[str, Any]:
+    """Load a JSON file from the memory directory, returning *default* if missing."""
+    path = Path(directory) / "memory" / filename
+    try:
+        return json.loads(path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return default.copy()
+
+
+def _save_json_file(directory: str, filename: str, data: Dict[str, Any]) -> None:
+    """Write a JSON file into the memory directory."""
+    path = Path(directory) / "memory" / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
 
 
 def _load_knowledge_template(template_name: str) -> jinja2.Template:
@@ -516,7 +550,7 @@ def create_knowledge_entry(
     # Generate slug from name/term field
     name_field = type_config['name_field']
     name_value = data[name_field]
-    slug = _generate_slug(name_value)
+    slug = generate_slug(name_value)
     filename = f"{slug}.md"
 
     # Create directory
@@ -597,22 +631,22 @@ def derive_lifecycle_status(importance: int) -> str:
     """Derive lifecycle status from importance score.
 
     Thresholds:
-        >= 40: trusted
-        10-39: probationary
-        < 10:  sunset
+        >= THRESHOLD_TRUSTED (40): trusted
+        >= THRESHOLD_PROBATIONARY (10): probationary
+        < THRESHOLD_PROBATIONARY: sunset
 
     Args:
         importance: Current importance score (0-100)
 
     Returns:
-        Lifecycle status string: "trusted", "probationary", or "sunset"
+        Lifecycle status string
     """
-    if importance >= 40:
-        return "trusted"
-    elif importance >= 10:
-        return "probationary"
+    if importance >= THRESHOLD_TRUSTED:
+        return STATUS_TRUSTED
+    elif importance >= THRESHOLD_PROBATIONARY:
+        return STATUS_PROBATIONARY
     else:
-        return "sunset"
+        return STATUS_SUNSET
 
 
 def compute_decay(importance: int, last_recalled) -> int:
@@ -666,13 +700,13 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
             entries_decayed: Number of files whose importance changed
             transitions: List of lifecycle status changes
     """
-    knowledge_dirs = ["people", "projects", "glossary"]
     base_path = Path(directory)
     entries_scanned = 0
     entries_decayed = 0
     transitions = []
+    all_entries = []
 
-    for subdir in knowledge_dirs:
+    for subdir in KNOWLEDGE_DIRS:
         dir_path = base_path / "memory" / subdir
         if not dir_path.exists():
             continue
@@ -686,7 +720,7 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
                 "last_recalled",
                 metadata.get("created", date.today().isoformat())
             )
-            old_status = metadata.get("lifecycle_status", "trusted")
+            old_status = metadata.get("lifecycle_status", STATUS_TRUSTED)
 
             new_score = compute_decay(importance, last_recalled_str)
             new_status = derive_lifecycle_status(new_score)
@@ -702,18 +736,37 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
                 if old_status != new_status:
                     transitions.append({
                         "file": str(md_file.relative_to(base_path)),
-                        "name": metadata.get("name", metadata.get("term", "")),
+                        "name": _get_entry_name(metadata),
                         "from": old_status,
                         "to": new_status,
                         "score": new_score
                     })
 
-    update_telemetry_snapshot(directory)
+            all_entries.append({
+                "filepath": str(md_file.relative_to(base_path)),
+                "metadata": metadata,
+            })
+
+    # Periodic cleanup: remove stale boost tracker entries
+    today = date.today().isoformat()
+    tracker = _load_boost_tracker(directory)
+    if tracker:
+        cleaned = {}
+        for fk, entry in tracker.items():
+            if isinstance(entry, dict):
+                kept = {k: v for k, v in entry.items() if k == today}
+                if kept:
+                    cleaned[fk] = kept
+        if len(cleaned) != len(tracker):
+            _save_boost_tracker(directory, cleaned)
+
+    update_telemetry_snapshot(directory, entries=all_entries)
 
     return {
         "entries_scanned": entries_scanned,
         "entries_decayed": entries_decayed,
-        "transitions": transitions
+        "transitions": transitions,
+        "all_entries": all_entries
     }
 
 
@@ -723,17 +776,12 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
 
 def _load_pending(directory: str) -> Dict[str, Any]:
     """Load pending.json, creating if needed."""
-    pending_path = Path(directory) / "memory" / "pending.json"
-    if pending_path.exists():
-        return json.loads(pending_path.read_text())
-    return {"entities": {}}
+    return _load_json_file(directory, "pending.json", {"entities": {}})
 
 
 def _save_pending(directory: str, pending: Dict[str, Any]) -> None:
     """Save pending.json."""
-    pending_path = Path(directory) / "memory" / "pending.json"
-    pending_path.parent.mkdir(parents=True, exist_ok=True)
-    pending_path.write_text(json.dumps(pending, indent=2))
+    _save_json_file(directory, "pending.json", pending)
 
 
 def _fuzzy_match_entry(entity_name: str, directory: str) -> Optional[Dict[str, Any]]:
@@ -745,14 +793,14 @@ def _fuzzy_match_entry(entity_name: str, directory: str) -> Optional[Dict[str, A
     base_path = Path(directory)
     name_lower = entity_name.lower().strip()
 
-    for subdir in ["people", "projects", "glossary"]:
+    for subdir in KNOWLEDGE_DIRS:
         dir_path = base_path / "memory" / subdir
         if not dir_path.exists():
             continue
         for md_file in dir_path.glob("*.md"):
             content = md_file.read_text()
             metadata, body = frontmatter.parse(content)
-            entry_name = metadata.get("name", metadata.get("term", "")).lower().strip()
+            entry_name = _get_entry_name(metadata).lower().strip()
             if entry_name == name_lower:
                 rel_path = str(md_file.relative_to(base_path))
                 return {"filepath": rel_path, "metadata": metadata}
@@ -788,7 +836,7 @@ def harvest_signal(
 
     # Threshold track: add to pending
     pending = _load_pending(directory)
-    slug = _generate_slug(entity_name)
+    slug = generate_slug(entity_name)
 
     if slug not in pending["entities"]:
         pending["entities"][slug] = {
@@ -811,24 +859,9 @@ def harvest_signal(
 
     # Check promotion threshold: 3+ mentions from 2+ plugins
     if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
-        # Promote to real entry
-        knowledge_data = {"importance": 15, "source": "threshold-promoted"}
-
-        if entity_type == "person":
-            knowledge_data["name"] = entity_name
-            knowledge_data["role"] = "Unknown"
-            knowledge_data["context"] = "; ".join(entry["context_samples"][:3])
-        elif entity_type == "project":
-            knowledge_data["name"] = entity_name
-            knowledge_data["description"] = "; ".join(entry["context_samples"][:3])
-        elif entity_type == "glossary":
-            knowledge_data["term"] = entity_name
-            knowledge_data["definition"] = "; ".join(entry["context_samples"][:3])
-        else:
-            knowledge_data["name"] = entity_name
-            knowledge_data["role"] = "Unknown"
-            entity_type = "person"
-
+        entity_type, knowledge_data = _build_promotion_data(
+            entity_type, entity_name, entry["context_samples"]
+        )
         create_knowledge_entry(entity_type, knowledge_data, directory)
         del pending["entities"][slug]
         _save_pending(directory, pending)
@@ -847,6 +880,19 @@ def harvest_signal(
         "mentions": entry["mentions"],
         "sources": entry["sources"]
     }
+
+
+def check_promotable(directory: str = ".") -> List[Dict[str, Any]]:
+    """List pending entities that qualify for promotion (dry run).
+
+    Returns a list of promotable entity dicts without side effects.
+    """
+    pending = _load_pending(directory)
+    promotable = []
+    for slug, entry in pending["entities"].items():
+        if entry["mentions"] >= 3 and len(entry["sources"]) >= 2:
+            promotable.append({"slug": slug, **entry})
+    return promotable
 
 
 def promote_pending_entities(directory: str = ".") -> Dict[str, Any]:
@@ -877,23 +923,9 @@ def promote_pending_entities(directory: str = ".") -> Dict[str, Any]:
         entity_type = entry.get("entity_type", "person")
         entity_name = entry["name"]
 
-        knowledge_data = {"importance": 15, "source": "threshold-promoted"}
-
-        if entity_type == "person":
-            knowledge_data["name"] = entity_name
-            knowledge_data["role"] = "Unknown"
-            knowledge_data["context"] = "; ".join(entry.get("context_samples", [])[:3])
-        elif entity_type == "project":
-            knowledge_data["name"] = entity_name
-            knowledge_data["description"] = "; ".join(entry.get("context_samples", [])[:3])
-        elif entity_type == "glossary":
-            knowledge_data["term"] = entity_name
-            knowledge_data["definition"] = "; ".join(entry.get("context_samples", [])[:3])
-        else:
-            knowledge_data["name"] = entity_name
-            knowledge_data["role"] = "Unknown"
-            entity_type = "person"
-
+        entity_type, knowledge_data = _build_promotion_data(
+            entity_type, entity_name, entry.get("context_samples", [])
+        )
         create_knowledge_entry(entity_type, knowledge_data, directory)
         del pending["entities"][slug]
 
@@ -913,24 +945,13 @@ def promote_pending_entities(directory: str = ".") -> Dict[str, Any]:
 
 
 def _load_boost_tracker(directory: str) -> Dict[str, Any]:
-    """Load the boost tracker from memory/.boost-tracker.json.
-
-    Returns an empty dict if the file does not exist.
-    """
-    tracker_path = Path(directory) / "memory" / ".boost-tracker.json"
-    if not tracker_path.exists():
-        return {}
-    try:
-        return json.loads(tracker_path.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
+    """Load the boost tracker from memory/.boost-tracker.json."""
+    return _load_json_file(directory, ".boost-tracker.json", {})
 
 
 def _save_boost_tracker(directory: str, data: Dict[str, Any]) -> None:
     """Write the boost tracker to memory/.boost-tracker.json."""
-    tracker_path = Path(directory) / "memory" / ".boost-tracker.json"
-    tracker_path.parent.mkdir(parents=True, exist_ok=True)
-    tracker_path.write_text(json.dumps(data, indent=2))
+    _save_json_file(directory, ".boost-tracker.json", data)
 
 
 def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> Dict[str, Any]:
@@ -947,10 +968,11 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
     base_path = Path(directory)
     full_path = base_path / filepath
 
-    if not full_path.exists():
+    try:
+        content = full_path.read_text()
+    except FileNotFoundError:
         raise MemoryError(f"Entry not found: {filepath}")
 
-    content = full_path.read_text()
     metadata, body = frontmatter.parse(content)
 
     today = date.today().isoformat()
@@ -967,7 +989,7 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
             "boosted": False,
             "reason": "daily_cap",
             "score": metadata.get("importance", 45),
-            "status": metadata.get("lifecycle_status", "trusted")
+            "status": metadata.get("lifecycle_status", STATUS_TRUSTED)
         }
 
     importance = metadata.get("importance", 45)
@@ -987,16 +1009,8 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
     updated_content = frontmatter.dumps(metadata, body)
     full_path.write_text(updated_content)
 
-    # Update boost tracker: only keep today's date entries (remove old dates)
+    # Update boost tracker for this file only (cleanup happens in run_decay)
     tracker[file_key] = {today: recall_count_today + 1}
-    # Clean up old date entries from other files too
-    for fk in list(tracker.keys()):
-        entry = tracker[fk]
-        if isinstance(entry, dict):
-            # Keep only today's date key
-            tracker[fk] = {k: v for k, v in entry.items() if k == today}
-            if not tracker[fk]:
-                del tracker[fk]
     _save_boost_tracker(directory, tracker)
 
     return {
@@ -1014,52 +1028,49 @@ def triage_report(directory: str = ".") -> Dict[str, Any]:
     """Generate triage report of entries needing attention.
 
     First runs decay to ensure scores are current.
-    Then collects sunset entries and approaching-sunset entries (score 10-15).
+    Then collects sunset entries and approaching-sunset entries (score 10-15)
+    from the already-scanned entries (no redundant filesystem scan).
 
     Returns dict with 'sunset', 'approaching_sunset' lists and 'total' count.
     """
-    # Run decay first
-    run_decay(directory)
+    # Run decay first — reuse its scanned entries
+    decay_result = run_decay(directory)
+    all_entries = decay_result["all_entries"]
 
-    base_path = Path(directory)
     sunset = []
     approaching_sunset = []
 
-    for subdir in ["people", "projects", "glossary"]:
-        dir_path = base_path / "memory" / subdir
-        if not dir_path.exists():
-            continue
-        for md_file in dir_path.glob("*.md"):
-            content = md_file.read_text()
-            metadata, _ = frontmatter.parse(content)
+    for entry in all_entries:
+        metadata = entry["metadata"]
+        filepath = entry["filepath"]
 
-            importance = metadata.get("importance", 45)
-            status = metadata.get("lifecycle_status", "trusted")
-            name = metadata.get("name", metadata.get("term", md_file.stem))
+        importance = metadata.get("importance", 45)
+        status = metadata.get("lifecycle_status", STATUS_TRUSTED)
+        name = _get_entry_name(metadata, Path(filepath).stem)
 
-            entry_info = {
-                "name": name,
-                "type": metadata.get("type", "unknown"),
-                "importance": importance,
-                "source": metadata.get("source", "frontmatter"),
-                "last_recalled": metadata.get("last_recalled", "unknown"),
-                "created": metadata.get("created", "unknown"),
-                "filepath": str(md_file.relative_to(base_path)),
-                "days_since_recall": None
-            }
+        entry_info = {
+            "name": name,
+            "type": metadata.get("type", "unknown"),
+            "importance": importance,
+            "source": metadata.get("source", "frontmatter"),
+            "last_recalled": metadata.get("last_recalled", "unknown"),
+            "created": metadata.get("created", "unknown"),
+            "filepath": filepath,
+            "days_since_recall": None
+        }
 
-            last_recalled = metadata.get("last_recalled")
-            if last_recalled:
-                try:
-                    days = (date.today() - date.fromisoformat(last_recalled)).days
-                    entry_info["days_since_recall"] = days
-                except (ValueError, TypeError):
-                    pass
+        last_recalled = metadata.get("last_recalled")
+        if last_recalled:
+            try:
+                days = (date.today() - date.fromisoformat(last_recalled)).days
+                entry_info["days_since_recall"] = days
+            except (ValueError, TypeError):
+                pass
 
-            if status == "sunset" or importance < 10:
-                sunset.append(entry_info)
-            elif importance <= 15 and status == "probationary":
-                approaching_sunset.append(entry_info)
+        if status == STATUS_SUNSET or importance < THRESHOLD_PROBATIONARY:
+            sunset.append(entry_info)
+        elif importance <= 15 and status == STATUS_PROBATIONARY:
+            approaching_sunset.append(entry_info)
 
     # Sort by importance ascending (most urgent first)
     sunset.sort(key=lambda x: x["importance"])
@@ -1077,10 +1088,10 @@ def triage_keep(filepath: str, directory: str = ".") -> Dict[str, Any]:
     base_path = Path(directory)
     full_path = base_path / filepath
 
-    if not full_path.exists():
+    try:
+        content = full_path.read_text()
+    except FileNotFoundError:
         raise MemoryError(f"Entry not found: {filepath}")
-
-    content = full_path.read_text()
     metadata, body = frontmatter.parse(content)
 
     old_score = metadata.get("importance", 0)
@@ -1102,7 +1113,9 @@ def triage_archive(filepath: str, directory: str = ".") -> Dict[str, Any]:
     base_path = Path(directory)
     full_path = base_path / filepath
 
-    if not full_path.exists():
+    try:
+        content = full_path.read_text()
+    except FileNotFoundError:
         raise MemoryError(f"Entry not found: {filepath}")
 
     # Create archived directory
@@ -1111,13 +1124,12 @@ def triage_archive(filepath: str, directory: str = ".") -> Dict[str, Any]:
 
     # Copy to archived
     archived_path = archived_dir / full_path.name
-    content = full_path.read_text()
     archived_path.write_text(content)
 
     # Replace original with stub
     metadata, _ = frontmatter.parse(content)
     stub_metadata = {
-        "name": metadata.get("name", metadata.get("term", "")),
+        "name": _get_entry_name(metadata),
         "type": metadata.get("type", "unknown"),
         "status": "archived",
         "archived_date": date.today().isoformat(),
@@ -1134,11 +1146,11 @@ def triage_delete(filepath: str, directory: str = ".") -> Dict[str, Any]:
     base_path = Path(directory)
     full_path = base_path / filepath
 
-    if not full_path.exists():
-        raise MemoryError(f"Entry not found: {filepath}")
-
     name = full_path.stem
-    full_path.unlink()
+    try:
+        full_path.unlink()
+    except FileNotFoundError:
+        raise MemoryError(f"Entry not found: {filepath}")
 
     return {"action": "deleted", "entry": name}
 
@@ -1147,53 +1159,71 @@ def triage_delete(filepath: str, directory: str = ".") -> Dict[str, Any]:
 # Telemetry Collection
 # =============================================================================
 
+_TELEMETRY_DEFAULT: Dict[str, Any] = {
+    "last_decay_run": None,
+    "total_entries": 0,
+    "by_status": {STATUS_TRUSTED: 0, STATUS_PROBATIONARY: 0, STATUS_SUNSET: 0},
+    "by_source": {"manual": 0, "frontmatter": 0, "auto-matched": 0, "threshold-promoted": 0},
+    "pending_count": 0,
+    "triage_history": [],
+    "promotions": {"total": 0, "avg_days_to_promote": 0},
+    "archives": {"total": 0, "avg_lifespan_days": 0, "by_source": {}}
+}
+
+
 def _load_telemetry(directory: str) -> Dict[str, Any]:
     """Load telemetry.json, creating if needed."""
-    path = Path(directory) / "memory" / "telemetry.json"
-    if path.exists():
-        return json.loads(path.read_text())
-    return {
-        "last_decay_run": None,
-        "total_entries": 0,
-        "by_status": {"trusted": 0, "probationary": 0, "sunset": 0},
-        "by_source": {"manual": 0, "frontmatter": 0, "auto-matched": 0, "threshold-promoted": 0},
-        "pending_count": 0,
-        "triage_history": [],
-        "promotions": {"total": 0, "avg_days_to_promote": 0},
-        "archives": {"total": 0, "avg_lifespan_days": 0, "by_source": {}}
-    }
+    return _load_json_file(directory, "telemetry.json", _TELEMETRY_DEFAULT)
 
 
 def _save_telemetry(directory: str, telemetry: Dict[str, Any]) -> None:
     """Save telemetry.json."""
-    path = Path(directory) / "memory" / "telemetry.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(telemetry, indent=2))
+    _save_json_file(directory, "telemetry.json", telemetry)
 
 
-def update_telemetry_snapshot(directory: str) -> None:
-    """Update telemetry with current state of all entries."""
+def update_telemetry_snapshot(
+    directory: str,
+    entries: Optional[List[Dict[str, Any]]] = None
+) -> None:
+    """Update telemetry with current state of all entries.
+
+    Args:
+        directory: Base directory containing the memory folder
+        entries: Pre-scanned entry list (each with 'metadata' dict).
+                 When provided, avoids a redundant filesystem scan.
+    """
     base_path = Path(directory)
     telemetry = _load_telemetry(directory)
 
-    by_status = {"trusted": 0, "probationary": 0, "sunset": 0}
+    by_status = {STATUS_TRUSTED: 0, STATUS_PROBATIONARY: 0, STATUS_SUNSET: 0}
     by_source = {"manual": 0, "frontmatter": 0, "auto-matched": 0, "threshold-promoted": 0}
     total = 0
 
-    for subdir in ["people", "projects", "glossary"]:
-        dir_path = base_path / "memory" / subdir
-        if not dir_path.exists():
-            continue
-        for md_file in dir_path.glob("*.md"):
-            content = md_file.read_text()
-            metadata, _ = frontmatter.parse(content)
+    if entries is not None:
+        for entry in entries:
+            metadata = entry["metadata"]
             if metadata.get("status") == "archived":
                 continue
             total += 1
-            status = metadata.get("lifecycle_status", "trusted")
+            status = metadata.get("lifecycle_status", STATUS_TRUSTED)
             source = metadata.get("source", "frontmatter")
             by_status[status] = by_status.get(status, 0) + 1
             by_source[source] = by_source.get(source, 0) + 1
+    else:
+        for subdir in KNOWLEDGE_DIRS:
+            dir_path = base_path / "memory" / subdir
+            if not dir_path.exists():
+                continue
+            for md_file in dir_path.glob("*.md"):
+                content = md_file.read_text()
+                metadata, _ = frontmatter.parse(content)
+                if metadata.get("status") == "archived":
+                    continue
+                total += 1
+                status = metadata.get("lifecycle_status", STATUS_TRUSTED)
+                source = metadata.get("source", "frontmatter")
+                by_status[status] = by_status.get(status, 0) + 1
+                by_source[source] = by_source.get(source, 0) + 1
 
     telemetry["total_entries"] = total
     telemetry["by_status"] = by_status
