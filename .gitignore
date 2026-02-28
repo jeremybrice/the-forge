@@ -52,6 +52,9 @@ validation-*/
 # Agent state
 .ralph/
 
+# MCP config (contains credentials)
+.mcp.json
+
 # Temporary files
 *.tmp
 *.bak

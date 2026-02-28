@@ -2315,25 +2315,25 @@
 }
 
 /* ── Memory Lifecycle States ── */
-.memory-trusted {
+.prod-memory-trusted {
   border-left: 3px solid #22c55e;
 }
 
-.memory-probationary {
+.prod-memory-probationary {
   border-left: 3px solid #f59e0b;
   opacity: 0.85;
 }
 
-.memory-sunset {
+.prod-memory-sunset {
   border-left: 3px solid #ef4444;
   opacity: 0.6;
 }
 
-.memory-sunset:hover {
+.prod-memory-sunset:hover {
   opacity: 0.8;
 }
 
-.importance-badge {
+.prod-importance-badge {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -2347,11 +2347,11 @@
 }
 
 /* Shift delete button when importance badge is present */
-.prod-memory-card:has(.importance-badge) .prod-memory-card-delete {
+.prod-memory-card:has(.prod-importance-badge) .prod-memory-card-delete {
   right: 48px;
 }
 
-.memory-sort-select {
+.prod-memory-sort-select {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -2362,8 +2362,17 @@
   outline: none;
 }
 
-.memory-sort-select:hover {
+.prod-memory-sort-select:hover {
   border-color: var(--accent);
+}
+
+.prod-triage-badge {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  font-size: 12px;
+  color: #ef4444;
+  gap: 4px;
 }
 
 .prod-memory-tab .prod-tab-badge {
