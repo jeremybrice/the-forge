@@ -423,6 +423,28 @@ class TestRunDecayArchived:
         assert len(archived_in_results) == 0, \
             "Archived stubs should be excluded from all_entries"
 
+    def test_run_decay_excludes_archived_from_scanned_count(self, temp_dir):
+        """entries_scanned should not count archived stubs."""
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+        create_knowledge_entry("person", {
+            "name": "Active Person", "role": "Dev",
+            "importance": 50, "source": "manual"
+        }, str(temp_dir))
+        # Create an archived stub
+        stub_path = temp_dir / "memory" / "people" / "archived-person.md"
+        stub_metadata = {
+            "name": "Gone", "type": "person",
+            "lifecycle_status": "archived",
+            "archived_date": "2026-01-01",
+            "archived_to": "memory/archived/archived-person.md"
+        }
+        stub_path.write_text(fm.dumps(stub_metadata, "\nArchived.\n"))
+
+        from core.memory_ops import run_decay
+        result = run_decay(str(temp_dir))
+        assert result["entries_scanned"] == 1
+
 
 class TestArchiveStubSchemaValidation:
     """Archived stubs must validate against their respective schemas."""

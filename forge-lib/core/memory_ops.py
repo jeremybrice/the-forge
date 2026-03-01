@@ -708,13 +708,14 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
         if not dir_path.exists():
             continue
         for md_file in dir_path.glob("*.md"):
-            entries_scanned += 1
             content = md_file.read_text()
             metadata, body = frontmatter.parse(content)
 
             # Skip archived stubs — they're not active entries
             if metadata.get("lifecycle_status") == "archived":
                 continue
+
+            entries_scanned += 1
 
             importance = metadata.get("importance", 45)
             last_recalled_str = metadata.get(
