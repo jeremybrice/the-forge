@@ -151,10 +151,10 @@ When encountering unknown terms:
 4. Confirm storage location
 
 ### 6. Recall Strengthening (Boost)
-Successful recalls automatically strengthen entries via `forge memory boost`:
-- Each recall adds **+5 importance** to the matched entry (capped at 100, max 2 boosts per entry per day).
-- This means frequently recalled knowledge stays trusted, while unused entries naturally decay toward probationary and eventually sunset.
-- **Encourage frequent recall** — the system rewards active use. An entry recalled daily will never decay out of trusted status.
+Successful recalls automatically strengthen entries — each recall reinforces importance, keeping frequently-used knowledge in trusted status:
+- Frequently recalled knowledge resists decay naturally.
+- Unused entries gradually decay toward probationary and eventually sunset.
+- **Encourage frequent recall** — the system rewards active use. Regularly recalled entries will maintain trusted status.
 
 ## What to Remember
 
