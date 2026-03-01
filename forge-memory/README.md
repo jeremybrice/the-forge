@@ -303,7 +303,7 @@ Memory grows organically through harvest signals collected during normal plugin 
 - **Instant track** -- When a signal matches an existing memory entry, its importance is reinforced immediately (+5 per mention, capped at 100).
 - **Threshold track** -- When a signal references something not yet in memory, it enters `memory/pending.json`. Once a pending item accumulates **3 or more mentions from at least 2 distinct sources**, it is automatically promoted to a full memory entry at importance 50.
 
-Run `forge memory harvest --signal "<text>" --source "<source>" --directory .` to record a signal. The `forge memory promote --directory .` command checks pending items against the promotion threshold.
+Run `forge memory harvest --entity "<name>" --source "<plugin>" --type <person|project|glossary> --directory .` to record a signal. Use `--context "<text>"` to attach optional context. The `forge memory promote --directory .` command checks pending items against the promotion threshold.
 
 ### Triage Workflow
 
@@ -324,7 +324,7 @@ CLI equivalents: `forge memory triage-keep`, `forge memory triage-archive`, `for
 forge memory decay --directory .
 
 # Record a harvest signal
-forge memory harvest --signal "Todd mentioned Acme renewal" --source "slack-forge" --directory .
+forge memory harvest --entity "Todd" --source "slack-forge" --type person --context "mentioned Acme renewal" --directory .
 
 # Promote pending items that meet the threshold
 forge memory promote --directory .
