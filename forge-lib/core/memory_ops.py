@@ -16,7 +16,7 @@ import jinja2
 from core import frontmatter
 from core import validator
 from core import index_ops
-from core.slug import generate_slug
+from core.slug import generate_slug, SlugError
 
 
 # Taxonomy type to file mappings
@@ -550,7 +550,10 @@ def create_knowledge_entry(
     # Generate slug from name/term field
     name_field = type_config['name_field']
     name_value = data[name_field]
-    slug = generate_slug(name_value)
+    try:
+        slug = generate_slug(name_value)
+    except SlugError as e:
+        raise MemoryError(f"Failed to generate slug: {e}")
     filename = f"{slug}.md"
 
     # Create directory
@@ -833,7 +836,10 @@ def harvest_signal(
 
     # Threshold track: add to pending
     pending = _load_pending(directory)
-    slug = generate_slug(entity_name)
+    try:
+        slug = generate_slug(entity_name)
+    except SlugError as e:
+        raise MemoryError(f"Failed to generate slug: {e}")
 
     if slug not in pending["entities"]:
         pending["entities"][slug] = {

@@ -255,3 +255,20 @@ class TestPromotePendingEntities:
         remaining = _load_pending(str(temp_dir))
         assert "gamma-system" in remaining["entities"]
         assert len(remaining["entities"]) == 1
+
+
+class TestHarvestSignalSlugError:
+    """Tests for SlugError handling in harvest_signal."""
+
+    def test_harvest_signal_with_empty_entity_raises_memory_error(self, temp_dir):
+        """harvest_signal with empty entity name should raise MemoryError, not SlugError."""
+        from core.memory_ops import harvest_signal, init_memory, MemoryError
+        init_memory(str(temp_dir))
+        with pytest.raises(MemoryError, match="Failed to generate slug"):
+            harvest_signal(
+                entity_name="",
+                source_plugin="test-plugin",
+                entity_type="person",
+                context="test",
+                directory=str(temp_dir)
+            )

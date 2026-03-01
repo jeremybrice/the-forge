@@ -229,3 +229,14 @@ class TestLifecycleRendering:
         assert metadata["importance"] == 60
         assert metadata["lifecycle_status"] == "trusted"
         assert metadata["recall_count"] == 0
+
+
+class TestKnowledgeSlugError:
+    """Tests for SlugError handling in create_knowledge_entry."""
+
+    def test_create_knowledge_entry_with_symbols_only_name_raises_memory_error(self, temp_dir):
+        """create_knowledge_entry with symbol-only name should raise MemoryError, not SlugError."""
+        from core.memory_ops import create_knowledge_entry, init_memory, MemoryError
+        init_memory(str(temp_dir))
+        with pytest.raises(MemoryError, match="Failed to generate slug"):
+            create_knowledge_entry("person", {"name": "!!!", "role": "Test"}, str(temp_dir))
