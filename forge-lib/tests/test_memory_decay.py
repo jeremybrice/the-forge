@@ -351,6 +351,46 @@ class TestBoostEntry:
             "Legacy _boosts_today should be stripped from frontmatter on boost"
 
 
+class TestRunDecayArchived:
+    """Tests that run_decay skips archived entry stubs."""
+
+    def test_run_decay_skips_archived_stubs(self, temp_dir):
+        """Archived stubs should not be scanned or mutated by decay."""
+        init_memory(str(temp_dir))
+        data = {"name": "Archived Person", "role": "Tester", "importance": 5, "source": "threshold-promoted"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        # Manually create an archived stub (as triage_archive would)
+        entry_path = temp_dir / result["filepath"]
+        from core import frontmatter as fm
+        stub_metadata = {
+            "name": "Archived Person",
+            "type": "person",
+            "status": "archived",
+            "archived_date": "2026-01-01",
+            "archived_to": "memory/archived/archived-person.md"
+        }
+        entry_path.write_text(fm.dumps(stub_metadata, "\nArchived.\n"))
+
+        # Run decay
+        from core.memory_ops import run_decay
+        summary = run_decay(str(temp_dir))
+
+        # Verify stub was NOT mutated
+        metadata, _ = fm.parse(entry_path.read_text())
+        assert metadata.get("status") == "archived"
+        assert metadata.get("archived_to") == "memory/archived/archived-person.md"
+        assert "importance" not in metadata  # stub should not have importance added
+
+        # Archived stubs must not appear in all_entries (feeds telemetry/triage)
+        archived_in_results = [
+            e for e in summary["all_entries"]
+            if e["metadata"].get("status") == "archived"
+        ]
+        assert len(archived_in_results) == 0, \
+            "Archived stubs should be excluded from all_entries"
+
+
 class TestTriageReport:
     """Tests for triage report generation."""
 

@@ -708,6 +708,10 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
             content = md_file.read_text()
             metadata, body = frontmatter.parse(content)
 
+            # Skip archived stubs — they're not active entries
+            if metadata.get("status") == "archived":
+                continue
+
             importance = metadata.get("importance", 45)
             last_recalled_str = metadata.get(
                 "last_recalled",
