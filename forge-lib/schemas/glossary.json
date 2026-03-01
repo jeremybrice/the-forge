@@ -18,7 +18,7 @@
     },
     "lifecycle_status": {
       "type": "string",
-      "enum": ["trusted", "probationary", "sunset"],
+      "enum": ["trusted", "probationary", "sunset", "archived"],
       "default": "trusted"
     },
     "source": {
@@ -36,6 +36,8 @@
       "minimum": 0,
       "default": 0
     },
+    "archived_date": { "type": "string", "format": "date" },
+    "archived_to": { "type": "string" },
     "created": { "type": "string", "format": "date" },
     "updated": { "type": "string", "format": "date" }
   },

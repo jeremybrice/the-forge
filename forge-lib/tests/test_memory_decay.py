@@ -424,6 +424,44 @@ class TestRunDecayArchived:
             "Archived stubs should be excluded from all_entries"
 
 
+class TestArchiveStubSchemaValidation:
+    """Archived stubs must validate against their respective schemas."""
+
+    def test_archived_person_stub_validates(self):
+        from core import validator
+        stub = {
+            "name": "Archived Person", "type": "person", "role": "Former Dev",
+            "lifecycle_status": "archived",
+            "archived_date": "2026-03-01",
+            "archived_to": "memory/archived/archived-person.md",
+            "created": "2026-01-01", "updated": "2026-03-01",
+        }
+        validator.validate(stub, "person")
+
+    def test_archived_glossary_stub_validates(self):
+        from core import validator
+        stub = {
+            "term": "Old Term", "type": "glossary", "definition": "Deprecated",
+            "lifecycle_status": "archived",
+            "archived_date": "2026-03-01",
+            "archived_to": "memory/archived/old-term.md",
+            "created": "2026-01-01", "updated": "2026-03-01",
+        }
+        validator.validate(stub, "glossary")
+
+    def test_archived_project_stub_validates(self):
+        from core import validator
+        stub = {
+            "name": "Old Project", "type": "project", "description": "Archived",
+            "status": "archived",
+            "lifecycle_status": "archived",
+            "archived_date": "2026-03-01",
+            "archived_to": "memory/archived/old-project.md",
+            "created": "2026-01-01", "updated": "2026-03-01",
+        }
+        validator.validate(stub, "project-memory")
+
+
 class TestTriageReport:
     """Tests for triage report generation."""
 
