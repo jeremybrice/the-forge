@@ -1015,7 +1015,8 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
     full_path.write_text(updated_content)
 
     # Update boost tracker for this file only (cleanup happens in run_decay)
-    tracker[file_key] = {today: recall_count_today + 1}
+    file_tracker[today] = recall_count_today + 1
+    tracker[file_key] = file_tracker
     _save_boost_tracker(directory, tracker)
 
     return {

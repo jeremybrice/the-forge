@@ -347,7 +347,7 @@ class TestBoostEntry:
             result["filepath"]: {yesterday: 2}
         })
 
-        # Boost today -- the old entry should be cleaned up
+        # Boost today -- old entries preserved (cleanup happens in run_decay)
         boost_entry(result["filepath"], str(temp_dir))
 
         tracker_path = temp_dir / "memory" / ".boost-tracker.json"
@@ -355,7 +355,7 @@ class TestBoostEntry:
         today = date.today().isoformat()
 
         file_entry = tracker[result["filepath"]]
-        assert yesterday not in file_entry, "Old date entries should be cleaned up"
+        assert yesterday in file_entry, "Old dates preserved (cleanup happens in run_decay)"
         assert file_entry[today] == 1, "Today's count should be 1"
 
     def test_boost_strips_legacy_boosts_today_from_frontmatter(self, temp_dir):
@@ -382,6 +382,29 @@ class TestBoostEntry:
         metadata3, _ = fm.parse(filepath.read_text())
         assert "_boosts_today" not in metadata3, \
             "Legacy _boosts_today should be stripped from frontmatter on boost"
+
+    def test_boost_tracker_preserves_history(self, temp_dir):
+        """Boosting should not wipe historical dates from the tracker."""
+        from core.memory_ops import boost_entry, _save_boost_tracker
+        init_memory(str(temp_dir))
+        data = {"name": "HistKeep", "role": "Test", "importance": 30, "source": "frontmatter"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        _save_boost_tracker(str(temp_dir), {
+            result["filepath"]: {yesterday: 2}
+        })
+
+        boost_entry(result["filepath"], str(temp_dir))
+
+        tracker_path = temp_dir / "memory" / ".boost-tracker.json"
+        tracker = json.loads(tracker_path.read_text())
+        today = date.today().isoformat()
+
+        file_entry = tracker[result["filepath"]]
+        assert yesterday in file_entry, "Historical dates should be preserved"
+        assert file_entry[yesterday] == 2
+        assert file_entry[today] == 1
 
 
 class TestRunDecayArchived:
