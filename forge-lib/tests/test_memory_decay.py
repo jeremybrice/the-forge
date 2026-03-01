@@ -53,6 +53,54 @@ class TestDecayCalculation:
         score2 = compute_decay(importance=70, last_recalled=last)
         assert score1 == score2
 
+    def test_decay_at_exactly_30_days(self):
+        """Exactly 30 days should still be in grace period (no decay)."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=30))
+        assert score == 70
+
+    def test_decay_at_exactly_31_days(self):
+        """Exactly 31 days should receive -10 penalty."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=31))
+        assert score == 60
+
+    def test_decay_at_exactly_60_days(self):
+        """Exactly 60 days should receive -10 penalty (still in 31-60 window)."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=60))
+        assert score == 60
+
+    def test_decay_at_exactly_61_days(self):
+        """Exactly 61 days should receive -25 penalty."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=61))
+        assert score == 45
+
+    def test_decay_at_exactly_90_days(self):
+        """Exactly 90 days should receive -25 penalty (still in 61-90 window)."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=90))
+        assert score == 45
+
+    def test_decay_at_exactly_91_days(self):
+        """Exactly 91 days should receive -45 penalty."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=91))
+        assert score == 25
+
+    def test_decay_at_exactly_180_days(self):
+        """Exactly 180 days should receive -45 penalty (still in 91-180 window)."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=180))
+        assert score == 25
+
+    def test_decay_at_exactly_181_days(self):
+        """Exactly 181 days should receive -70 penalty."""
+        from core.memory_ops import compute_decay
+        score = compute_decay(importance=70, last_recalled=date.today() - timedelta(days=181))
+        assert score == 0
+
 
 class TestLifecycleStatus:
     """Tests for lifecycle status derivation."""

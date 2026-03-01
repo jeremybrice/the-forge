@@ -657,14 +657,7 @@ def compute_decay(importance: int, last_recalled) -> int:
         31-60 days:  -10
         61-90 days:  -25
         91-180 days: -45
-        180+ days:   -70
-
-    Args:
-        importance: Current importance score (0-100)
-        last_recalled: Date of last recall (date object or ISO format string)
-
-    Returns:
-        Integer importance score floored at 0.
+        181+ days:   -70
     """
     if isinstance(last_recalled, str):
         last_recalled = date.fromisoformat(last_recalled)
@@ -672,13 +665,13 @@ def compute_decay(importance: int, last_recalled) -> int:
     days_inactive = (date.today() - last_recalled).days
     decay = 0
 
-    if days_inactive > 180:
+    if days_inactive >= 181:
         decay = 70
-    elif days_inactive > 90:
+    elif days_inactive >= 91:
         decay = 45
-    elif days_inactive > 60:
+    elif days_inactive >= 61:
         decay = 25
-    elif days_inactive > 30:
+    elif days_inactive >= 31:
         decay = 10
 
     return max(0, importance - decay)
