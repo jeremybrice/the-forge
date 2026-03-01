@@ -416,6 +416,16 @@ def handle_memory_triage_delete(args):
     _handle_triage_action(memory_ops.triage_delete, "deleted", args)
 
 
+def handle_memory_boost(args):
+    """Handle memory boost command."""
+    try:
+        result = memory_ops.boost_entry(filepath=args.filepath, directory=args.directory)
+        output_json(result, success=True)
+    except MemoryError as e:
+        output_json({"error": str(e)}, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
 def handle_session_init(args):
     """Initialize sessions directory structure"""
     try:
@@ -1140,6 +1150,12 @@ def create_parser():
     triage_delete_parser.add_argument("filepath", help="Relative path to the entry file")
     triage_delete_parser.add_argument("--directory", default=".", help="Base directory")
     triage_delete_parser.set_defaults(func=handle_memory_triage_delete)
+
+    # memory boost
+    boost_parser = memory_subparsers.add_parser("boost", help="Boost importance of a memory entry (+5)")
+    boost_parser.add_argument("filepath", help="Relative path to the entry file")
+    boost_parser.add_argument("--directory", default=".", help="Base directory")
+    boost_parser.set_defaults(func=handle_memory_boost)
 
     # ==================== SESSION COMMANDS ====================
     session_parser = subparsers.add_parser("session", help="Session operations")

@@ -78,3 +78,9 @@ class TestMemoryDecayCLI:
         """forge memory triage-delete should be a valid command."""
         result = forge_cli("memory", "triage-delete", "--help")
         assert result.returncode == 0
+
+    def test_boost_command_exists(self, forge_cli):
+        """forge memory boost should be a registered subcommand."""
+        result = forge_cli("memory", "boost", "--help")
+        assert result.returncode == 0
+        assert "filepath" in result.stdout
