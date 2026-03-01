@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Any
 import jinja2
 
 from . import frontmatter, validator, index_ops
-from .slug import generate_slug
+from .slug import generate_slug, SlugError
 
 
 class AgentError(Exception):
@@ -100,7 +100,10 @@ def create_agent(
         raise AgentError(f"Validation failed: {e}")
 
     # Generate slug from name
-    slug = generate_slug(data['name'])
+    try:
+        slug = generate_slug(data['name'])
+    except SlugError as e:
+        raise AgentError(f"Failed to generate slug: {e}")
 
     # Get agents directory and agent subdirectory
     agents_dir = _get_agents_directory(directory)
