@@ -495,3 +495,29 @@ class TestTriageActions:
         triage_delete(result["filepath"], str(temp_dir))
 
         assert not (temp_dir / result["filepath"]).exists()
+
+
+class TestTriageArchiveIndex:
+    """Tests that triage_archive removes stale index entries."""
+
+    def test_archive_removes_entry_from_index(self, temp_dir):
+        """After archiving, the entry should no longer appear in index.json."""
+        init_memory(str(temp_dir))
+        data = {"name": "Indexed Person", "role": "Dev", "importance": 5, "source": "threshold-promoted"}
+        result = create_knowledge_entry("person", data, str(temp_dir))
+        filepath = result["filepath"]
+
+        # Verify entry exists in index before archive
+        from core.memory_ops import query_knowledge
+        entries_before = query_knowledge(directory=str(temp_dir), filters={"type": "person"})
+        names_before = [e.get("name") for e in entries_before]
+        assert "Indexed Person" in names_before
+
+        # Archive
+        from core.memory_ops import triage_archive
+        triage_archive(filepath, str(temp_dir))
+
+        # Verify entry removed from index
+        entries_after = query_knowledge(directory=str(temp_dir), filters={"type": "person"})
+        names_after = [e.get("name") for e in entries_after]
+        assert "Indexed Person" not in names_after

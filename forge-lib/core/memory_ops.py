@@ -1135,6 +1135,17 @@ def triage_archive(filepath: str, directory: str = ".") -> Dict[str, Any]:
     stub_body = f"\nThis entry was archived on {date.today().isoformat()}.\n"
     full_path.write_text(frontmatter.dumps(stub_metadata, stub_body))
 
+    # Remove stale entry from index.json
+    try:
+        memory_dir = base_path / "memory"
+        index_file_path = str(full_path.relative_to(memory_dir))
+        index_ops.delete_index_entry(
+            directory=str(memory_dir),
+            file_path=index_file_path
+        )
+    except Exception:
+        pass  # Index entry may not exist if never indexed
+
     return {"action": "archived", "archived_to": str(archived_path.relative_to(base_path))}
 
 
