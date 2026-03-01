@@ -24,32 +24,7 @@ forge memory triage-report --directory .
 
 The triage-report command runs decay internally before collecting results.
 
-#### Parse Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "sunset": [ ... ],
-    "approaching_sunset": [ ... ],
-    "total": 5
-  }
-}
-```
-
-If `success` is `false`:
-```
-Error: {error message from JSON response}
-```
-Stop and inform the user of the failure before proceeding.
-
-If `total` is `0`:
-```
-All memory entries are healthy — nothing needs triage right now.
-
-Next decay check will run automatically on the next triage session.
-```
-End the session here.
+Parse the JSON response. If `success` is `false`, inform the user of the error. If `total` is `0`, report that all entries are healthy and end the session.
 
 ### Phase 2: Present Entries Needing Attention
 
@@ -106,19 +81,7 @@ forge memory triage-archive "memory/projects/old-initiative.md" --directory .
 forge memory triage-delete "memory/glossary/deprecated-term.md" --directory .
 ```
 
-#### Parse Each Response
-
-```json
-{
-  "success": true,
-  "data": { "action": "kept", "score": 25, "status": "probationary" }
-}
-```
-
-If `success` is `false`, report the error and continue with remaining actions:
-```
-Failed to {action} entry {number} ({name}): {error message}
-```
+Parse the JSON response for each action. If `success` is `false`, report the error and continue with remaining actions.
 
 ### Phase 5: Report Summary
 
@@ -142,16 +105,3 @@ Triage complete:
 4. **Graceful errors**: If one action fails, continue with the rest and report failures
 5. **No silent deletes**: Always confirm which entries will be deleted before executing
 6. **Filepath mapping**: Map numbered entries back to their `filepath` field from the report
-
-## Example Usage
-
-**User:** `/memory:triage`
-
-**Agent:**
-- Calls `forge memory triage-report --directory .`
-- Presents numbered list of sunset and approaching-sunset entries
-- Asks for batch actions
-- Executes keep/archive/delete via forge-lib
-- Reports summary of changes
-
-All file operations delegated to forge-lib.
