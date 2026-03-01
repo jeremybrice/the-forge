@@ -40,6 +40,17 @@ class TestTelemetryUpdate:
         telemetry = json.loads(telemetry_path.read_text())
         assert len(telemetry.get("triage_history", [])) >= 1
 
+    def test_triage_history_has_no_merged_field(self, temp_dir):
+        """Triage history should not contain dead 'merged' field."""
+        from core.memory_ops import record_triage_action
+        init_memory(str(temp_dir))
+        record_triage_action("kept", str(temp_dir))
+
+        telemetry_path = temp_dir / "memory" / "telemetry.json"
+        telemetry = json.loads(telemetry_path.read_text())
+        today_entry = telemetry["triage_history"][-1]
+        assert "merged" not in today_entry
+
 
 def _create_sunset_entry(temp_dir, name="Sunset Person"):
     """Helper: create a person entry with sunset-level importance."""

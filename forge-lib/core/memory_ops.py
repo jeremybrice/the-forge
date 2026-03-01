@@ -1279,7 +1279,7 @@ def record_triage_action(action: str, directory: str) -> None:
             break
 
     if not today_entry:
-        today_entry = {"date": today, "reviewed": 0, "kept": 0, "merged": 0, "archived": 0, "deleted": 0}
+        today_entry = {"date": today, "reviewed": 0, "kept": 0, "archived": 0, "deleted": 0}
         history.append(today_entry)
 
     today_entry["reviewed"] += 1
