@@ -179,6 +179,9 @@ class TestPromotePendingEntities:
         metadata, _ = fm.parse(project_file.read_text())
         assert metadata["importance"] == 15
         assert metadata["source"] == "threshold-promoted"
+        assert metadata.get("status") == "active", (
+            "_build_promotion_data must set status for project entities"
+        )
 
     def test_promote_empty_pending(self, temp_dir):
         """promote_pending_entities on empty pending should return count=0 cleanly."""

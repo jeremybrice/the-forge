@@ -440,6 +440,7 @@ def _build_promotion_data(
     elif entity_type == "project":
         knowledge_data["name"] = entity_name
         knowledge_data["description"] = context_str
+        knowledge_data["status"] = "active"
     elif entity_type == "glossary":
         knowledge_data["term"] = entity_name
         knowledge_data["definition"] = context_str
