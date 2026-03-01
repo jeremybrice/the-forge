@@ -294,14 +294,14 @@ Every memory entry carries an `importance` score (0--100) that determines its li
 | **Probationary** | 10--39 | Under observation; moderate decay (2 pts / 30 days) |
 | **Sunset** | < 10 | Candidates for removal; fast decay (5 pts / 30 days) |
 
-New entries start at **importance 50** (trusted tier). Scores change through reinforcement (mentions in conversations and harvests), manual triage actions, and automatic time-based decay.
+New entries start at **importance 15** (probationary tier). Scores change through reinforcement (mentions in conversations and harvests), manual triage actions, and automatic time-based decay.
 
 ### Passive Harvesting
 
 Memory grows organically through harvest signals collected during normal plugin usage. Signals arrive on one of two tracks:
 
 - **Instant track** -- When a signal matches an existing memory entry, its importance is reinforced immediately (+5 per mention, capped at 100).
-- **Threshold track** -- When a signal references something not yet in memory, it enters `memory/pending.json`. Once a pending item accumulates **3 or more mentions from at least 2 distinct sources**, it is automatically promoted to a full memory entry at importance 50.
+- **Threshold track** -- When a signal references something not yet in memory, it enters `memory/pending.json`. Once a pending item accumulates **3 or more mentions from at least 2 distinct sources**, it is automatically promoted to a full memory entry at importance 15.
 
 Run `forge memory harvest --entity "<name>" --source "<plugin>" --type <person|project|glossary> --directory .` to record a signal. Use `--context "<text>"` to attach optional context. The `forge memory promote --directory .` command checks pending items against the promotion threshold.
 
