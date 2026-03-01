@@ -637,3 +637,122 @@ class TestTriageArchiveIndex:
         entries_after = query_knowledge(directory=str(temp_dir), filters={"type": "person"})
         names_after = [e.get("name") for e in entries_after]
         assert "Indexed Person" not in names_after
+
+
+class TestBoostTrackerCleanup:
+    """Tests for boost tracker cleanup during decay."""
+
+    def test_decay_cleans_stale_boost_dates(self, temp_dir):
+        """run_decay should remove yesterday's tracker entries but keep today's."""
+        from core.memory_ops import run_decay, _save_boost_tracker, _load_boost_tracker
+        init_memory(str(temp_dir))
+
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        today = date.today().isoformat()
+        filepath = "memory/people/test-person.md"
+
+        _save_boost_tracker(str(temp_dir), {
+            filepath: {yesterday: 2, today: 1}
+        })
+
+        # Create a valid entry so decay has something to scan
+        create_knowledge_entry("person", {
+            "name": "Test Person", "role": "Dev",
+            "importance": 50, "source": "manual"
+        }, str(temp_dir))
+
+        run_decay(str(temp_dir))
+
+        tracker = _load_boost_tracker(str(temp_dir))
+        assert filepath in tracker, "File entry should still exist (has today)"
+        assert yesterday not in tracker[filepath], "Yesterday should be cleaned"
+        assert tracker[filepath][today] == 1, "Today should be preserved"
+
+
+class TestDryRunDecay:
+    """Tests that dry_run mode skips all writes."""
+
+    def test_dry_run_does_not_write_frontmatter(self, temp_dir):
+        """dry_run should not modify entry files on disk."""
+        from core.memory_ops import run_decay
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+
+        data = {
+            "name": "Stale DryRun",
+            "role": "Test",
+            "importance": 50,
+            "source": "manual",
+            "last_recalled": (date.today() - timedelta(days=95)).isoformat(),
+        }
+        result = create_knowledge_entry("person", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        original_content = filepath.read_text()
+
+        report = run_decay(str(temp_dir), dry_run=True)
+
+        assert report["entries_decayed"] >= 1
+        assert filepath.read_text() == original_content, \
+            "dry_run should not modify frontmatter on disk"
+
+    def test_dry_run_does_not_write_telemetry(self, temp_dir):
+        """dry_run should not create or update telemetry.json."""
+        from core.memory_ops import run_decay
+        init_memory(str(temp_dir))
+
+        create_knowledge_entry("person", {
+            "name": "Telem DryRun", "role": "Test",
+            "importance": 50, "source": "manual"
+        }, str(temp_dir))
+
+        run_decay(str(temp_dir), dry_run=True)
+
+        telemetry_path = temp_dir / "memory" / "telemetry.json"
+        assert not telemetry_path.exists(), \
+            "dry_run should not create telemetry.json"
+
+    def test_dry_run_does_not_write_boost_tracker(self, temp_dir):
+        """dry_run should not modify .boost-tracker.json."""
+        from core.memory_ops import run_decay, _save_boost_tracker
+        init_memory(str(temp_dir))
+
+        create_knowledge_entry("person", {
+            "name": "Boost DryRun", "role": "Test",
+            "importance": 50, "source": "manual"
+        }, str(temp_dir))
+
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        stale_tracker = {"memory/people/some-file.md": {yesterday: 2}}
+        _save_boost_tracker(str(temp_dir), stale_tracker)
+
+        tracker_path = temp_dir / "memory" / ".boost-tracker.json"
+        original_content = tracker_path.read_text()
+
+        run_decay(str(temp_dir), dry_run=True)
+
+        assert tracker_path.read_text() == original_content, \
+            "dry_run should not modify boost tracker"
+
+    def test_triage_report_does_not_write(self, temp_dir):
+        """triage_report (which uses dry_run) should not create telemetry or modify entries."""
+        from core.memory_ops import triage_report
+        from core import frontmatter as fm
+        init_memory(str(temp_dir))
+
+        data = {
+            "name": "Triage DryRun",
+            "role": "Test",
+            "importance": 50,
+            "source": "manual",
+            "last_recalled": (date.today() - timedelta(days=95)).isoformat(),
+        }
+        result = create_knowledge_entry("person", data, str(temp_dir))
+        filepath = temp_dir / result["filepath"]
+        original_content = filepath.read_text()
+
+        report = triage_report(str(temp_dir))
+
+        assert filepath.read_text() == original_content, \
+            "triage_report should not modify entry frontmatter"
+        assert not (temp_dir / "memory" / "telemetry.json").exists(), \
+            "triage_report should not create telemetry.json"

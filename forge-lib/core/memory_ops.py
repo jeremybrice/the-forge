@@ -5,6 +5,7 @@ Manages organizational taxonomy (products, clients, teams, integrations)
 stored in memory/context/ directory with YAML frontmatter.
 """
 
+import copy
 import os
 import json
 from datetime import date
@@ -458,7 +459,7 @@ def _load_json_file(directory: str, filename: str, default: Dict[str, Any]) -> D
     try:
         return json.loads(path.read_text())
     except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return default.copy()
+        return copy.deepcopy(default)
 
 
 def _save_json_file(directory: str, filename: str, data: Dict[str, Any]) -> None:
@@ -681,7 +682,7 @@ def compute_decay(importance: int, last_recalled) -> int:
     return max(0, importance - decay)
 
 
-def run_decay(directory: str = ".") -> Dict[str, Any]:
+def run_decay(directory: str = ".", dry_run: bool = False) -> Dict[str, Any]:
     """Run decay evaluation across all memory knowledge entries.
 
     Scans memory/people/, memory/projects/, memory/glossary/ for .md files.
@@ -690,6 +691,9 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
 
     Args:
         directory: Base directory containing the memory folder
+        dry_run: If True, compute decay but skip all writes (frontmatter,
+                 boost tracker, telemetry). Useful for read-only callers
+                 like triage_report.
 
     Returns:
         Summary report dict with keys:
@@ -732,8 +736,9 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
                 metadata["importance"] = new_score
                 metadata["lifecycle_status"] = new_status
                 metadata["updated"] = date.today().isoformat()
-                updated_content = frontmatter.dumps(metadata, body)
-                md_file.write_text(updated_content)
+                if not dry_run:
+                    updated_content = frontmatter.dumps(metadata, body)
+                    md_file.write_text(updated_content)
 
                 if old_status != new_status:
                     transitions.append({
@@ -749,20 +754,21 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
                 "metadata": metadata,
             })
 
-    # Periodic cleanup: remove stale boost tracker entries
-    today = date.today().isoformat()
-    tracker = _load_boost_tracker(directory)
-    if tracker:
-        cleaned = {}
-        for fk, entry in tracker.items():
-            if isinstance(entry, dict):
-                kept = {k: v for k, v in entry.items() if k == today}
-                if kept:
-                    cleaned[fk] = kept
-        if len(cleaned) != len(tracker):
-            _save_boost_tracker(directory, cleaned)
+    if not dry_run:
+        # Periodic cleanup: remove stale boost tracker entries
+        today = date.today().isoformat()
+        tracker = _load_boost_tracker(directory)
+        if tracker:
+            cleaned = {}
+            for fk, entry in tracker.items():
+                if isinstance(entry, dict):
+                    kept = {k: v for k, v in entry.items() if k == today}
+                    if kept:
+                        cleaned[fk] = kept
+            if cleaned != tracker:
+                _save_boost_tracker(directory, cleaned)
 
-    update_telemetry_snapshot(directory, entries=all_entries)
+        update_telemetry_snapshot(directory, entries=all_entries)
 
     return {
         "entries_scanned": entries_scanned,
@@ -1033,14 +1039,14 @@ def boost_entry(filepath: str, directory: str = ".", boost_amount: int = 5) -> D
 def triage_report(directory: str = ".") -> Dict[str, Any]:
     """Generate triage report of entries needing attention.
 
-    First runs decay to ensure scores are current.
+    First runs decay (dry_run) to compute current scores without writing.
     Then collects sunset entries and approaching-sunset entries (score 10-15)
     from the already-scanned entries (no redundant filesystem scan).
 
     Returns dict with 'sunset', 'approaching_sunset' lists and 'total' count.
     """
-    # Run decay first — reuse its scanned entries
-    decay_result = run_decay(directory)
+    # Run decay first (read-only) — reuse its scanned entries
+    decay_result = run_decay(directory, dry_run=True)
     all_entries = decay_result["all_entries"]
 
     sunset = []

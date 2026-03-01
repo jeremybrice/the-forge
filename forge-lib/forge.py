@@ -385,7 +385,7 @@ def handle_memory_promote(args):
         else:
             result = memory_ops.promote_pending_entities(args.directory)
             output_json(result, success=True)
-    except Exception as e:
+    except MemoryError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
         sys.exit(EXIT_ERROR)
 

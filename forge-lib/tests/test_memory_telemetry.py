@@ -52,6 +52,25 @@ class TestTelemetryUpdate:
         assert "merged" not in today_entry
 
 
+class TestTelemetryDefaultIsolation:
+    """Tests that telemetry defaults are not shared across calls."""
+
+    def test_default_telemetry_not_shared(self, temp_dir):
+        """Loading telemetry twice without a file should return independent copies."""
+        from core.memory_ops import _load_telemetry
+        init_memory(str(temp_dir))
+
+        first = _load_telemetry(str(temp_dir))
+        first["triage_history"].append({"date": "2026-01-01", "kept": 1})
+        first["by_status"] = {"trusted": 99}
+
+        second = _load_telemetry(str(temp_dir))
+        assert len(second["triage_history"]) == 0, \
+            "Second load should not see mutations from first (deepcopy needed)"
+        assert second.get("by_status") != {"trusted": 99}, \
+            "Second load should have clean by_status defaults"
+
+
 def _create_sunset_entry(temp_dir, name="Sunset Person"):
     """Helper: create a person entry with sunset-level importance."""
     init_memory(str(temp_dir))
