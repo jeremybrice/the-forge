@@ -65,7 +65,7 @@ class TestFullLifecycle:
 
         # Verify stub left behind
         stub_meta, _ = fm.parse(phoenix_path.read_text())
-        assert stub_meta["status"] == "archived"
+        assert stub_meta["lifecycle_status"] == "archived"
 
         # Verify archived copy exists
         archived = temp_dir / "memory" / "archived" / phoenix_path.name

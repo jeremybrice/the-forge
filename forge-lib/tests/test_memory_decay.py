@@ -124,6 +124,39 @@ class TestLifecycleStatus:
         assert derive_lifecycle_status(0) == "sunset"
 
 
+class TestDecayEngine:
+    """Tests for decay engine behavior with edge-case entry states."""
+
+    def test_decay_processes_project_with_archived_status(self, temp_dir):
+        """A project entry with status='archived' (project state) should still decay."""
+        from core.memory_ops import run_decay, init_memory
+        from core import frontmatter as fm
+        from datetime import date, timedelta
+        init_memory(str(temp_dir))
+
+        projects_dir = temp_dir / "memory" / "projects"
+        projects_dir.mkdir(parents=True, exist_ok=True)
+        old_date = (date.today() - timedelta(days=60)).isoformat()
+        metadata = {
+            "name": "Old Project",
+            "type": "project",
+            "status": "archived",
+            "importance": 50,
+            "lifecycle_status": "trusted",
+            "last_recalled": old_date,
+            "created": old_date,
+            "updated": old_date
+        }
+        (projects_dir / "old-project.md").write_text(
+            fm.dumps(metadata, "\nAn archived project.\n")
+        )
+
+        result = run_decay(directory=str(temp_dir))
+        assert result["entries_decayed"] >= 1, (
+            "Project with status='archived' (project state) should still be decayed"
+        )
+
+
 class TestRunDecay:
     """Tests for batch decay across all entries."""
 
@@ -366,7 +399,7 @@ class TestRunDecayArchived:
         stub_metadata = {
             "name": "Archived Person",
             "type": "person",
-            "status": "archived",
+            "lifecycle_status": "archived",
             "archived_date": "2026-01-01",
             "archived_to": "memory/archived/archived-person.md"
         }
@@ -378,14 +411,14 @@ class TestRunDecayArchived:
 
         # Verify stub was NOT mutated
         metadata, _ = fm.parse(entry_path.read_text())
-        assert metadata.get("status") == "archived"
+        assert metadata.get("lifecycle_status") == "archived"
         assert metadata.get("archived_to") == "memory/archived/archived-person.md"
         assert "importance" not in metadata  # stub should not have importance added
 
         # Archived stubs must not appear in all_entries (feeds telemetry/triage)
         archived_in_results = [
             e for e in summary["all_entries"]
-            if e["metadata"].get("status") == "archived"
+            if e["metadata"].get("lifecycle_status") == "archived"
         ]
         assert len(archived_in_results) == 0, \
             "Archived stubs should be excluded from all_entries"
@@ -479,7 +512,7 @@ class TestTriageActions:
         assert original.exists()
         from core import frontmatter as fm
         metadata, _ = fm.parse(original.read_text())
-        assert metadata.get("status") == "archived"
+        assert metadata.get("lifecycle_status") == "archived"
 
         # Archived copy should exist
         archived_path = temp_dir / "memory" / "archived" / Path(result["filepath"]).name

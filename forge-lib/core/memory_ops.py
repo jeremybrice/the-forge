@@ -712,7 +712,7 @@ def run_decay(directory: str = ".") -> Dict[str, Any]:
             metadata, body = frontmatter.parse(content)
 
             # Skip archived stubs — they're not active entries
-            if metadata.get("status") == "archived":
+            if metadata.get("lifecycle_status") == "archived":
                 continue
 
             importance = metadata.get("importance", 45)
@@ -1134,7 +1134,7 @@ def triage_archive(filepath: str, directory: str = ".") -> Dict[str, Any]:
     stub_metadata = {
         "name": _get_entry_name(metadata),
         "type": metadata.get("type", "unknown"),
-        "status": "archived",
+        "lifecycle_status": "archived",
         "archived_date": date.today().isoformat(),
         "archived_to": str(archived_path.relative_to(base_path))
     }
@@ -1227,7 +1227,7 @@ def update_telemetry_snapshot(
     if entries is not None:
         for entry in entries:
             metadata = entry["metadata"]
-            if metadata.get("status") == "archived":
+            if metadata.get("lifecycle_status") == "archived":
                 continue
             total += 1
             status = metadata.get("lifecycle_status", STATUS_TRUSTED)
@@ -1242,7 +1242,7 @@ def update_telemetry_snapshot(
             for md_file in dir_path.glob("*.md"):
                 content = md_file.read_text()
                 metadata, _ = frontmatter.parse(content)
-                if metadata.get("status") == "archived":
+                if metadata.get("lifecycle_status") == "archived":
                     continue
                 total += 1
                 status = metadata.get("lifecycle_status", STATUS_TRUSTED)
