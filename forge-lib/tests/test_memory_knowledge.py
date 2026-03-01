@@ -240,3 +240,38 @@ class TestKnowledgeSlugError:
         init_memory(str(temp_dir))
         with pytest.raises(MemoryError, match="Failed to generate slug"):
             create_knowledge_entry("person", {"name": "!!!", "role": "Test"}, str(temp_dir))
+
+
+class TestTriageActions:
+    """Tests for triage_archive and triage_delete index.json consistency."""
+
+    def test_triage_delete_removes_index_entry(self, temp_dir):
+        """triage_delete should remove the entry from index.json."""
+        from core.memory_ops import triage_delete, create_knowledge_entry, init_memory
+        from core import index_ops
+        init_memory(str(temp_dir))
+
+        create_knowledge_entry(
+            entry_type="glossary",
+            data={"term": "Widget", "definition": "A small gadget", "importance": 20},
+            directory=str(temp_dir)
+        )
+
+        memory_dir = str(temp_dir / "memory")
+
+        # Verify index has the entry
+        results = index_ops.query_index(
+            directory=memory_dir,
+            filters={"name": "Widget"}
+        )
+        assert len(results) == 1
+
+        # Delete the entry
+        triage_delete("memory/glossary/widget.md", directory=str(temp_dir))
+
+        # Verify index no longer has the entry
+        results_after = index_ops.query_index(
+            directory=memory_dir,
+            filters={"name": "Widget"}
+        )
+        assert len(results_after) == 0

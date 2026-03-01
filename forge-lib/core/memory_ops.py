@@ -1166,6 +1166,17 @@ def triage_delete(filepath: str, directory: str = ".") -> Dict[str, Any]:
     except FileNotFoundError:
         raise MemoryError(f"Entry not found: {filepath}")
 
+    # Remove stale entry from index.json
+    try:
+        memory_dir = base_path / "memory"
+        index_file_path = str(full_path.relative_to(memory_dir))
+        index_ops.delete_index_entry(
+            directory=str(memory_dir),
+            file_path=index_file_path
+        )
+    except Exception:
+        pass  # Index entry may not exist if never indexed
+
     return {"action": "deleted", "entry": name}
 
 
