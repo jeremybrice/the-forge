@@ -1,6 +1,6 @@
 {
   "name": "report-forge",
-  "version": "2.0.0-alpha",
+  "version": "2.1.0-alpha",
   "description": "Multi-agent report generation with 8 report types. Orchestrates investigator, analyst, and synthesizer agents via forge-lib.",
   "author": { "name": "Jeremy Brice" }
 }

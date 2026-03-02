@@ -93,4 +93,4 @@ See `forge-shell/README.md` for details.
 
 ## Version
 
-**v2.0.0-alpha** — Complete architectural rebuild with Python data layer and simplified LLM commands.
+**v2.1.0-alpha** — Complete architectural rebuild with Python data layer and simplified LLM commands.

@@ -47,6 +47,16 @@ For each extracted task, preserve:
 - source timestamp
 - supporting transcript quote/context
 
+## Output Quality Rules
+
+Content must answer four questions: **What?** (the action), **Who?** (requester and owner), **Why?** (business trigger), **When?** (deadline or urgency).
+
+Minimum output: 2-3 sentences of narrative context per task. A one-liner is never sufficient.
+
+Action items must be specific and assignable: verb + responsible person + deliverable. Bad: "Fix the bug." Good: "David Madsen to investigate and fix the product price display issue after substitution (VMS-14759)."
+
+Source context must reference the conversation (channel, participants, date) — not just paste a bare timestamp.
+
 ## Deduplication
 
 Merge duplicate mentions of the same task across transcript files/windows when core action is identical.
