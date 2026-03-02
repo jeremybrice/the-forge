@@ -48,11 +48,11 @@ forge harvest create "JIRA Digest — {date_range}" --harvest-type jira-digest -
 
 The `content` field is an executive briefing. It must follow this fixed structure:
 
-### 1. Summary Stats (first line)
-A single bolded stats line: **X unique tickets** referenced across **Y events** — broken down by type (status transitions, comments, new issues, assignments).
+### 1. Items Needing Action
+One paragraph per actionable item (`needs_action: true`). Each paragraph must explain: which ticket, what happened, and why the user should care. This is the most important section — lead with it.
 
-### 2. Items Needing Action
-One paragraph per actionable item (`needs_action: true`). Each paragraph must explain: which ticket, what happened, and why the user should care. Lead with this section — it's the most important part.
+### 2. Summary Stats
+A single bolded stats line: **X unique tickets** referenced across **Y events** — broken down by type (status transitions, comments, new issues, assignments).
 
 ### 3. Status Transitions
 Group by outcome: **To Done** (completed work), **Fix Required to In Progress** (rework), **To Do to In Progress** (work started). Use bullet lists with ticket ID, summary, and assignee.
