@@ -40,7 +40,8 @@ forge harvest create "{task_title}" --harvest-type task --data '{
   "confidence": "{high|medium|low}",
   "tags": ["{tag1}", "{tag2}"],
   "content": "{extracted task summary}",
-  "source_context": "{supporting quote/context}"
+  "source_context": "{supporting quote/context}",
+  "action_items": ["{verb + responsible person + deliverable}"]
 }'
 ```
 
