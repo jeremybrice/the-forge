@@ -23,6 +23,7 @@ window.MemoryView = (function () {
   let memorySignature = '';
   let isMemoryRefreshing = false;
   let activeMemoryTab = null;
+  let memorySortMode = 'name'; // 'name' | 'importance' | 'last_recalled'
 
   /* ══════════════════════════════════════════════════════════
      DOM helpers — all queries scoped to #view-memory
@@ -71,7 +72,7 @@ window.MemoryView = (function () {
             '<div class="prod-state-icon"><i class="fa-solid fa-brain"></i></div>' +
             '<h2>No Memory Found</h2>' +
             '<p>No <code>memory/</code> directory or <code>CLAUDE.md</code> found in the current project. ' +
-            'Run <code>/productivity:setup-org</code> to initialize.</p>' +
+            'Run <code>/forge-memory:setup-org</code> to initialize.</p>' +
           '</div>' +
           '<div data-ref="memory-main" style="display:none;flex-direction:column;min-height:0;flex:1;">' +
             '<div class="prod-memory-tabs" data-ref="memory-tabs"></div>' +
@@ -171,9 +172,21 @@ window.MemoryView = (function () {
       fields: {},
       sections: {},
       tables: [],
-      rawContent: content
+      rawContent: content,
+      frontmatter: null
     };
-    var lines = content.split('\n');
+
+    /* Extract YAML frontmatter if present */
+    var bodyContent = content;
+    var fmResult = ForgeUtils.parseFrontmatter(content);
+    if (fmResult) {
+      parsed.frontmatter = fmResult.frontmatter || {};
+      bodyContent = fmResult.body;
+      /* Pre-populate title from frontmatter if available */
+      if (parsed.frontmatter.title) parsed.title = parsed.frontmatter.title;
+    }
+
+    var lines = bodyContent.split('\n');
     var currentSection = '_intro';
     parsed.sections[currentSection] = [];
 
@@ -192,7 +205,7 @@ window.MemoryView = (function () {
 
     var tableRegex = /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g;
     var match;
-    while ((match = tableRegex.exec(content)) !== null) {
+    while ((match = tableRegex.exec(bodyContent)) !== null) {
       var headers = match[1].split('|').map(function (h) { return h.trim(); }).filter(Boolean);
       var rowLines = match[2].trim().split('\n');
       var rows = rowLines.map(function (row) { return row.split('|').map(function (c) { return c.trim(); }).filter(Boolean); });
@@ -227,6 +240,96 @@ window.MemoryView = (function () {
       || Object.entries(parsed.sections).some(function (pair) {
           return pair[0] !== '_intro' && pair[1] && pair[1].trim();
         });
+  }
+
+  /**
+   * Extract lifecycle CSS class from parsed frontmatter.
+   * Returns one of: 'prod-memory-trusted', 'prod-memory-probationary', 'prod-memory-sunset', or ''.
+   */
+  var LIFECYCLE_CLASSES = {
+    trusted: 'prod-memory-trusted',
+    probationary: 'prod-memory-probationary',
+    sunset: 'prod-memory-sunset'
+  };
+
+  function getLifecycleClass(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || !fm.lifecycle_status) return '';
+    return LIFECYCLE_CLASSES[String(fm.lifecycle_status).toLowerCase()] || '';
+  }
+
+  /**
+   * Get importance score from parsed frontmatter (numeric or null).
+   */
+  function getImportance(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || fm.importance === undefined || fm.importance === null) return null;
+    var val = Number(fm.importance);
+    return isNaN(val) ? null : val;
+  }
+
+  /**
+   * Get last_recalled date from parsed frontmatter (ISO string or null).
+   */
+  function getLastRecalled(parsed) {
+    var fm = parsed.frontmatter;
+    if (!fm || !fm.last_recalled) return null;
+    return String(fm.last_recalled);
+  }
+
+  /**
+   * Count sunset entries per directory. Returns an object like {people: 2, glossary: 1}.
+   * Use to derive both per-tab badges and the global triage count.
+   */
+  function countSunsetByDir() {
+    var counts = {};
+    var dirNames = Object.keys(memoryData.memoryDirs);
+    for (var i = 0; i < dirNames.length; i++) {
+      var dn = dirNames[i];
+      var n = 0;
+      var files = memoryData.memoryDirs[dn];
+      for (var j = 0; j < files.length; j++) {
+        var fm = files[j].parsed.frontmatter;
+        if (fm && String(fm.lifecycle_status).toLowerCase() === 'sunset') n++;
+      }
+      counts[dn] = n;
+    }
+    return counts;
+  }
+
+  /**
+   * Sort directory files based on current memorySortMode.
+   * Returns a new sorted array (does not mutate the original).
+   */
+  function sortDirectoryFiles(files) {
+    var sorted = files.slice();
+    if (memorySortMode === 'importance') {
+      sorted.sort(function (a, b) {
+        var ia = getImportance(a.parsed);
+        var ib = getImportance(b.parsed);
+        if (ia === null && ib === null) return 0;
+        if (ia === null) return 1;
+        if (ib === null) return -1;
+        return ib - ia; // descending
+      });
+    } else if (memorySortMode === 'last_recalled') {
+      sorted.sort(function (a, b) {
+        var ra = getLastRecalled(a.parsed) || '';
+        var rb = getLastRecalled(b.parsed) || '';
+        if (!ra && !rb) return 0;
+        if (!ra) return 1;
+        if (!rb) return -1;
+        return rb.localeCompare(ra); // most recent first
+      });
+    } else {
+      // Default: sort by name (alphabetical)
+      sorted.sort(function (a, b) {
+        var na = (a.parsed.title || a.name).toLowerCase();
+        var nb = (b.parsed.title || b.name).toLowerCase();
+        return na.localeCompare(nb);
+      });
+    }
+    return sorted;
   }
 
   function renderMarkdownToHtml(md) {
@@ -357,35 +460,46 @@ window.MemoryView = (function () {
      Uses ForgeFS abstraction for dual-mode (browser/Tauri) support
      ══════════════════════════════════════════════════════════ */
   async function buildMemorySignature() {
-    var entries = [];
+    var promises = [];
 
     if (memoryData.claudeMd) {
-      try {
-        var meta = await ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md');
-        entries.push('CLAUDE.md:' + meta.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function () {
+          return ForgeFS.getFileMeta(memoryDirHandle, 'CLAUDE.md')
+            .then(function (meta) { return 'CLAUDE.md:' + meta.modified; })
+            .catch(function () { return null; });
+        })()
+      );
     }
 
     for (var i = 0; i < memoryData.memoryFiles.length; i++) {
-      var mf = memoryData.memoryFiles[i];
-      try {
-        var meta2 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + mf.name);
-        entries.push('memory/' + mf.name + ':' + meta2.modified);
-      } catch (e) { /* skip */ }
+      promises.push(
+        (function (name) {
+          var path = 'memory/' + name;
+          return ForgeFS.getFileMeta(memoryDirHandle, path)
+            .then(function (meta) { return path + ':' + meta.modified; })
+            .catch(function () { return null; });
+        })(memoryData.memoryFiles[i].name)
+      );
     }
 
     var dirNames = Object.keys(memoryData.memoryDirs).sort();
     for (var di = 0; di < dirNames.length; di++) {
-      var dirName = dirNames[di];
-      var files = memoryData.memoryDirs[dirName];
+      var files = memoryData.memoryDirs[dirNames[di]];
       for (var j = 0; j < files.length; j++) {
-        try {
-          var meta3 = await ForgeFS.getFileMeta(memoryDirHandle, 'memory/' + dirName + '/' + files[j].name);
-          entries.push('memory/' + dirName + '/' + files[j].name + ':' + meta3.modified);
-        } catch (e) { /* skip */ }
+        promises.push(
+          (function (dirName, fileName) {
+            var path = 'memory/' + dirName + '/' + fileName;
+            return ForgeFS.getFileMeta(memoryDirHandle, path)
+              .then(function (meta) { return path + ':' + meta.modified; })
+              .catch(function () { return null; });
+          })(dirNames[di], files[j].name)
+        );
       }
     }
 
+    var results = await Promise.all(promises);
+    var entries = results.filter(function (e) { return e !== null; });
     entries.sort();
     return entries.join('|');
   }
@@ -451,6 +565,9 @@ window.MemoryView = (function () {
     var tabsEl = $('[data-ref="memory-tabs"]');
     if (!tabsEl) return;
     var html = '';
+    var sunsetByDir = countSunsetByDir();
+    var sunsetTotal = 0;
+    for (var sd in sunsetByDir) sunsetTotal += sunsetByDir[sd];
 
     if (memoryData.claudeMd) {
       var isActive = !activeMemoryTab || activeMemoryTab === 'overview';
@@ -471,7 +588,22 @@ window.MemoryView = (function () {
       var dn = dirNames[j];
       var count = memoryData.memoryDirs[dn].length;
       var isAct2 = activeMemoryTab === 'dir-' + dn;
-      html += '<button class="prod-memory-tab' + (isAct2 ? ' prod-active' : '') + '" data-mem-tab="dir-' + esc(dn) + '">' + esc(dn) + ' <span class="prod-tab-count">' + count + '</span></button>';
+
+      var dirSunsetCount = sunsetByDir[dn] || 0;
+      var badgeHtml = dirSunsetCount > 0
+        ? ' <span class="prod-tab-badge" title="' + dirSunsetCount + ' sunset entries need triage">' + dirSunsetCount + '</span>'
+        : '';
+
+      html += '<button class="prod-memory-tab' + (isAct2 ? ' prod-active' : '') + '" data-mem-tab="dir-' + esc(dn) + '">' +
+        esc(dn) + ' <span class="prod-tab-count">' + count + '</span>' + badgeHtml +
+      '</button>';
+    }
+
+    /* Global triage badge shown after all tabs if any sunset entries exist */
+    if (sunsetTotal > 0) {
+      html += '<span class="prod-triage-badge" title="' + sunsetTotal + ' sunset entries across all directories need triage">' +
+        '<i class="fa-solid fa-triangle-exclamation"></i> ' + sunsetTotal + ' triage' +
+      '</span>';
     }
 
     tabsEl.innerHTML = html;
@@ -592,14 +724,34 @@ window.MemoryView = (function () {
     bindSearchAndActions(el);
   }
 
+  function renderSortDropdown() {
+    return '<select class="prod-memory-sort-select" data-ref="memory-sort">' +
+      '<option value="name"' + (memorySortMode === 'name' ? ' selected' : '') + '>Sort: Name</option>' +
+      '<option value="importance"' + (memorySortMode === 'importance' ? ' selected' : '') + '>Sort: Importance</option>' +
+      '<option value="last_recalled"' + (memorySortMode === 'last_recalled' ? ' selected' : '') + '>Sort: Last Recalled</option>' +
+    '</select>';
+  }
+
   function renderMemoryDirectory(el, dirName) {
     var files = memoryData.memoryDirs[dirName] || [];
-    var html = renderSearchBox('Search ' + dirName + '...');
+    var sortedFiles = sortDirectoryFiles(files);
+
+    var html = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">' +
+      '<div style="flex:1;">' + renderSearchBox('Search ' + dirName + '...') + '</div>' +
+      renderSortDropdown() +
+    '</div>';
     html += '<div class="prod-memory-grid" data-ref="memory-grid">';
 
-    files.forEach(function (file) {
+    sortedFiles.forEach(function (file) {
       var p = file.parsed;
       var title = p.title || getDisplayName(file.name);
+
+      /* Lifecycle status & importance from frontmatter */
+      var lifecycleClass = getLifecycleClass(p);
+      var importance = getImportance(p);
+      var importanceBadgeHtml = importance !== null
+        ? '<span class="prod-importance-badge" title="Importance: ' + importance + '">' + importance + '</span>'
+        : '';
 
       var fieldsHtml = '';
       var fieldEntries = Object.entries(p.fields).slice(0, 3);
@@ -625,7 +777,8 @@ window.MemoryView = (function () {
       if (!preview) preview = getPreview(p.rawContent, 100);
 
       html +=
-        '<div class="prod-memory-card" data-mem-action="open-dir-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" data-search="' + esc((title + ' ' + JSON.stringify(p.fields) + ' ' + p.rawContent).toLowerCase()) + '">' +
+        '<div class="prod-memory-card' + (lifecycleClass ? ' ' + lifecycleClass : '') + '" data-mem-action="open-dir-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" data-search="' + esc((title + ' ' + JSON.stringify(p.fields) + ' ' + p.rawContent).toLowerCase()) + '">' +
+          importanceBadgeHtml +
           '<button class="prod-memory-card-delete" data-mem-action="delete-file" data-mem-dir="' + esc(dirName) + '" data-mem-filename="' + esc(file.name) + '" title="Delete">&times;</button>' +
           '<div class="prod-memory-card-title">' + esc(title) + '</div>' +
           fieldsHtml +
@@ -638,6 +791,7 @@ window.MemoryView = (function () {
 
     el.innerHTML = html;
     bindSearchAndActions(el);
+    bindSortDropdown(el);
   }
 
   function bindSearchAndActions(el) {
@@ -666,6 +820,16 @@ window.MemoryView = (function () {
         else if (action === 'new-file') openNewFileModal(btn.dataset.memDir);
       });
     });
+  }
+
+  function bindSortDropdown(el) {
+    var sortSelect = el.querySelector('[data-ref="memory-sort"]');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function () {
+        memorySortMode = sortSelect.value;
+        renderMemoryContent();
+      });
+    }
   }
 
   function filterMemoryContent(searchTerm) {

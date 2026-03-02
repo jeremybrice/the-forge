@@ -123,6 +123,23 @@ class TestCreateAgent:
         with pytest.raises(AgentError):
             create_agent(data, directory=str(temp_dir))
 
+    def test_create_agent_with_empty_name_raises_agent_error(self, temp_dir):
+        """Empty name should raise AgentError, not SlugError."""
+        from core.agent_ops import create_agent, AgentError
+        data = {
+            'name': '!!!',
+            'platform': 'jira',
+            'description': 'Test agent',
+            'skills': [],
+            'knowledge_sources': [],
+            'conversation_starters': ['Start', 'Go', 'Run'],
+            'owner': 'Test User',
+            'collaborators': [],
+            'visibility': 'organization',
+        }
+        with pytest.raises(AgentError, match="slug"):
+            create_agent(data, directory=str(temp_dir))
+
 
 class TestGetAgent:
     """Tests for get_agent function."""

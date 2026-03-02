@@ -6,13 +6,13 @@ Rovo agent configurations for rovo-forge.
 Agents are markdown files with YAML frontmatter stored in rovo-agents/{slug}/agent.md.
 """
 
-import re
 from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import jinja2
 
 from . import frontmatter, validator, index_ops
+from .slug import generate_slug, SlugError
 
 
 class AgentError(Exception):
@@ -30,30 +30,6 @@ def _get_agents_directory(directory: str) -> Path:
         Path to rovo-agents/ directory
     """
     return Path(directory) / 'rovo-agents'
-
-
-def _generate_slug(name: str) -> str:
-    """Convert an agent name to a URL-safe slug.
-
-    Lowercases, replaces spaces with hyphens, strips non-alphanumeric/hyphen
-    characters, collapses multiple hyphens, and trims leading/trailing hyphens.
-
-    Args:
-        name: Agent display name
-
-    Returns:
-        URL-safe slug string
-
-    Examples:
-        >>> _generate_slug('Ticket Triage Agent')
-        'ticket-triage-agent'
-    """
-    slug = name.lower()
-    slug = slug.replace(' ', '-')
-    slug = re.sub(r'[^a-z0-9-]', '', slug)
-    slug = re.sub(r'-+', '-', slug)
-    slug = slug.strip('-')
-    return slug
 
 
 def _load_template() -> jinja2.Template:
@@ -124,7 +100,10 @@ def create_agent(
         raise AgentError(f"Validation failed: {e}")
 
     # Generate slug from name
-    slug = _generate_slug(data['name'])
+    try:
+        slug = generate_slug(data['name'])
+    except SlugError as e:
+        raise AgentError(f"Failed to generate slug: {e}")
 
     # Get agents directory and agent subdirectory
     agents_dir = _get_agents_directory(directory)

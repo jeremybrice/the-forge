@@ -2,6 +2,9 @@
 Shared pytest fixtures and configuration for forge-lib tests.
 """
 
+import subprocess
+import sys
+
 import pytest
 import tempfile
 import shutil
@@ -83,3 +86,24 @@ def mock_schema_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(validator, "get_schema_path", mock_get_schema_path)
 
     return schema_dir
+
+
+@pytest.fixture
+def forge_cli():
+    """Run forge.py CLI and return the subprocess result.
+
+    Usage:
+        result = forge_cli("memory", "decay", "--directory", str(tmp))
+    """
+    repo_root = Path(__file__).resolve().parents[1]
+
+    def _run(*args):
+        return subprocess.run(
+            [sys.executable, "forge.py", *args],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    return _run

@@ -279,3 +279,73 @@ Phase 3 validation criteria:
 5. **Other plugins query taxonomy automatically** via forge-lib
 
 All taxonomy operations delegated to forge-lib for consistency.
+
+## Living Memory System
+
+The Living Memory System adds lifecycle management, passive harvesting, and periodic triage so that organizational memory stays current without manual curation.
+
+### Lifecycle and Importance Scores
+
+Every memory entry carries an `importance` score (0--100) that determines its lifecycle tier:
+
+| Tier | Score Range | Behavior |
+|------|-------------|----------|
+| **Trusted** | >= 40 | Stable entries; slow decay (1 pt / 30 days) |
+| **Probationary** | 10--39 | Under observation; moderate decay (2 pts / 30 days) |
+| **Sunset** | < 10 | Candidates for removal; fast decay (5 pts / 30 days) |
+
+New entries start at **importance 15** (probationary tier). Scores change through reinforcement (mentions in conversations and harvests), manual triage actions, and automatic time-based decay.
+
+### Passive Harvesting
+
+Memory grows organically through harvest signals collected during normal plugin usage. Signals arrive on one of two tracks:
+
+- **Instant track** -- When a signal matches an existing memory entry, its importance is reinforced immediately (+5 per mention, capped at 100).
+- **Threshold track** -- When a signal references something not yet in memory, it enters `memory/pending.json`. Once a pending item accumulates **3 or more mentions from at least 2 distinct sources**, it is automatically promoted to a full memory entry at importance 15.
+
+Run `forge memory harvest --entity "<name>" --source "<plugin>" --type <person|project|glossary> --directory .` to record a signal. Use `--context "<text>"` to attach optional context. The `forge memory promote --directory .` command checks pending items against the promotion threshold.
+
+### Triage Workflow
+
+Use `/forge-memory:triage` (or `forge memory triage-report --directory .`) to review entries that need attention -- sunset-tier items, recently decayed entries, and pending items near their promotion threshold. For each item you can:
+
+| Action | Effect |
+|--------|--------|
+| **Keep** | Boost importance by +20 (moves entry back toward trusted tier) |
+| **Archive** | Set importance to 0 and mark `archived: true`; entry is preserved but hidden from recall |
+| **Delete** | Remove the entry entirely |
+
+CLI equivalents: `forge memory triage-keep`, `forge memory triage-archive`, `forge memory triage-delete`.
+
+### New CLI Commands
+
+```bash
+# Run decay across all entries (intended for periodic/scheduled use)
+forge memory decay --directory .
+
+# Record a harvest signal
+forge memory harvest --entity "Todd" --source "slack-forge" --type person --context "mentioned Acme renewal" --directory .
+
+# Promote pending items that meet the threshold
+forge memory promote --directory .
+
+# Generate a triage report (sunset + pending items needing review)
+forge memory triage-report --directory .
+
+# Triage actions on a specific entry
+forge memory triage-keep   <entry-id> --directory .
+forge memory triage-archive <entry-id> --directory .
+forge memory triage-delete  <entry-id> --directory .
+```
+
+### Telemetry
+
+Aggregate statistics are tracked in `memory/telemetry.json`:
+
+- **decay_runs** -- number of times decay has executed, with timestamps
+- **harvests** -- total signals processed, broken down by source
+- **promotions** -- count of pending items promoted to full entries
+- **triage_actions** -- counts of keep, archive, and delete actions
+- **score_distribution** -- snapshot of how many entries fall in each tier
+
+Telemetry is append-only and helps surface trends during triage (e.g., "12 entries decayed to sunset since last triage").

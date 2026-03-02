@@ -47,6 +47,11 @@ Search `memory/glossary.md` for:
 - Project codenames
 - Nickname → full name mappings
 
+**Lifecycle filtering:** Entries have an `importance` score (0-100) that decays over time.
+- **Skip sunset entries** (importance < 10) — treat as if not found. These are fading out of the knowledge base.
+- **Flag probationary entries** (importance 10-39) — include in results but append **(fading)** to signal the entry may be stale or rarely used. Example: `PSR → Pipeline Status Report (fading)`
+- **Trusted entries** (importance 40+) — return normally.
+
 **Coverage:** All workplace shorthand and decoder ring entries.
 
 ### Tier 3: Deep Memory
@@ -55,6 +60,8 @@ Search rich detail files:
 - `memory/people/{name}.md` — Full person profiles
 - `memory/projects/{name}.md` — Project details
 - `memory/context/` — Company, tools, processes
+
+**Lifecycle filtering:** Same rules as Tier 2 apply to knowledge files with frontmatter importance scores. Skip sunset entries, flag probationary ones with **(fading)**.
 
 **Coverage:** Execution-level context and detailed profiles.
 
@@ -66,6 +73,8 @@ I don't know what X means yet. Can you tell me?
 I'll remember it for next time.
 ```
 
+**Note:** Before asking the user, check `memory/pending.json` — the term may already be tracked there from a previous mention but not yet promoted to knowledge. If found in pending, mention it: "I've seen X mentioned before but don't have a definition yet. Can you clarify?"
+
 ## Decoding Flow Example
 
 ```
@@ -76,15 +85,19 @@ User: "ask todd about the PSR for phoenix"
 
 2. Tier 2 (Glossary):
    → "todd" → Todd Martinez, Finance lead ✓
-   → "PSR" → Pipeline Status Report ✓
+   → "PSR" → Pipeline Status Report ✓ (importance 55, trusted)
    → "phoenix" → (not in glossary)
 
 3. Tier 3 (Deep Memory):
    → Search memory/projects/ for "phoenix"
-   → Found: memory/projects/phoenix.md
-   → Phoenix = DB migration project ✓
+   → Found: memory/projects/phoenix.md (importance 25, probationary)
+   → Phoenix = DB migration project ✓ (fading)
+
+4. Boost recalled entries:
+   → todd, PSR, phoenix all get +5 importance
 
 Now Claude can act with full context.
+Note: "phoenix" flagged as (fading) — consider confirming it's still active.
 ```
 
 ## Memory Categories
@@ -136,6 +149,12 @@ When encountering unknown terms:
 2. Determine category (person, term, project, preference)
 3. Store appropriately (taxonomy via forge-lib or knowledge file)
 4. Confirm storage location
+
+### 6. Recall Strengthening (Boost)
+Successful recalls automatically strengthen entries — each recall reinforces importance, keeping frequently-used knowledge in trusted status:
+- Frequently recalled knowledge resists decay naturally.
+- Unused entries gradually decay toward probationary and eventually sunset.
+- **Encourage frequent recall** — the system rewards active use. Regularly recalled entries will maintain trusted status.
 
 ## What to Remember
 

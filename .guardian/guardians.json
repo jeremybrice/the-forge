@@ -1,0 +1,22 @@
+{
+  "spec_guardian": {
+    "enabled": false
+  },
+  "convention_guardian": {
+    "enabled": true,
+    "agent": "/Users/jeremybrice/.claude/plugins/marketplaces/the-pantheon/guardian/agents/convention-guardian.md"
+  },
+  "test_guardian": {
+    "enabled": true,
+    "test_command": "cd forge-lib && python3 -m pytest",
+    "require_passing": true
+  },
+  "integration_guardian": {
+    "enabled": true,
+    "file_threshold": 3,
+    "test_command": "cd forge-lib && python3 -m pytest"
+  },
+  "context_guardian": {
+    "enabled": false
+  }
+}
