@@ -34,7 +34,7 @@ from core.agent_ops import AgentError
 from core.harvest_ops import HarvestError
 
 # Version info
-__version__ = "2.0.0-alpha"
+__version__ = "2.1.0-alpha"
 
 # Exit codes
 EXIT_SUCCESS = 0

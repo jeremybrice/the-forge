@@ -46,6 +46,16 @@ For each extracted knowledge item, preserve:
 - source timestamp
 - supporting transcript quote/context
 
+## Output Quality Rules
+
+Content must include both the knowledge fact AND its strategic significance.
+
+Minimum output: 1 summary paragraph + 1 significance paragraph (prefixed with `**Significance:** `). A single sentence is never sufficient.
+
+Include a direct quote from the transcript where one exists — quotes make knowledge items credible and traceable during review.
+
+Tags must start with a memory-hint destination tag as the first element: `person`, `project`, `glossary`, or `general`. Additional descriptive tags follow.
+
 ## Memory Hints
 
 Use tags to signal likely destination type at promote time:
