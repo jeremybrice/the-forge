@@ -180,7 +180,7 @@ window.SlackForgeView = (function () {
       const action = e.target.closest('[data-sf-action]');
       if (action) {
         const act = action.dataset.sfAction;
-        if (act === 'refresh') { refresh(); return; }
+        if (act === 'refresh') { loadData(); return; }
         if (act === 'toggle-filter') {
           filterPanelOpen = !filterPanelOpen;
           const panel = ref('filter-panel');
@@ -518,7 +518,7 @@ window.SlackForgeView = (function () {
     list.innerHTML = filtered.map(t => {
       const fm = t.frontmatter;
       const label = fm.title || transcriptLabel(t.filename);
-      const timeframe = fm.timeframe || '';
+      const timeframe = fm.scan_timeframe || fm.timeframe || '';
       const scanDate  = fm.scan_date ? String(fm.scan_date) : '';
       const isSelected = selectedTranscript && selectedTranscript.filename === t.filename;
 
@@ -618,7 +618,7 @@ window.SlackForgeView = (function () {
     const channel    = fm.source_channel || fm.channel || '';
     const author     = fm.source_author  || fm.author  || '';
     const scanDate   = fm.scan_date ? String(fm.scan_date) : '';
-    const timeframe  = fm.timeframe || '';
+    const timeframe  = fm.scan_timeframe || fm.timeframe || '';
     const confidence = fm.confidence || '';
     const tags       = Array.isArray(fm.tags) ? fm.tags : (fm.tags ? [fm.tags] : []);
 
@@ -659,7 +659,7 @@ window.SlackForgeView = (function () {
     const fm        = selectedTranscript.frontmatter;
     const label     = fm.title || transcriptLabel(selectedTranscript.filename);
     const scanDate  = fm.scan_date  ? String(fm.scan_date) : '';
-    const timeframe = fm.timeframe  || '';
+    const timeframe = fm.scan_timeframe || fm.timeframe  || '';
     const scanRun   = fm.scan_run   ? String(fm.scan_run) : '';
     const generated = fm.generated  ? String(fm.generated) : '';
     const rendered  = ForgeUtils.MD.render(selectedTranscript.body);

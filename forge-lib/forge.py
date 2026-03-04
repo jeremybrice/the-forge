@@ -1358,7 +1358,7 @@ def create_parser():
     filename_parser.add_argument(
         '--type',
         required=True,
-        choices=['public-channels', 'dms', 'jira-bot'],
+        choices=['public-channels', 'dms', 'jira-bot', 'calendar', 'inbox', 'sent', 'folder'],
         help='Transcript type'
     )
     filename_parser.add_argument(
