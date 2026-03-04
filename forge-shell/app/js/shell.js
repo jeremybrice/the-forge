@@ -16,6 +16,7 @@ const PLUGINS = [
   { id: 'rovo-agent-forge',    label: 'Rovo Agent Forge', icon: 'fa-solid fa-robot',          requiredDir: 'rovo-agents' },
   { id: 'report-forge',        label: 'Report Forge',     icon: 'fa-solid fa-file-lines',     requiredDir: 'reports' },
   { id: 'slack-forge',         label: 'Slack Forge',      icon: 'fa-brands fa-slack',         requiredDir: 'slack-forge' },
+  { id: 'outlook-forge',       label: 'Outlook Forge',    icon: 'fa-solid fa-envelope',       requiredDir: 'outlook-forge' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -320,6 +321,8 @@ const Shell = {
       pluginToRefresh = 'report-forge';
     } else if (path.includes('/slack-forge/')) {
       pluginToRefresh = 'slack-forge';
+    } else if (path.includes('/outlook-forge/')) {
+      pluginToRefresh = 'outlook-forge';
     }
 
     // If a relevant plugin is active, refresh it
