@@ -42,6 +42,8 @@ HARVEST_TYPE_FILENAME_MAP = {
     'task': 'task-harvest',
     'knowledge': 'knowledge-harvest',
     'jira-digest': 'jira-digest',
+    'meeting-prep': 'meeting-prep',
+    'meeting-notes': 'meeting-notes',
 }
 
 
@@ -493,8 +495,8 @@ def _scan_harvest_files(harvest_dir: Path) -> List[Dict[str, Any]]:
     harvests = []
     seen_files = set()
 
-    # Scan for harvest and digest patterns
-    for pattern in ['*-harvest-*.md', '*-digest-*.md']:
+    # Scan for harvest, digest, and meeting patterns
+    for pattern in ['*-harvest-*.md', '*-digest-*.md', '*-meeting-prep-*.md', '*-meeting-notes-*.md']:
         for filepath in sorted(harvest_dir.glob(pattern)):
             if filepath.name in seen_files:
                 continue

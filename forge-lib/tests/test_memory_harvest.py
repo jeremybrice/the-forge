@@ -275,3 +275,25 @@ class TestHarvestSignalSlugError:
                 context="test",
                 directory=str(temp_dir)
             )
+
+
+# --- Harvest filename generation tests for outlook-forge harvest types ---
+
+def test_generate_harvest_filename_meeting_prep(tmp_path):
+    """meeting-prep harvest type generates correct filename pattern."""
+    harvest_dir = tmp_path / "slack-forge" / "harvests"
+    harvest_dir.mkdir(parents=True)
+    from core.harvest_ops import _generate_harvest_filename
+    result = _generate_harvest_filename(harvest_dir, 'meeting-prep')
+    today = date.today().strftime("%Y-%m-%d")
+    assert result == f"{today}-meeting-prep-001.md"
+
+
+def test_generate_harvest_filename_meeting_notes(tmp_path):
+    """meeting-notes harvest type generates correct filename pattern."""
+    harvest_dir = tmp_path / "slack-forge" / "harvests"
+    harvest_dir.mkdir(parents=True)
+    from core.harvest_ops import _generate_harvest_filename
+    result = _generate_harvest_filename(harvest_dir, 'meeting-notes')
+    today = date.today().strftime("%Y-%m-%d")
+    assert result == f"{today}-meeting-notes-001.md"

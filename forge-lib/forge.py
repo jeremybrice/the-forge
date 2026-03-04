@@ -1268,7 +1268,7 @@ def create_parser():
     harvest_create = harvest_subparsers.add_parser("create", help="Create a harvest record")
     harvest_create.add_argument("title", help="Harvest item title")
     harvest_create.add_argument("--harvest-type", dest="harvest_type", required=True,
-                                choices=["task", "knowledge", "jira-digest"], help="Type of harvest")
+                                choices=["task", "knowledge", "jira-digest", "meeting-prep", "meeting-notes"], help="Type of harvest")
     harvest_create.add_argument("--directory", default=".", help="Target directory")
     harvest_create.add_argument("--data", help="JSON harvest data")
     harvest_create.set_defaults(func=handle_harvest_create)
@@ -1285,7 +1285,7 @@ def create_parser():
     harvest_query.add_argument("--status", choices=["pending", "approved", "rejected", "promoted"],
                                help="Filter by status")
     harvest_query.add_argument("--harvest-type", dest="harvest_type",
-                               choices=["task", "knowledge", "jira-digest"], help="Filter by harvest type")
+                               choices=["task", "knowledge", "jira-digest", "meeting-prep", "meeting-notes"], help="Filter by harvest type")
     harvest_query.set_defaults(func=handle_harvest_query)
 
     # harvest update
