@@ -799,7 +799,7 @@ window.SlackForgeView = (function () {
       filterPanelOpen = false;
       searchQuery = '';
       slackForgeActive = false;
-      initialized = false;
+
     },
 
     refresh() {
