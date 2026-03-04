@@ -1,7 +1,7 @@
 # Decisions Log
 
-**Mission:** Living Memory Hardening — Fix Non-Blocking Advisories
-**Started:** 2026-02-28
+**Mission:** Outlook-Forge Plugin Build
+**Started:** 2026-03-03
 
 ---
 
