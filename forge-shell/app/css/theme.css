@@ -90,6 +90,23 @@
   --sf-confidence-high: #27ae60;
   --sf-confidence-medium: #f39c12;
   --sf-confidence-low: #e74c3c;
+
+  /* Outlook Forge harvest type colors */
+  --of-type-task: var(--sf-type-task);
+  --of-type-knowledge: var(--sf-type-knowledge);
+  --of-type-meeting-prep: #8B5CF6;
+  --of-type-meeting-notes: #F59E0B;
+
+  /* Outlook Forge status colors */
+  --of-status-pending: var(--sf-status-pending);
+  --of-status-approved: var(--sf-status-approved);
+  --of-status-promoted: var(--sf-status-promoted);
+  --of-status-rejected: var(--sf-status-rejected);
+
+  /* Outlook Forge confidence colors */
+  --of-confidence-high: var(--sf-confidence-high);
+  --of-confidence-medium: var(--sf-confidence-medium);
+  --of-confidence-low: var(--sf-confidence-low);
 }
 
 [data-theme="dark"] {
@@ -133,6 +150,19 @@
   --sf-confidence-high: #34d399;
   --sf-confidence-medium: #fbbf24;
   --sf-confidence-low: #f87171;
+
+  /* Outlook Forge (dark) */
+  --of-type-task: var(--sf-type-task);
+  --of-type-knowledge: var(--sf-type-knowledge);
+  --of-type-meeting-prep: #a78bfa;
+  --of-type-meeting-notes: #fbbf24;
+  --of-status-pending: var(--sf-status-pending);
+  --of-status-approved: var(--sf-status-approved);
+  --of-status-promoted: var(--sf-status-promoted);
+  --of-status-rejected: var(--sf-status-rejected);
+  --of-confidence-high: var(--sf-confidence-high);
+  --of-confidence-medium: var(--sf-confidence-medium);
+  --of-confidence-low: var(--sf-confidence-low);
 }
 
 /* ═══════════════════════════════════════════════════════════

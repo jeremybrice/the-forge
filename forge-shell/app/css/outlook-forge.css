@@ -1,0 +1,252 @@
+/* ═══════════════════════════════════════════════════════════
+   Outlook Forge View Styles
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Main Grid Layout ── */
+.of-layout {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr;
+  grid-template-columns: var(--plugin-sidebar-width) 1fr;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.of-layout > .plugin-toolbar { grid-column: 1 / -1; }
+
+/* ── Sidebar ── */
+.of-sidebar {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+/* ── Sidebar Header (with compact status badges) ── */
+.of-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+}
+
+.of-sidebar-header-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.of-status-badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.of-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.of-status-badge.pending  { background: var(--of-status-pending); }
+.of-status-badge.approved { background: var(--of-status-approved); }
+.of-status-badge.promoted { background: var(--of-status-promoted); }
+.of-status-badge.rejected { background: var(--of-status-rejected); }
+
+/* ── Harvest / Transcript Lists ── */
+.of-harvest-list,
+.of-transcript-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.of-empty-list {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Config Bar (sidebar footer) ── */
+.of-config-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.of-config-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.of-config-item strong {
+  color: var(--text-secondary);
+}
+
+/* ── Transcript Timeframe Chip ── */
+.of-transcript-timeframe {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* ── Detail Panel ── */
+.of-detail-panel {
+  grid-row: 2;
+  grid-column: 2;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+/* ── Harvest Detail ── */
+.of-harvest-detail,
+.of-transcript-detail {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.of-title-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.of-title-header h1 {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.of-transcript-title-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.of-transcript-title-header h1 {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ── Filter Panel (slide-out from right, overlays detail panel) ── */
+.of-filter-panel {
+  position: absolute;
+  top: var(--toolbar-height);
+  right: 0;
+  bottom: 0;
+  width: 220px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  overflow-y: auto;
+}
+
+.of-filter-panel.open {
+  transform: translateX(0);
+  box-shadow: var(--shadow-md);
+}
+
+.of-filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.of-filter-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.of-filter-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.of-filter-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.of-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.of-filter-group .filter-btn { text-align: left; flex: none; }
+
+/* Per-status active colors within filter panel */
+.of-filter-group .filter-btn.active[data-of-filter-status="pending"]  { background: var(--of-status-pending);  border-color: var(--of-status-pending); }
+.of-filter-group .filter-btn.active[data-of-filter-status="approved"] { background: var(--of-status-approved); border-color: var(--of-status-approved); }
+.of-filter-group .filter-btn.active[data-of-filter-status="promoted"] { background: var(--of-status-promoted); border-color: var(--of-status-promoted); }
+.of-filter-group .filter-btn.active[data-of-filter-status="rejected"] { background: var(--of-status-rejected); border-color: var(--of-status-rejected); }
+
+/* ── Mobile sidebar toggle (hidden by default) ── */
+.of-toolbar-toggle { display: none !important; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .of-layout { grid-template-columns: 1fr; }
+  .of-sidebar { display: none; }
+  .of-layout.of-sidebar-open .of-sidebar {
+    display: flex;
+    position: absolute;
+    top: var(--toolbar-height);
+    left: 0;
+    bottom: 0;
+    width: var(--plugin-sidebar-width);
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+  .of-detail-panel { grid-column: 1; }
+  .of-toolbar-toggle { display: inline-flex !important; }
+}
