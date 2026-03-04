@@ -26,6 +26,15 @@
   background: var(--bg-secondary);
 }
 
+[data-sf-panel="harvests-sidebar"],
+[data-sf-panel="transcripts-sidebar"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ── Sidebar Header (with compact status badges) ── */
 .sf-sidebar-header {
   display: flex;

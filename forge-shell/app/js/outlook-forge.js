@@ -706,7 +706,7 @@ window.OutlookForgeView = (function () {
       return;
     }
 
-    const sources      = configData.sources;
+    const sources      = configData.channels;
     const sourceCount  = Array.isArray(sources) ? sources.length : 0;
     const monitored    = Array.isArray(sources) ? sources.filter(s => s.monitor).length : 0;
     const updated      = configData.updated || '';
