@@ -51,6 +51,15 @@ window.TasksView = (function () {
   /* Hide-done toggle */
   let hideDone = false;
 
+  /* Search/filter state */
+  let searchOpen = false;
+  let searchQuery = '';
+  let filterPriority = [];
+  let filterStatus = [];
+  let filterAssignee = '';
+  let matchedFilenames = null;
+  let searchDebounceTimer = null;
+
   var VIEW_TABS = [
     { key: 'board', icon: 'fa-table-columns', label: 'Board' },
     { key: 'timeline', icon: 'fa-chart-gantt', label: 'Timeline' },
@@ -161,6 +170,83 @@ window.TasksView = (function () {
   }
 
   /* ══════════════════════════════════════════════════════════
+     Search/Filter Helpers
+     ══════════════════════════════════════════════════════════ */
+  function isTaskMatched(task) {
+    if (matchedFilenames === null) return true;
+    return matchedFilenames.has(task.filename);
+  }
+
+  function getFilteredTasks() {
+    if (matchedFilenames === null) return tasks;
+    return tasks.filter(function (t) { return matchedFilenames.has(t.filename); });
+  }
+
+  function computeFilteredSet() {
+    var noFilters = !searchQuery && filterPriority.length === 0 &&
+                    filterStatus.length === 0 && !filterAssignee;
+    if (noFilters) {
+      matchedFilenames = null;
+      return;
+    }
+
+    matchedFilenames = new Set();
+    var q = searchQuery.toLowerCase();
+
+    tasks.forEach(function (task) {
+      if (filterPriority.length > 0) {
+        if (filterPriority.indexOf((task.priority || 'medium').toLowerCase()) === -1) return;
+      }
+      if (filterStatus.length > 0) {
+        if (filterStatus.indexOf((task.status || 'active').toLowerCase()) === -1) return;
+      }
+      if (filterAssignee) {
+        if ((task.assignee || '').toLowerCase() !== filterAssignee.toLowerCase()) return;
+      }
+      if (q) {
+        var haystack = [
+          task.title || '',
+          (task.tags || []).join(' '),
+          task.assignee || '',
+          task.creator || '',
+          task.external_id || ''
+        ].join(' ').toLowerCase();
+        if (haystack.indexOf(q) === -1) return;
+      }
+
+      matchedFilenames.add(task.filename);
+    });
+  }
+
+  function updateFilterCount() {
+    var el = $('[data-ref="filter-count"]');
+    if (!el) return;
+    if (matchedFilenames === null) {
+      el.textContent = tasks.length + ' tasks';
+    } else {
+      el.textContent = matchedFilenames.size + ' of ' + tasks.length + ' tasks';
+    }
+  }
+
+  function populateAssigneeDropdown() {
+    var select = $('[data-ref="assignee-filter"]');
+    if (!select) return;
+    var assignees = [];
+    tasks.forEach(function (t) {
+      if (t.assignee && t.assignee !== 'null' && assignees.indexOf(t.assignee) === -1) {
+        assignees.push(t.assignee);
+      }
+    });
+    assignees.sort();
+    var html = '<option value="">All</option>';
+    assignees.forEach(function (a) {
+      html += '<option value="' + esc(a) + '"' +
+              (filterAssignee === a ? ' selected' : '') + '>' + esc(a) + '</option>';
+    });
+    select.innerHTML = html;
+  }
+
+  /* ══════════════════════════════════════════════════════════
      Scaffold — build initial DOM inside #view-tasks
      ══════════════════════════════════════════════════════════ */
   function scaffold() {
@@ -183,10 +269,42 @@ window.TasksView = (function () {
           '</div>' +
           '<span class="spacer"></span>' +
           '<span class="refresh-indicator" data-ref="refresh-indicator"></span>' +
+          '<button class="btn-icon" data-action="toggle-search" title="Search (Cmd+F)"><i class="fa-solid fa-magnifying-glass"></i></button>' +
           '<button class="btn-icon" data-action="view-edit-mode" title="Customize Views"><i class="fa-solid fa-pen"></i></button>' +
           '<button class="btn-icon" data-action="field-settings" title="Filter Fields"><i class="fa-solid fa-filter"></i></button>' +
           '<button class="btn-icon" data-action="hide-done" title="Hide Done Tasks"><i class="fa-solid fa-circle-check"></i></button>' +
           '<button class="btn-icon" data-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
+        '</div>' +
+
+        /* Filter Strip */
+        '<div class="prod-filter-strip" data-ref="filter-strip">' +
+          '<div class="prod-filter-strip-inner">' +
+            '<div class="prod-filter-search">' +
+              '<i class="fa-solid fa-magnifying-glass"></i>' +
+              '<input type="text" placeholder="Search tasks\u2026" data-ref="search-input" aria-label="Search tasks">' +
+            '</div>' +
+            '<div class="prod-filter-group">' +
+              '<span class="prod-filter-label">Priority</span>' +
+              '<button class="prod-filter-chip prod-chip-high" data-filter="priority" data-value="high" aria-pressed="false">High</button>' +
+              '<button class="prod-filter-chip prod-chip-medium" data-filter="priority" data-value="medium" aria-pressed="false">Medium</button>' +
+              '<button class="prod-filter-chip prod-chip-low" data-filter="priority" data-value="low" aria-pressed="false">Low</button>' +
+            '</div>' +
+            '<div class="prod-filter-group">' +
+              '<span class="prod-filter-label">Status</span>' +
+              '<button class="prod-filter-chip" data-filter="status" data-value="active" aria-pressed="false">Active</button>' +
+              '<button class="prod-filter-chip" data-filter="status" data-value="waiting" aria-pressed="false">Waiting</button>' +
+              '<button class="prod-filter-chip" data-filter="status" data-value="someday" aria-pressed="false">Someday</button>' +
+              '<button class="prod-filter-chip" data-filter="status" data-value="done" data-ref="chip-done" aria-pressed="false">Done</button>' +
+            '</div>' +
+            '<div class="prod-filter-group">' +
+              '<span class="prod-filter-label">Assignee</span>' +
+              '<select data-ref="assignee-filter" aria-label="Filter by assignee"><option value="">All</option></select>' +
+            '</div>' +
+            '<div class="prod-filter-meta">' +
+              '<span class="prod-filter-count" data-ref="filter-count" role="status"></span>' +
+              '<button class="btn-icon prod-filter-clear" data-action="clear-filters" title="Clear all filters"><i class="fa-solid fa-xmark"></i></button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
 
         /* View Panels */
@@ -273,6 +391,63 @@ window.TasksView = (function () {
       else if (action === 'toggle-diff') editModal.toggleDiff();
       else if (action === 'view-edit-mode') toggleViewEditMode();
       else if (action === 'hide-done') toggleHideDone();
+      else if (action === 'toggle-search') toggleSearchStrip();
+      else if (action === 'clear-filters') clearAllFilters();
+    });
+
+    /* Search input (debounced) */
+    view.addEventListener('input', function (e) {
+      if (!e.target.matches('[data-ref="search-input"]')) return;
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(function () {
+        searchQuery = e.target.value.trim();
+        applyFilters();
+      }, 150);
+    });
+
+    /* Filter chips */
+    view.addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-filter]');
+      if (!chip) return;
+      var filterType = chip.dataset.filter;
+      var value = chip.dataset.value;
+
+      if (filterType === 'priority') {
+        var idx = filterPriority.indexOf(value);
+        if (idx === -1) filterPriority.push(value);
+        else filterPriority.splice(idx, 1);
+        chip.classList.toggle('active');
+        chip.setAttribute('aria-pressed', chip.classList.contains('active'));
+      } else if (filterType === 'status') {
+        var idx = filterStatus.indexOf(value);
+        if (idx === -1) filterStatus.push(value);
+        else filterStatus.splice(idx, 1);
+        chip.classList.toggle('active');
+        chip.setAttribute('aria-pressed', chip.classList.contains('active'));
+      }
+      applyFilters();
+    });
+
+    /* Assignee dropdown */
+    view.addEventListener('change', function (e) {
+      if (!e.target.matches('[data-ref="assignee-filter"]')) return;
+      filterAssignee = e.target.value;
+      applyFilters();
+    });
+
+    /* Keyboard shortcut: Cmd/Ctrl+F */
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        var tasksView = document.getElementById('view-tasks');
+        if (tasksView && !tasksView.classList.contains('hidden')) {
+          e.preventDefault();
+          toggleSearchStrip();
+        }
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        clearAllFilters();
+        toggleSearchStrip();
+      }
     });
 
     /* View tab switching (with eye toggle interception) */
@@ -598,6 +773,11 @@ window.TasksView = (function () {
       if (newSignature !== taskSignature) {
         taskSignature = newSignature;
         tasks = await parseTaskFiles();
+        if (matchedFilenames !== null) {
+          computeFilteredSet();
+          updateFilterCount();
+        }
+        populateAssigneeDropdown();
         renderTasks();
       }
     } catch (e) {
@@ -680,6 +860,68 @@ window.TasksView = (function () {
   }
 
   /* ══════════════════════════════════════════════════════════
+     Search Strip Toggle / Clear / Apply
+     ══════════════════════════════════════════════════════════ */
+  function toggleSearchStrip() {
+    searchOpen = !searchOpen;
+    var strip = $('[data-ref="filter-strip"]');
+    if (!strip) return;
+    strip.classList.toggle('prod-strip-open', searchOpen);
+    if (searchOpen) {
+      populateAssigneeDropdown();
+      updateFilterCount();
+      syncHideDoneChip();
+      var input = $('[data-ref="search-input"]');
+      if (input) setTimeout(function () { input.focus(); }, 50);
+    }
+    try { localStorage.setItem('forge-shell-tasks-search-open', searchOpen ? '1' : '0'); }
+    catch (e) { /* ignore */ }
+  }
+
+  function clearAllFilters() {
+    searchQuery = '';
+    filterPriority = [];
+    filterStatus = [];
+    filterAssignee = '';
+    matchedFilenames = null;
+
+    var input = $('[data-ref="search-input"]');
+    if (input) input.value = '';
+
+    $$('[data-filter]').forEach(function (chip) {
+      chip.classList.remove('active');
+      chip.setAttribute('aria-pressed', 'false');
+    });
+
+    var select = $('[data-ref="assignee-filter"]');
+    if (select) select.value = '';
+
+    updateFilterCount();
+    renderTasks();
+  }
+
+  function applyFilters() {
+    computeFilteredSet();
+    updateFilterCount();
+    renderTasks();
+  }
+
+  function syncHideDoneChip() {
+    var doneChip = $('[data-ref="chip-done"]');
+    if (doneChip) {
+      doneChip.style.display = hideDone ? 'none' : '';
+      if (hideDone) {
+        var idx = filterStatus.indexOf('done');
+        if (idx !== -1) {
+          filterStatus.splice(idx, 1);
+          doneChip.classList.remove('active');
+          doneChip.setAttribute('aria-pressed', 'false');
+        }
+      }
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
      Render Tasks — board + active analytics panels
      ══════════════════════════════════════════════════════════ */
   function renderTasks() {
@@ -738,10 +980,18 @@ window.TasksView = (function () {
   function createColumn(colId, label, icon, items) {
     var col = document.createElement('div');
     col.className = 'prod-column';
+
+    var matchedCount = matchedFilenames !== null
+      ? items.filter(function (t) { return isTaskMatched(t); }).length
+      : items.length;
+    var countLabel = matchedFilenames !== null
+      ? matchedCount + ' / ' + items.length
+      : '' + items.length;
+
     col.innerHTML =
       '<div class="prod-column-header">' +
         '<span class="prod-column-title" data-status="' + esc(colId) + '"><i class="' + icon + '"></i> ' + esc(label) + '</span>' +
-        '<span class="prod-count">' + items.length + '</span>' +
+        '<span class="prod-count">' + esc(countLabel) + '</span>' +
       '</div>' +
       '<div class="prod-cards" data-column="' + esc(colId) + '"></div>' +
       '<div class="prod-add-card"><button data-add="' + esc(colId) + '">+ Add task</button></div>';
@@ -749,6 +999,14 @@ window.TasksView = (function () {
     /* Populate cards */
     var cardsContainer = col.querySelector('.prod-cards');
     items.forEach(function (task) { cardsContainer.appendChild(createCard(task)); });
+
+    /* Show empty state when all cards in column are filtered out */
+    if (matchedFilenames !== null && matchedCount === 0 && items.length > 0) {
+      var emptyMsg = document.createElement('div');
+      emptyMsg.style.cssText = 'padding:16px;text-align:center;color:var(--text-muted);font-size:12px;';
+      emptyMsg.textContent = 'No matching tasks';
+      cardsContainer.appendChild(emptyMsg);
+    }
 
     /* Card drag-and-drop into column */
     var getDropPosition = function (e) {
@@ -870,6 +1128,16 @@ window.TasksView = (function () {
     }
 
     card.innerHTML = html;
+
+    /* Apply filter dimming/highlighting */
+    if (matchedFilenames !== null) {
+      if (isTaskMatched(task)) {
+        card.classList.add('prod-card-matched');
+      } else {
+        card.classList.add('prod-card-dimmed');
+        card.draggable = false;
+      }
+    }
 
     card.addEventListener('dragstart', function (e) {
       card.classList.add('prod-dragging');
@@ -1109,6 +1377,9 @@ window.TasksView = (function () {
       btn.classList.toggle('rm-active', hideDone);
       btn.title = hideDone ? 'Show Done Tasks' : 'Hide Done Tasks';
     }
+
+    syncHideDoneChip();
+    if (matchedFilenames !== null) applyFilters();
 
     renderActiveView();
   }
@@ -1770,7 +2041,8 @@ window.TasksView = (function () {
       var prio = (t.priority || 'medium').toLowerCase();
       var isOverdue = t.due_date < today && t.status !== 'done';
 
-      html += '<div class="prod-tl-row" data-task-id="' + esc(t.filename) + '">';
+      var tlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
+      html += '<div class="prod-tl-row' + tlDimmed + '" data-task-id="' + esc(t.filename) + '">';
 
       // Label column: priority dot + title + assignee initial
       html += '<div class="prod-tl-label-col">';
@@ -1798,7 +2070,8 @@ window.TasksView = (function () {
       html += '<div class="prod-tl-no-dates"><span class="prod-tl-no-dates-label"><i class="fa-regular fa-calendar-xmark"></i> No due date</span>';
       noDates.forEach(function (t) {
         var prio = (t.priority || 'medium').toLowerCase();
-        html += '<span class="prod-tl-chip prod-tl-' + prio + '" data-task-id="' + esc(t.filename) + '">' + esc(t.title) + '</span>';
+        var chipDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
+        html += '<span class="prod-tl-chip prod-tl-' + prio + chipDimmed + '" data-task-id="' + esc(t.filename) + '">' + esc(t.title) + '</span>';
       });
       html += '</div>';
     }
@@ -1850,8 +2123,10 @@ window.TasksView = (function () {
       return;
     }
 
+    var sourceTasks = getFilteredTasks();
+    var isFiltered = matchedFilenames !== null;
     var today = new Date().toISOString().split('T')[0];
-    var total = tasks.length;
+    var total = sourceTasks.length;
     var overdue = 0;
     var done = 0;
     var nonDone = [];
@@ -1859,7 +2134,7 @@ window.TasksView = (function () {
     var priorityCounts = { high: 0, medium: 0, low: 0 };
     var tagCounts = {};
 
-    tasks.forEach(function (t) {
+    sourceTasks.forEach(function (t) {
       var s = t.status || 'active';
       if (statusCounts[s] !== undefined) statusCounts[s]++;
       if (s === 'done') done++;
@@ -1896,7 +2171,7 @@ window.TasksView = (function () {
     var createdLast30 = 0;
     var completedLast30 = 0;
     var dailyCompletions = {};
-    tasks.forEach(function (t) {
+    sourceTasks.forEach(function (t) {
       if (t.created && t.created >= thirtyAgoStr) createdLast30++;
       if (t.status === 'done' && t.updated && t.updated >= thirtyAgoStr) {
         completedLast30++;
@@ -1935,6 +2210,9 @@ window.TasksView = (function () {
     var conicGrad = conicParts.length > 0 ? conicParts.join(', ') : 'var(--border-light) 0% 100%';
 
     var html = '<div class="prod-summary-grid">';
+    if (isFiltered) {
+      html += '<div style="grid-column:1/-1;margin-bottom:-8px;"><span class="prod-filtered-badge">Filtered (' + sourceTasks.length + ' of ' + tasks.length + ')</span></div>';
+    }
 
     // Stat cards with icons and top border accent
     var statCards = [
@@ -2004,7 +2282,7 @@ window.TasksView = (function () {
     html += '</div></div>';
 
     // Upcoming due tasks
-    var upcoming = tasks.filter(function (t) {
+    var upcoming = sourceTasks.filter(function (t) {
       return t.due_date && t.due_date !== 'null' && t.status !== 'done';
     }).sort(function (a, b) {
       return a.due_date.localeCompare(b.due_date);
@@ -2072,11 +2350,16 @@ window.TasksView = (function () {
     var totalAssignees = names.length;
     var totalAssigned = workloadTasks.length - unassigned.length;
 
-    // Imbalance check
-    var avgLoad = totalAssignees > 0 ? totalAssigned / totalAssignees : 0;
+    // Imbalance check (based on filtered set when filters active)
+    var imbalanceSource = matchedFilenames !== null
+      ? function (laneTasks) { return laneTasks.filter(function (t) { return isTaskMatched(t); }).length; }
+      : function (laneTasks) { return laneTasks.length; };
+    var totalForImbalance = 0;
+    names.forEach(function (n) { totalForImbalance += imbalanceSource(lanes[n]); });
+    var avgLoad = totalAssignees > 0 ? totalForImbalance / totalAssignees : 0;
     var imbalanced = false;
     names.forEach(function (n) {
-      if (lanes[n].length > avgLoad * 1.5) imbalanced = true;
+      if (imbalanceSource(lanes[n]) > avgLoad * 1.5) imbalanced = true;
     });
 
     var html = '';
@@ -2104,12 +2387,19 @@ window.TasksView = (function () {
   }
 
   function buildWorkloadLane(name, laneTasks, isUnassigned) {
+    var total = laneTasks.length;
+
+    // Compute filtered lane tasks for status bar and counts
+    var filteredLaneTasks = matchedFilenames !== null
+      ? laneTasks.filter(function (t) { return isTaskMatched(t); })
+      : laneTasks;
+    var statusSource = matchedFilenames !== null ? filteredLaneTasks : laneTasks;
     var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
-    laneTasks.forEach(function (t) {
+    statusSource.forEach(function (t) {
       var s = t.status || 'active';
       if (statusCounts[s] !== undefined) statusCounts[s]++;
     });
-    var total = laneTasks.length;
+    var statusTotal = statusSource.length;
 
     // Status bar segments
     var statusColors = {
@@ -2131,12 +2421,15 @@ window.TasksView = (function () {
     html += '<div class="prod-wl-status-bar">';
     ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
       if (statusCounts[s] > 0) {
-        var pct = (statusCounts[s] / total) * 100;
+        var pct = statusTotal > 0 ? (statusCounts[s] / statusTotal) * 100 : 0;
         html += '<div class="prod-wl-status-seg" style="width:' + pct + '%;background:' + statusColors[s] + '" title="' + s + ': ' + statusCounts[s] + '"></div>';
       }
     });
     html += '</div></div>';
-    html += '<span class="prod-wl-count">' + total + '</span>';
+    var laneCountLabel = matchedFilenames !== null
+      ? filteredLaneTasks.length + ' / ' + total
+      : '' + total;
+    html += '<span class="prod-wl-count">' + laneCountLabel + '</span>';
     html += '<span class="prod-wl-chevron"><i class="fa-solid fa-chevron-down"></i></span>';
     html += '</div>';
 
@@ -2150,7 +2443,8 @@ window.TasksView = (function () {
       laneTasks.forEach(function (t) {
         var prio = (t.priority || 'medium').toLowerCase();
         var status = t.status || 'active';
-        html += '<div class="prod-wl-mini-card" data-task-id="' + esc(t.filename) + '">';
+        var wlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-wl-dimmed' : '';
+        html += '<div class="prod-wl-mini-card' + wlDimmed + '" data-task-id="' + esc(t.filename) + '">';
         html += '<div class="prod-wl-mini-top">';
         html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
         html += '<span class="prod-wl-mini-title">' + esc(t.title) + '</span>';
@@ -2208,12 +2502,34 @@ window.TasksView = (function () {
       matrix[p][s].push(t);
     });
 
+    // Compute filtered counts for heat coloring and badges
+    var filteredColTotals = {};
+    var filteredRowTotals = {};
+    priorities.forEach(function (p) { filteredRowTotals[p] = 0; });
+    statuses.forEach(function (s) { filteredColTotals[s] = 0; });
+
     priorities.forEach(function (p) {
       statuses.forEach(function (s) {
-        var count = matrix[p][s].length;
-        if (count > maxCount) maxCount = count;
-        colTotals[s] += count;
-        rowTotals[p] += count;
+        var cellTasks = matrix[p][s];
+        var filteredCount = matchedFilenames !== null
+          ? cellTasks.filter(function (t) { return isTaskMatched(t); }).length
+          : cellTasks.length;
+        if (filteredCount > maxCount) maxCount = filteredCount;
+        colTotals[s] += cellTasks.length;
+        rowTotals[p] += cellTasks.length;
+        filteredColTotals[s] += filteredCount;
+        filteredRowTotals[p] += filteredCount;
+      });
+    });
+
+    // Use filtered counts for heat coloring
+    var heatMax = 0;
+    priorities.forEach(function (p) {
+      statuses.forEach(function (s) {
+        var fc = matchedFilenames !== null
+          ? matrix[p][s].filter(function (t) { return isTaskMatched(t); }).length
+          : matrix[p][s].length;
+        if (fc > heatMax) heatMax = fc;
       });
     });
 
@@ -2221,30 +2537,36 @@ window.TasksView = (function () {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     var heatRGB = isDark ? '199, 97, 64' : '74, 108, 247';
 
+    var displayColTotals = matchedFilenames !== null ? filteredColTotals : colTotals;
+    var displayRowTotals = matchedFilenames !== null ? filteredRowTotals : rowTotals;
+
     var html = '<div class="prod-matrix-wrap"><table class="prod-matrix-table">';
     html += '<thead><tr><th></th>';
     statuses.forEach(function (s) {
-      html += '<th>' + statusLabels[s] + ' <span class="prod-matrix-col-badge">' + colTotals[s] + '</span></th>';
+      html += '<th>' + statusLabels[s] + ' <span class="prod-matrix-col-badge">' + displayColTotals[s] + '</span></th>';
     });
     html += '</tr></thead><tbody>';
 
     priorities.forEach(function (p) {
       html += '<tr>';
-      html += '<td class="prod-matrix-row-label">' + prioLabels[p] + ' <span class="prod-matrix-row-badge">' + rowTotals[p] + '</span></td>';
+      html += '<td class="prod-matrix-row-label">' + prioLabels[p] + ' <span class="prod-matrix-row-badge">' + displayRowTotals[p] + '</span></td>';
       statuses.forEach(function (s) {
         var cellTasks = matrix[p][s];
-        var count = cellTasks.length;
-        var intensity = maxCount > 0 ? (count / maxCount) * 0.35 : 0;
+        var filteredCellCount = matchedFilenames !== null
+          ? cellTasks.filter(function (t) { return isTaskMatched(t); }).length
+          : cellTasks.length;
+        var intensity = heatMax > 0 ? (filteredCellCount / heatMax) * 0.35 : 0;
         var bg = 'rgba(' + heatRGB + ', ' + intensity.toFixed(2) + ')';
 
         html += '<td class="prod-matrix-cell" style="background:' + bg + '">';
-        html += '<div class="prod-matrix-count">' + count + '</div>';
-        if (count > 0) {
+        html += '<div class="prod-matrix-count">' + filteredCellCount + '</div>';
+        if (cellTasks.length > 0) {
           html += '<div class="prod-matrix-cards">';
-          var showCount = Math.min(count, 4);
+          var showCount = Math.min(cellTasks.length, 4);
           cellTasks.slice(0, showCount).forEach(function (t) {
             var tPrio = (t.priority || 'medium').toLowerCase();
-            html += '<div class="prod-matrix-mini" data-task-id="' + esc(t.filename) + '">';
+            var mxDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
+            html += '<div class="prod-matrix-mini' + mxDimmed + '" data-task-id="' + esc(t.filename) + '">';
             html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
             html += '<span class="prod-matrix-mini-title">' + esc(t.title) + '</span>';
             if (t.due_date && t.due_date !== 'null') {
@@ -2252,15 +2574,20 @@ window.TasksView = (function () {
             }
             html += '</div>';
           });
-          if (count > 4) {
-            html += '<div class="prod-matrix-expand">+' + (count - 4) + ' more</div>';
+          // "+X more" counts only matching tasks
+          var matchedOverflow = matchedFilenames !== null
+            ? cellTasks.slice(4).filter(function (t) { return isTaskMatched(t); }).length
+            : Math.max(0, cellTasks.length - 4);
+          if (matchedOverflow > 0) {
+            html += '<div class="prod-matrix-expand">+' + matchedOverflow + ' more</div>';
           }
           // Hidden overflow cards
-          if (count > 4) {
+          if (cellTasks.length > 4) {
             html += '<div class="prod-matrix-overflow">';
             cellTasks.slice(4).forEach(function (t) {
               var tPrio = (t.priority || 'medium').toLowerCase();
-              html += '<div class="prod-matrix-mini" data-task-id="' + esc(t.filename) + '">';
+              var mxDimmed2 = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
+              html += '<div class="prod-matrix-mini' + mxDimmed2 + '" data-task-id="' + esc(t.filename) + '">';
               html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
               html += '<span class="prod-matrix-mini-title">' + esc(t.title) + '</span>';
               html += '</div>';
@@ -2328,8 +2655,15 @@ window.TasksView = (function () {
       await loadTags();
       taskSignature = await buildTaskSignature();
       updateFolderBadge();
+      populateAssigneeDropdown();
       renderTasks();
       startTaskWatching();
+
+      /* Restore search strip open/closed state */
+      try {
+        var storedSearch = localStorage.getItem('forge-shell-tasks-search-open');
+        if (storedSearch === '1') toggleSearchStrip();
+      } catch (ignore) { /* ignore */ }
     } catch (e) {
       /* tasks/ directory does not exist — that's OK */
       renderTasks();

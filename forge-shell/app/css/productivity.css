@@ -2464,3 +2464,208 @@
     font-size: 28px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Task Search — Filter Strip & Card States
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Filter Strip Container ── */
+.prod-filter-strip {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 200ms ease-out;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.prod-filter-strip.prod-strip-open {
+  max-height: 120px;
+  border-bottom-color: var(--accent);
+  border-bottom-width: 2px;
+}
+
+.prod-filter-strip-inner {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Search Input ── */
+.prod-filter-search {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.prod-filter-search i {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.prod-filter-search input {
+  width: 240px;
+  padding: 5px 10px 5px 28px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 150ms;
+}
+
+.prod-filter-search input:focus {
+  border-color: var(--accent);
+}
+
+.prod-filter-search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Filter Groups ── */
+.prod-filter-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.prod-filter-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Filter Chips ── */
+.prod-filter-chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+
+.prod-filter-chip:hover {
+  border-color: var(--text-muted);
+}
+
+.prod-filter-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.prod-chip-high.active {
+  background: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.prod-chip-medium.active {
+  background: #f39c12;
+  border-color: #f39c12;
+}
+
+.prod-chip-low.active {
+  background: #3498db;
+  border-color: #3498db;
+}
+
+/* ── Filter Meta (count + clear) ── */
+.prod-filter-meta {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prod-filter-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prod-filter-clear {
+  font-size: 14px;
+}
+
+/* ── Filter Strip Select ── */
+.prod-filter-strip select {
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.prod-filter-strip select:focus {
+  border-color: var(--accent);
+}
+
+/* ── Card States (Board) ── */
+.prod-card-dimmed {
+  opacity: 0.25;
+  pointer-events: none;
+  filter: saturate(0.3);
+  transition: opacity 200ms, filter 200ms;
+}
+
+.prod-card-matched {
+  border-left: 3px solid var(--accent);
+  transition: border-color 200ms;
+}
+
+/* ── Timeline Dimmed ── */
+.prod-tl-dimmed {
+  opacity: 0.15;
+}
+
+/* ── Workload Dimmed ── */
+.prod-wl-dimmed {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* ── Matrix Dimmed ── */
+.prod-matrix-dimmed {
+  opacity: 0.25;
+}
+
+/* ── Filtered Badge (Summary) ── */
+.prod-filtered-badge {
+  display: inline-block;
+  font-size: 11px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .prod-filter-strip,
+  .prod-filter-chip,
+  .prod-card-dimmed,
+  .prod-card-matched,
+  .prod-filter-search input {
+    transition-duration: 0.01ms !important;
+  }
+}
