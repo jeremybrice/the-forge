@@ -238,12 +238,18 @@ window.TasksView = (function () {
       }
     });
     assignees.sort();
-    var html = '<option value="">All</option>';
+    select.innerHTML = '';
+    var allOpt = document.createElement('option');
+    allOpt.value = '';
+    allOpt.textContent = 'All';
+    select.appendChild(allOpt);
     assignees.forEach(function (a) {
-      html += '<option value="' + esc(a) + '"' +
-              (filterAssignee === a ? ' selected' : '') + '>' + esc(a) + '</option>';
+      var opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = a;
+      if (filterAssignee === a) opt.selected = true;
+      select.appendChild(opt);
     });
-    select.innerHTML = html;
   }
 
   /* ══════════════════════════════════════════════════════════
