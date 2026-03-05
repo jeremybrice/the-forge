@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   Slack Forge View Controller
+   Outlook Forge View Controller
    Sidebar + detail panel layout with Harvests / Transcripts views.
-   Scans slack-forge/ via FS API. All colors via CSS custom properties.
+   Scans outlook-forge/ via FS API. All colors via CSS custom properties.
    ═══════════════════════════════════════════════════════════════ */
 
-window.SlackForgeView = (function () {
+window.OutlookForgeView = (function () {
   'use strict';
 
   const esc = ForgeUtils.escapeHTML;
@@ -12,7 +12,7 @@ window.SlackForgeView = (function () {
   /* ── State ── */
   let rootHandle = null;
   let initialized = false;
-  let slackForgeActive = false;
+  let outlookForgeActive = false;
   let harvests = [];
   let selectedHarvest = null;
   let transcripts = [];
@@ -25,9 +25,9 @@ window.SlackForgeView = (function () {
   let searchQuery = '';
 
   /* ── DOM helpers ── */
-  function view() { return document.getElementById('view-slack-forge'); }
+  function view() { return document.getElementById('view-outlook-forge'); }
   function $(sel) { return view().querySelector(sel); }
-  function ref(name) { return $(`[data-sf-ref="${name}"]`); }
+  function ref(name) { return $(`[data-of-ref="${name}"]`); }
 
   /* ═══════════════════════════════════════════════════════════
      Color Helpers — CSS variables only (no hardcoded hex)
@@ -35,28 +35,29 @@ window.SlackForgeView = (function () {
   function harvestTypeColor(type) {
     if (!type) return 'var(--text-muted)';
     const t = type.toLowerCase();
-    if (t === 'task') return 'var(--sf-type-task)';
-    if (t === 'knowledge') return 'var(--sf-type-knowledge)';
-    if (t === 'jira-digest') return 'var(--sf-type-jira)';
+    if (t === 'task') return 'var(--of-type-task)';
+    if (t === 'knowledge') return 'var(--of-type-knowledge)';
+    if (t === 'meeting-prep') return 'var(--of-type-meeting-prep)';
+    if (t === 'meeting-notes') return 'var(--of-type-meeting-notes)';
     return 'var(--text-muted)';
   }
 
   function statusColor(status) {
     if (!status) return 'var(--text-muted)';
     const s = status.toLowerCase();
-    if (s === 'pending')  return 'var(--sf-status-pending)';
-    if (s === 'approved') return 'var(--sf-status-approved)';
-    if (s === 'promoted') return 'var(--sf-status-promoted)';
-    if (s === 'rejected') return 'var(--sf-status-rejected)';
+    if (s === 'pending')  return 'var(--of-status-pending)';
+    if (s === 'approved') return 'var(--of-status-approved)';
+    if (s === 'promoted') return 'var(--of-status-promoted)';
+    if (s === 'rejected') return 'var(--of-status-rejected)';
     return 'var(--text-muted)';
   }
 
   function confidenceColor(confidence) {
     if (!confidence) return 'var(--text-muted)';
     const c = confidence.toLowerCase();
-    if (c === 'high')   return 'var(--sf-confidence-high)';
-    if (c === 'medium') return 'var(--sf-confidence-medium)';
-    if (c === 'low')    return 'var(--sf-confidence-low)';
+    if (c === 'high')   return 'var(--of-confidence-high)';
+    if (c === 'medium') return 'var(--of-confidence-medium)';
+    if (c === 'low')    return 'var(--of-confidence-low)';
     return 'var(--text-muted)';
   }
 
@@ -73,84 +74,85 @@ window.SlackForgeView = (function () {
      ═══════════════════════════════════════════════════════════ */
   function scaffold() {
     view().innerHTML = `
-      <div class="sf-layout">
+      <div class="of-layout">
 
         <!-- Toolbar -->
         <div class="plugin-toolbar">
-          <button class="btn-icon sf-toolbar-toggle" data-sf-action="toggle-sidebar" title="Toggle sidebar">
+          <button class="btn-icon of-toolbar-toggle" data-of-action="toggle-sidebar" title="Toggle sidebar">
             <i class="fa-solid fa-bars"></i>
           </button>
-          <span class="toolbar-title"><i class="fa-brands fa-slack"></i> Slack Forge</span>
+          <span class="toolbar-title"><i class="fa-solid fa-envelope"></i> Outlook Forge</span>
           <div class="view-toggle">
-            <button data-sf-view="harvests" class="active">Harvests</button>
-            <button data-sf-view="transcripts">Transcripts</button>
+            <button data-of-view="harvests" class="active">Harvests</button>
+            <button data-of-view="transcripts">Transcripts</button>
           </div>
           <span class="spacer"></span>
-          <span class="refresh-indicator" data-sf-ref="refresh-indicator"></span>
-          <button class="btn-icon" data-sf-action="toggle-filter" title="Filters">
+          <span class="refresh-indicator" data-of-ref="refresh-indicator"></span>
+          <button class="btn-icon" data-of-action="toggle-filter" title="Filters">
             <i class="fa-solid fa-sliders"></i>
           </button>
-          <button class="btn-icon" data-sf-action="refresh" title="Refresh">
+          <button class="btn-icon" data-of-action="refresh" title="Refresh">
             <i class="fa-solid fa-rotate"></i>
           </button>
         </div>
 
         <!-- Sidebar -->
-        <div class="sf-sidebar">
+        <div class="of-sidebar">
 
           <!-- Harvests panel -->
-          <div data-sf-panel="harvests-sidebar">
-            <div class="sf-sidebar-header">
-              <span class="sf-sidebar-header-label">Harvests</span>
-              <div class="sf-status-badges" data-sf-ref="status-badges"></div>
+          <div data-of-panel="harvests-sidebar">
+            <div class="of-sidebar-header">
+              <span class="of-sidebar-header-label">Harvests</span>
+              <div class="of-status-badges" data-of-ref="status-badges"></div>
             </div>
             <div class="sidebar-search">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" placeholder="Search harvests…" data-sf-ref="harvest-search">
+              <input type="text" placeholder="Search harvests…" data-of-ref="harvest-search">
             </div>
             <div class="filter-bar">
-              <button class="filter-btn active" data-sf-filter-type="all">All</button>
-              <button class="filter-btn" data-sf-filter-type="task">Tasks</button>
-              <button class="filter-btn" data-sf-filter-type="knowledge">Knowledge</button>
-              <button class="filter-btn" data-sf-filter-type="jira-digest">JIRA</button>
+              <button class="filter-btn active" data-of-filter-type="all">All</button>
+              <button class="filter-btn" data-of-filter-type="task">Tasks</button>
+              <button class="filter-btn" data-of-filter-type="knowledge">Knowledge</button>
+              <button class="filter-btn" data-of-filter-type="meeting-prep">Prep</button>
+              <button class="filter-btn" data-of-filter-type="meeting-notes">Notes</button>
             </div>
-            <div class="sf-harvest-list" data-sf-ref="harvest-list"></div>
-            <div data-sf-ref="config-bar"></div>
+            <div class="of-harvest-list" data-of-ref="harvest-list"></div>
+            <div data-of-ref="config-bar"></div>
           </div>
 
           <!-- Transcripts panel -->
-          <div data-sf-panel="transcripts-sidebar" class="hidden">
-            <div class="sf-sidebar-header">
-              <span class="sf-sidebar-header-label">Transcripts</span>
+          <div data-of-panel="transcripts-sidebar" class="hidden">
+            <div class="of-sidebar-header">
+              <span class="of-sidebar-header-label">Transcripts</span>
             </div>
             <div class="sidebar-search">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" placeholder="Search transcripts…" data-sf-ref="transcript-search">
+              <input type="text" placeholder="Search transcripts…" data-of-ref="transcript-search">
             </div>
-            <div class="sf-transcript-list" data-sf-ref="transcript-list"></div>
+            <div class="of-transcript-list" data-of-ref="transcript-list"></div>
           </div>
 
         </div>
 
         <!-- Detail Panel -->
-        <div class="sf-detail-panel" data-sf-ref="detail-panel"></div>
+        <div class="of-detail-panel" data-of-ref="detail-panel"></div>
 
         <!-- Filter Panel (slide-out from right) -->
-        <div class="sf-filter-panel" data-sf-ref="filter-panel">
-          <div class="sf-filter-panel-header">
-            <span class="sf-filter-panel-title">Filters</span>
-            <button class="btn-icon" data-sf-action="toggle-filter" title="Close">
+        <div class="of-filter-panel" data-of-ref="filter-panel">
+          <div class="of-filter-panel-header">
+            <span class="of-filter-panel-title">Filters</span>
+            <button class="btn-icon" data-of-action="toggle-filter" title="Close">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
-          <div class="sf-filter-section">
-            <div class="sf-filter-section-label">Status</div>
-            <div class="sf-filter-group">
-              <button class="filter-btn active" data-sf-filter-status="all">All</button>
-              <button class="filter-btn" data-sf-filter-status="pending">Pending</button>
-              <button class="filter-btn" data-sf-filter-status="approved">Approved</button>
-              <button class="filter-btn" data-sf-filter-status="rejected">Rejected</button>
-              <button class="filter-btn" data-sf-filter-status="promoted">Promoted</button>
+          <div class="of-filter-section">
+            <div class="of-filter-section-label">Status</div>
+            <div class="of-filter-group">
+              <button class="filter-btn active" data-of-filter-status="all">All</button>
+              <button class="filter-btn" data-of-filter-status="pending">Pending</button>
+              <button class="filter-btn" data-of-filter-status="approved">Approved</button>
+              <button class="filter-btn" data-of-filter-status="rejected">Rejected</button>
+              <button class="filter-btn" data-of-filter-status="promoted">Promoted</button>
             </div>
           </div>
         </div>
@@ -164,11 +166,11 @@ window.SlackForgeView = (function () {
      ═══════════════════════════════════════════════════════════ */
   function bindEvents() {
     view().addEventListener('input', (e) => {
-      if (e.target.matches('[data-sf-ref="harvest-search"]')) {
+      if (e.target.matches('[data-of-ref="harvest-search"]')) {
         searchQuery = e.target.value.toLowerCase().trim();
         renderHarvestList();
       }
-      if (e.target.matches('[data-sf-ref="transcript-search"]')) {
+      if (e.target.matches('[data-of-ref="transcript-search"]')) {
         searchQuery = e.target.value.toLowerCase().trim();
         renderTranscriptList();
       }
@@ -177,9 +179,9 @@ window.SlackForgeView = (function () {
     view().addEventListener('click', (e) => {
 
       /* Toolbar actions */
-      const action = e.target.closest('[data-sf-action]');
+      const action = e.target.closest('[data-of-action]');
       if (action) {
-        const act = action.dataset.sfAction;
+        const act = action.dataset.ofAction;
         if (act === 'refresh') { loadData(); return; }
         if (act === 'toggle-filter') {
           filterPanelOpen = !filterPanelOpen;
@@ -188,25 +190,25 @@ window.SlackForgeView = (function () {
           return;
         }
         if (act === 'toggle-sidebar') {
-          const layout = view().querySelector('.sf-layout');
-          if (layout) layout.classList.toggle('sf-sidebar-open');
+          const layout = view().querySelector('.of-layout');
+          if (layout) layout.classList.toggle('of-sidebar-open');
           return;
         }
       }
 
       /* View toggle (Harvests / Transcripts) */
-      const viewBtn = e.target.closest('[data-sf-view]');
+      const viewBtn = e.target.closest('[data-of-view]');
       if (viewBtn) {
-        const newView = viewBtn.dataset.sfView;
+        const newView = viewBtn.dataset.ofView;
         if (newView === activeView) return;
         activeView = newView;
 
-        view().querySelectorAll('[data-sf-view]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfView === activeView);
+        view().querySelectorAll('[data-of-view]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofView === activeView);
         });
 
-        const harvestsPanel   = $('[data-sf-panel="harvests-sidebar"]');
-        const transcriptsPanel = $('[data-sf-panel="transcripts-sidebar"]');
+        const harvestsPanel   = $('[data-of-panel="harvests-sidebar"]');
+        const transcriptsPanel = $('[data-of-panel="transcripts-sidebar"]');
         if (harvestsPanel)   harvestsPanel.classList.toggle('hidden', activeView !== 'harvests');
         if (transcriptsPanel) transcriptsPanel.classList.toggle('hidden', activeView !== 'transcripts');
 
@@ -222,11 +224,11 @@ window.SlackForgeView = (function () {
       }
 
       /* Type filter */
-      const typeBtn = e.target.closest('[data-sf-filter-type]');
+      const typeBtn = e.target.closest('[data-of-filter-type]');
       if (typeBtn) {
-        filterType = typeBtn.dataset.sfFilterType;
-        view().querySelectorAll('[data-sf-filter-type]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfFilterType === filterType);
+        filterType = typeBtn.dataset.ofFilterType;
+        view().querySelectorAll('[data-of-filter-type]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofFilterType === filterType);
         });
         renderStatusBadges();
         renderHarvestList();
@@ -234,20 +236,20 @@ window.SlackForgeView = (function () {
       }
 
       /* Status filter */
-      const statusBtn = e.target.closest('[data-sf-filter-status]');
+      const statusBtn = e.target.closest('[data-of-filter-status]');
       if (statusBtn) {
-        filterStatus = statusBtn.dataset.sfFilterStatus;
-        view().querySelectorAll('[data-sf-filter-status]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfFilterStatus === filterStatus);
+        filterStatus = statusBtn.dataset.ofFilterStatus;
+        view().querySelectorAll('[data-of-filter-status]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofFilterStatus === filterStatus);
         });
         renderHarvestList();
         return;
       }
 
       /* Harvest card click */
-      const harvestCard = e.target.closest('.sidebar-card[data-sf-filename]');
+      const harvestCard = e.target.closest('.sidebar-card[data-of-filename]');
       if (harvestCard) {
-        const filename = harvestCard.dataset.sfFilename;
+        const filename = harvestCard.dataset.ofFilename;
         const harvest = harvests.find(h => h.filename === filename);
         if (harvest) {
           selectedHarvest = harvest;
@@ -258,9 +260,9 @@ window.SlackForgeView = (function () {
       }
 
       /* Transcript card click */
-      const transcriptCard = e.target.closest('.sidebar-card[data-sf-transcript]');
+      const transcriptCard = e.target.closest('.sidebar-card[data-of-transcript]');
       if (transcriptCard) {
-        const filename = transcriptCard.dataset.sfTranscript;
+        const filename = transcriptCard.dataset.ofTranscript;
         const transcript = transcripts.find(t => t.filename === filename);
         if (transcript) {
           selectedTranscript = transcript;
@@ -309,20 +311,20 @@ window.SlackForgeView = (function () {
     harvests = [];
     transcripts = [];
     configData = null;
-    slackForgeActive = false;
+    outlookForgeActive = false;
 
     if (!rootHandle) {
       renderDetailState();
       return;
     }
 
-    /* 1. Read slack-forge/ root entries */
+    /* 1. Read outlook-forge/ root entries */
     let entries = [];
     try {
-      entries = await ForgeFS.readDir(rootHandle, 'slack-forge');
-      slackForgeActive = true;
+      entries = await ForgeFS.readDir(rootHandle, 'outlook-forge');
+      outlookForgeActive = true;
     } catch (e) {
-      console.warn('[SlackForge] slack-forge/ directory not found:', e);
+      console.warn('[OutlookForge] outlook-forge/ directory not found:', e);
       renderDetailState();
       return;
     }
@@ -331,11 +333,11 @@ window.SlackForgeView = (function () {
     const hasHarvestDir = entries.some(e => e.kind === 'directory' && e.name === 'harvests');
     if (hasHarvestDir) {
       try {
-        const harvestEntries = await ForgeFS.readDir(rootHandle, 'slack-forge/harvests');
+        const harvestEntries = await ForgeFS.readDir(rootHandle, 'outlook-forge/harvests');
         const mdFiles = harvestEntries.filter(e => e.kind === 'file' && e.name.endsWith('.md'));
         for (const file of mdFiles) {
           try {
-            const content = await ForgeFS.readFile(rootHandle, 'slack-forge/harvests/' + file.name);
+            const content = await ForgeFS.readFile(rootHandle, 'outlook-forge/harvests/' + file.name);
             const parsed = ForgeUtils.parseFrontmatter(content);
             if (parsed) {
               harvests.push({
@@ -345,7 +347,7 @@ window.SlackForgeView = (function () {
               });
             }
           } catch (e) {
-            console.warn('[SlackForge] Failed to parse harvest:', file.name, e);
+            console.warn('[OutlookForge] Failed to parse harvest:', file.name, e);
           }
         }
         harvests.sort((a, b) => {
@@ -354,7 +356,7 @@ window.SlackForgeView = (function () {
           return dB.localeCompare(dA);
         });
       } catch (e) {
-        console.warn('[SlackForge] Failed to read harvests/:', e);
+        console.warn('[OutlookForge] Failed to read harvests/:', e);
       }
     }
 
@@ -362,11 +364,11 @@ window.SlackForgeView = (function () {
     const hasTxDir = entries.some(e => e.kind === 'directory' && e.name === 'transcripts');
     if (hasTxDir) {
       try {
-        const txEntries = await ForgeFS.readDir(rootHandle, 'slack-forge/transcripts');
+        const txEntries = await ForgeFS.readDir(rootHandle, 'outlook-forge/transcripts');
         const txMd = txEntries.filter(e => e.kind === 'file' && e.name.endsWith('.md'));
         for (const file of txMd) {
           try {
-            const content = await ForgeFS.readFile(rootHandle, 'slack-forge/transcripts/' + file.name);
+            const content = await ForgeFS.readFile(rootHandle, 'outlook-forge/transcripts/' + file.name);
             let parsed = ForgeUtils.parseFrontmatter(content);
             const hasFrontmatter = parsed && Object.keys(parsed.frontmatter || {}).length > 0;
             if (!hasFrontmatter) {
@@ -380,7 +382,7 @@ window.SlackForgeView = (function () {
               });
             }
           } catch (e) {
-            console.warn('[SlackForge] Failed to parse transcript:', file.name, e);
+            console.warn('[OutlookForge] Failed to parse transcript:', file.name, e);
           }
         }
         transcripts.sort((a, b) => {
@@ -389,16 +391,16 @@ window.SlackForgeView = (function () {
           return dB.localeCompare(dA);
         });
       } catch (e) {
-        console.warn('[SlackForge] Failed to read transcripts/:', e);
+        console.warn('[OutlookForge] Failed to read transcripts/:', e);
       }
     }
 
     /* 4. Parse config.json */
     try {
-      const raw = await ForgeFS.readFile(rootHandle, 'slack-forge/config.json');
+      const raw = await ForgeFS.readFile(rootHandle, 'outlook-forge/config.json');
       configData = JSON.parse(raw);
     } catch (e) {
-      console.log('[SlackForge] No config.json:', e.message);
+      console.log('[OutlookForge] No config.json:', e.message);
     }
 
     /* 5. Render everything */
@@ -432,7 +434,7 @@ window.SlackForgeView = (function () {
     const order = ['pending', 'approved', 'promoted', 'rejected'];
     container.innerHTML = order
       .filter(s => counts[s] > 0)
-      .map(s => `<span class="sf-status-badge ${s}">${counts[s]}</span>`)
+      .map(s => `<span class="of-status-badge ${s}">${counts[s]}</span>`)
       .join('');
   }
 
@@ -453,16 +455,16 @@ window.SlackForgeView = (function () {
     if (searchQuery) {
       filtered = filtered.filter(h => {
         const title   = (h.frontmatter.title || '').toLowerCase();
-        const channel = (h.frontmatter.source_channel || '').toLowerCase();
+        const source  = (h.frontmatter.source_channel || '').toLowerCase();
         const tags    = (Array.isArray(h.frontmatter.tags) ? h.frontmatter.tags.join(' ') : '').toLowerCase();
-        return title.includes(searchQuery) || channel.includes(searchQuery) || tags.includes(searchQuery);
+        return title.includes(searchQuery) || source.includes(searchQuery) || tags.includes(searchQuery);
       });
     }
 
     if (filtered.length === 0) {
-      list.innerHTML = `<div class="sf-empty-list">${
+      list.innerHTML = `<div class="of-empty-list">${
         harvests.length === 0
-          ? 'No harvests found. Run <code>/slack-forge:scan</code>.'
+          ? 'No harvests found. Run <code>/outlook-forge:scan</code>.'
           : 'No harvests match the current filters.'
       }</div>`;
       return;
@@ -479,7 +481,7 @@ window.SlackForgeView = (function () {
       const stsColor  = statusColor(status);
 
       return `
-        <div class="sidebar-card ${isSelected ? 'selected' : ''}" data-sf-filename="${esc(h.filename)}">
+        <div class="sidebar-card ${isSelected ? 'selected' : ''}" data-of-filename="${esc(h.filename)}">
           <div class="sidebar-card-title">${esc(title)}</div>
           <div class="sidebar-card-meta">
             ${hType   ? `<span class="sidebar-card-pill" style="background: color-mix(in srgb, ${typeColor} 15%, transparent); color: ${typeColor};">${esc(hType)}</span>` : ''}
@@ -507,7 +509,7 @@ window.SlackForgeView = (function () {
     }
 
     if (filtered.length === 0) {
-      list.innerHTML = `<div class="sf-empty-list">${
+      list.innerHTML = `<div class="of-empty-list">${
         transcripts.length === 0
           ? 'No transcripts found.'
           : 'No transcripts match the search.'
@@ -523,10 +525,10 @@ window.SlackForgeView = (function () {
       const isSelected = selectedTranscript && selectedTranscript.filename === t.filename;
 
       return `
-        <div class="sidebar-card ${isSelected ? 'selected' : ''}" data-sf-transcript="${esc(t.filename)}">
+        <div class="sidebar-card ${isSelected ? 'selected' : ''}" data-of-transcript="${esc(t.filename)}">
           <div class="sidebar-card-title">${esc(label)}</div>
           <div class="sidebar-card-meta">
-            ${timeframe ? `<span class="sf-transcript-timeframe">${esc(timeframe)}</span>` : ''}
+            ${timeframe ? `<span class="of-transcript-timeframe">${esc(timeframe)}</span>` : ''}
             ${scanDate  ? `<span>${esc(scanDate)}</span>` : ''}
           </div>
         </div>
@@ -552,13 +554,13 @@ window.SlackForgeView = (function () {
     if (!panel) return;
 
     /* Not active */
-    if (!rootHandle || !slackForgeActive) {
+    if (!rootHandle || !outlookForgeActive) {
       panel.innerHTML = `
         <div class="not-active-state">
-          <div class="state-icon"><i class="fa-brands fa-slack"></i></div>
-          <h2>Slack Forge Not Active</h2>
-          <p>No <code>slack-forge/</code> directory found in your project.</p>
-          <p>Run <code>/slack-forge:init</code> then <code>/slack-forge:scan</code> to get started.</p>
+          <div class="state-icon"><i class="fa-solid fa-envelope"></i></div>
+          <h2>Outlook Forge Not Active</h2>
+          <p>No <code>outlook-forge/</code> directory found in your project.</p>
+          <p>Run <code>/outlook-forge:init</code> then <code>/outlook-forge:scan</code> to get started.</p>
         </div>
       `;
       return;
@@ -569,9 +571,9 @@ window.SlackForgeView = (function () {
       if (harvests.length === 0) {
         panel.innerHTML = `
           <div class="empty-state">
-            <div class="icon"><i class="fa-brands fa-slack"></i></div>
+            <div class="icon"><i class="fa-solid fa-envelope"></i></div>
             <h2>No Harvests Found</h2>
-            <p>Run <code>/slack-forge:scan</code> to harvest messages from Slack channels.</p>
+            <p>Run <code>/outlook-forge:scan</code> to harvest content from Outlook calendar and inbox.</p>
           </div>
         `;
       } else {
@@ -589,7 +591,7 @@ window.SlackForgeView = (function () {
           <div class="empty-state">
             <div class="icon"><i class="fa-solid fa-scroll"></i></div>
             <h2>No Transcripts Found</h2>
-            <p>Transcripts appear in <code>slack-forge/transcripts/</code> after a scan captures raw channel content.</p>
+            <p>Transcripts appear in <code>outlook-forge/transcripts/</code> after a scan captures raw Outlook content.</p>
           </div>
         `;
       } else {
@@ -615,8 +617,8 @@ window.SlackForgeView = (function () {
     const title      = fm.title || selectedHarvest.filename.replace(/\.md$/, '');
     const hType      = fm.harvest_type || '';
     const status     = fm.status || '';
-    const channel    = fm.source_channel || fm.channel || '';
-    const author     = fm.source_author  || fm.author  || '';
+    const source     = fm.source_channel || '';
+    const author     = fm.source_author  || '';
     const scanDate   = fm.scan_date ? String(fm.scan_date) : '';
     const timeframe  = fm.scan_timeframe || fm.timeframe || '';
     const confidence = fm.confidence || '';
@@ -628,7 +630,7 @@ window.SlackForgeView = (function () {
     const rendered  = ForgeUtils.MD.render(selectedHarvest.body);
 
     const metaRows = [
-      channel    ? `<span class="meta-label">Channel</span><span class="meta-value">${esc(channel)}</span>` : '',
+      source     ? `<span class="meta-label">Source</span><span class="meta-value">${esc(source)}</span>` : '',
       author     ? `<span class="meta-label">Author</span><span class="meta-value">${esc(author)}</span>` : '',
       scanDate   ? `<span class="meta-label">Scan Date</span><span class="meta-value">${esc(scanDate)}</span>` : '',
       timeframe  ? `<span class="meta-label">Timeframe</span><span class="meta-value">${esc(timeframe)}</span>` : '',
@@ -637,8 +639,8 @@ window.SlackForgeView = (function () {
     ].filter(Boolean).map(row => `<div style="display:contents;">${row}</div>`).join('');
 
     panel.innerHTML = `
-      <div class="sf-harvest-detail">
-        <div class="sf-title-header">
+      <div class="of-harvest-detail">
+        <div class="of-title-header">
           ${hType  ? `<span class="type-badge" style="background:${typeColor};">${esc(hType)}</span>` : ''}
           <h1>${esc(title)}</h1>
           ${status ? `<span class="status-pill" style="background:${stsColor};">${esc(status)}</span>` : ''}
@@ -660,20 +662,22 @@ window.SlackForgeView = (function () {
     const label     = fm.title || transcriptLabel(selectedTranscript.filename);
     const scanDate  = fm.scan_date  ? String(fm.scan_date) : '';
     const timeframe = fm.scan_timeframe || fm.timeframe  || '';
+    const source    = fm.source     || '';
     const scanRun   = fm.scan_run   ? String(fm.scan_run) : '';
     const generated = fm.generated  ? String(fm.generated) : '';
     const rendered  = ForgeUtils.MD.render(selectedTranscript.body);
 
     const metaRows = [
       scanDate  ? `<span class="meta-label">Scan Date</span><span class="meta-value">${esc(scanDate)}</span>`  : '',
+      source    ? `<span class="meta-label">Source</span><span class="meta-value">${esc(source)}</span>`       : '',
       timeframe ? `<span class="meta-label">Timeframe</span><span class="meta-value">${esc(timeframe)}</span>` : '',
       scanRun   ? `<span class="meta-label">Scan Run</span><span class="meta-value">#${esc(scanRun)}</span>`   : '',
       generated ? `<span class="meta-label">Generated</span><span class="meta-value">${esc(generated)}</span>` : ''
     ].filter(Boolean).map(row => `<div style="display:contents;">${row}</div>`).join('');
 
     panel.innerHTML = `
-      <div class="sf-transcript-detail">
-        <div class="sf-transcript-title-header">
+      <div class="of-transcript-detail">
+        <div class="of-transcript-title-header">
           <span class="type-badge" style="background: var(--text-muted);">Transcript</span>
           <h1>${esc(label)}</h1>
         </div>
@@ -692,34 +696,34 @@ window.SlackForgeView = (function () {
 
     if (!configData) {
       container.innerHTML = `
-        <div class="sf-config-bar">
-          <span class="sf-config-item">
+        <div class="of-config-bar">
+          <span class="of-config-item">
             <i class="fa-solid fa-circle-info"></i>
-            Not configured &mdash; run <code>/slack-forge:init</code>
+            Not configured &mdash; run <code>/outlook-forge:init</code>
           </span>
         </div>
       `;
       return;
     }
 
-    const channels     = configData.channels;
-    const channelCount = Array.isArray(channels) ? channels.length : 0;
-    const jiraChannel  = configData.jira_channel || '';
+    const sources      = configData.sources;
+    const sourceCount  = Array.isArray(sources) ? sources.length : 0;
+    const monitored    = Array.isArray(sources) ? sources.filter(s => s.monitor).length : 0;
     const updated      = configData.updated || '';
 
     container.innerHTML = `
-      <div class="sf-config-bar">
-        <div class="sf-config-item">
-          <i class="fa-solid fa-hashtag"></i>
-          <strong>${channelCount}</strong> channel${channelCount !== 1 ? 's' : ''} monitored
+      <div class="of-config-bar">
+        <div class="of-config-item">
+          <i class="fa-solid fa-envelope"></i>
+          <strong>${monitored}</strong> source${monitored !== 1 ? 's' : ''} monitored
         </div>
-        ${jiraChannel ? `
-        <div class="sf-config-item">
-          <i class="fa-solid fa-ticket"></i>
-          JIRA: <strong>${esc(jiraChannel)}</strong>
+        ${sourceCount > monitored ? `
+        <div class="of-config-item">
+          <i class="fa-solid fa-folder"></i>
+          <strong>${sourceCount}</strong> total configured
         </div>` : ''}
         ${updated ? `
-        <div class="sf-config-item">
+        <div class="of-config-item">
           <i class="fa-regular fa-clock"></i>
           Updated: <strong>${esc(String(updated))}</strong>
         </div>` : ''}
@@ -764,17 +768,17 @@ window.SlackForgeView = (function () {
 
       /* Reset filter button UI to "All" active */
       if (initialized) {
-        view().querySelectorAll('[data-sf-filter-type]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfFilterType === 'all');
+        view().querySelectorAll('[data-of-filter-type]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofFilterType === 'all');
         });
-        view().querySelectorAll('[data-sf-filter-status]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfFilterStatus === 'all');
+        view().querySelectorAll('[data-of-filter-status]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofFilterStatus === 'all');
         });
-        view().querySelectorAll('[data-sf-view]').forEach(b => {
-          b.classList.toggle('active', b.dataset.sfView === 'harvests');
+        view().querySelectorAll('[data-of-view]').forEach(b => {
+          b.classList.toggle('active', b.dataset.ofView === 'harvests');
         });
-        const harvestsPanel   = $('[data-sf-panel="harvests-sidebar"]');
-        const transcriptsPanel = $('[data-sf-panel="transcripts-sidebar"]');
+        const harvestsPanel   = $('[data-of-panel="harvests-sidebar"]');
+        const transcriptsPanel = $('[data-of-panel="transcripts-sidebar"]');
         if (harvestsPanel)   harvestsPanel.classList.remove('hidden');
         if (transcriptsPanel) transcriptsPanel.classList.add('hidden');
         ref('filter-panel')?.classList.remove('open');
@@ -798,7 +802,7 @@ window.SlackForgeView = (function () {
       activeView = 'harvests';
       filterPanelOpen = false;
       searchQuery = '';
-      slackForgeActive = false;
+      outlookForgeActive = false;
 
     },
 
@@ -810,4 +814,4 @@ window.SlackForgeView = (function () {
   };
 })();
 
-Shell.registerController('slack-forge', window.SlackForgeView);
+Shell.registerController('outlook-forge', window.OutlookForgeView);

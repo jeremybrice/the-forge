@@ -628,9 +628,9 @@ def handle_report_update(args):
 
 
 def handle_harvest_init(args):
-    """Initialize slack-forge directory structure"""
+    """Initialize plugin harvest directory structure"""
     try:
-        result = harvest_ops.harvest_init(directory=args.directory)
+        result = harvest_ops.harvest_init(directory=args.directory, plugin=args.plugin)
         output_json(result, success=True)
     except HarvestError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -644,7 +644,7 @@ def handle_harvest_create(args):
         data['title'] = args.title
         if args.harvest_type:
             data['harvest_type'] = args.harvest_type
-        result = harvest_ops.create_harvest(data, directory=args.directory)
+        result = harvest_ops.create_harvest(data, directory=args.directory, plugin=args.plugin)
         output_json(result, success=True)
     except (HarvestError, ValidationError) as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -657,7 +657,7 @@ def handle_harvest_create(args):
 def handle_harvest_get(args):
     """Get a harvest record by filename"""
     try:
-        result = harvest_ops.get_harvest(args.filename, directory=args.directory)
+        result = harvest_ops.get_harvest(args.filename, directory=args.directory, plugin=args.plugin)
         output_json(result, success=True)
     except HarvestError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -672,7 +672,7 @@ def handle_harvest_query(args):
             filters['status'] = args.status
         if args.harvest_type:
             filters['harvest_type'] = args.harvest_type
-        result = harvest_ops.query_harvests(filters if filters else None, directory=args.directory)
+        result = harvest_ops.query_harvests(filters if filters else None, directory=args.directory, plugin=args.plugin)
         output_json({"harvests": result}, success=True)
     except HarvestError as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -683,7 +683,7 @@ def handle_harvest_update(args):
     """Update a harvest record"""
     try:
         updates = json.loads(args.data)
-        result = harvest_ops.update_harvest(args.filename, updates, directory=args.directory)
+        result = harvest_ops.update_harvest(args.filename, updates, directory=args.directory, plugin=args.plugin)
         output_json(result, success=True)
     except (HarvestError, ValidationError) as e:
         output_json({"error": str(e)}, success=False, error=str(e))
@@ -694,21 +694,21 @@ def handle_harvest_update(args):
 
 
 def handle_harvest_config(args):
-    """Get or set slack-forge channel config"""
+    """Get or set plugin harvest channel config"""
     try:
         if args.get:
-            result = harvest_ops.get_config(directory=args.directory)
+            result = harvest_ops.get_config(directory=args.directory, plugin=args.plugin)
             output_json(result, success=True)
         elif args.set_channels:
             channels = json.loads(args.set_channels)
-            config = harvest_ops.get_config(directory=args.directory)
+            config = harvest_ops.get_config(directory=args.directory, plugin=args.plugin)
             config['channels'] = channels
-            harvest_ops.set_config(args.directory, config)
+            harvest_ops.set_config(args.directory, config, plugin=args.plugin)
             output_json({"message": "Channels updated", "count": len(channels)}, success=True)
         elif args.set_jira_channel:
-            config = harvest_ops.get_config(directory=args.directory)
+            config = harvest_ops.get_config(directory=args.directory, plugin=args.plugin)
             config['jira_channel'] = args.set_jira_channel
-            harvest_ops.set_config(args.directory, config)
+            harvest_ops.set_config(args.directory, config, plugin=args.plugin)
             output_json({"message": "JIRA channel set", "channel": args.set_jira_channel}, success=True)
         else:
             output_json(None, success=False, error="Must specify --get, --set-channels, or --set-jira-channel")
@@ -1260,23 +1260,26 @@ def create_parser():
     harvest_subparsers = harvest_parser.add_subparsers(dest="harvest_command", required=True)
 
     # harvest init
-    harvest_init = harvest_subparsers.add_parser("init", help="Initialize slack-forge directory")
+    harvest_init = harvest_subparsers.add_parser("init", help="Initialize plugin harvest directory")
     harvest_init.add_argument("--directory", default=".", help="Target directory")
+    harvest_init.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_init.set_defaults(func=handle_harvest_init)
 
     # harvest create
     harvest_create = harvest_subparsers.add_parser("create", help="Create a harvest record")
     harvest_create.add_argument("title", help="Harvest item title")
     harvest_create.add_argument("--harvest-type", dest="harvest_type", required=True,
-                                choices=["task", "knowledge", "jira-digest"], help="Type of harvest")
+                                choices=["task", "knowledge", "jira-digest", "meeting-prep", "meeting-notes"], help="Type of harvest")
     harvest_create.add_argument("--directory", default=".", help="Target directory")
     harvest_create.add_argument("--data", help="JSON harvest data")
+    harvest_create.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_create.set_defaults(func=handle_harvest_create)
 
     # harvest get
     harvest_get = harvest_subparsers.add_parser("get", help="Get a harvest record by filename")
     harvest_get.add_argument("filename", help="Harvest filename")
     harvest_get.add_argument("--directory", default=".", help="Target directory")
+    harvest_get.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_get.set_defaults(func=handle_harvest_get)
 
     # harvest query
@@ -1285,7 +1288,8 @@ def create_parser():
     harvest_query.add_argument("--status", choices=["pending", "approved", "rejected", "promoted"],
                                help="Filter by status")
     harvest_query.add_argument("--harvest-type", dest="harvest_type",
-                               choices=["task", "knowledge", "jira-digest"], help="Filter by harvest type")
+                               choices=["task", "knowledge", "jira-digest", "meeting-prep", "meeting-notes"], help="Filter by harvest type")
+    harvest_query.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_query.set_defaults(func=handle_harvest_query)
 
     # harvest update
@@ -1293,11 +1297,13 @@ def create_parser():
     harvest_update.add_argument("filename", help="Harvest filename")
     harvest_update.add_argument("--directory", default=".", help="Target directory")
     harvest_update.add_argument("--data", required=True, help="JSON update data")
+    harvest_update.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_update.set_defaults(func=handle_harvest_update)
 
     # harvest config
     harvest_config = harvest_subparsers.add_parser("config", help="Manage channel config")
     harvest_config.add_argument("--directory", default=".", help="Target directory")
+    harvest_config.add_argument("--plugin", default="slack-forge", help="Plugin name (default: slack-forge)")
     harvest_config_group = harvest_config.add_mutually_exclusive_group(required=True)
     harvest_config_group.add_argument("--get", action="store_true", help="Get current config")
     harvest_config_group.add_argument("--set-channels", dest="set_channels", help="Set channels JSON array")
@@ -1352,7 +1358,7 @@ def create_parser():
     filename_parser.add_argument(
         '--type',
         required=True,
-        choices=['public-channels', 'dms', 'jira-bot'],
+        choices=['public-channels', 'dms', 'jira-bot', 'calendar', 'inbox', 'sent', 'folder'],
         help='Transcript type'
     )
     filename_parser.add_argument(

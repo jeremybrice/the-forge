@@ -31,7 +31,7 @@
     },
     "harvest_type": {
       "type": "string",
-      "enum": ["task", "knowledge", "jira-digest"],
+      "enum": ["task", "knowledge", "jira-digest", "meeting-prep", "meeting-notes"],
       "description": "Classification of harvested content"
     },
     "status": {
@@ -61,7 +61,6 @@
     },
     "scan_timeframe": {
       "type": "string",
-      "enum": ["24h", "72h", "1w", "custom"],
       "description": "Time window used for the channel scan"
     },
     "scan_date": {

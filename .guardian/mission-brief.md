@@ -1,49 +1,51 @@
 # Mission Brief
 
-**Playbook:** hardening
-**Design Doc:** .guardian/completion-report.md (Code-Level Observations section)
-**Created:** 2026-02-28
+**Playbook:** feature-build
+**Design Doc:** docs/plans/2026-03-03-outlook-forge-design.md
+**Implementation Plan:** docs/plans/2026-03-03-outlook-forge-implementation.md
+**Created:** 2026-03-03
 
 ## Requirements Summary
 
-1. **Fix `promote --check` dead code** — `handle_memory_promote` in `forge.py` ignores the `--check` flag. When `--check` is NOT passed, the handler should actually execute promotions (call `harvest_signal` or create entries directly). When `--check` IS passed, keep current list-only behavior.
-2. **Wire `record_triage_action()` into handlers** — `triage_keep`, `triage_archive`, and `triage_delete` handlers in `forge.py` must call `record_triage_action()` from `memory_ops.py` so that `triage_history` in `telemetry.json` is populated.
-3. **Fix `_boosts_today` schema conflict** — `boost_entry()` in `memory_ops.py` writes `_boosts_today` to frontmatter, but schemas have `additionalProperties: false`. **Constraint: minimize schema changes.** Prefer removing `_boosts_today` from frontmatter and using a separate tracking file (e.g., `memory/.boost-tracker.json`) or in-memory-only tracking.
-4. **Fix `/memory:triage` naming** — User guide (`docs/living-memory-user-guide.md` line 63) references `/memory:triage` but the canonical plugin command in CLAUDE.md is `/forge-memory:triage`. Update to match.
+1. **New plugin `outlook-forge`** with 5 commands (init, scan, capture, review, promote) mirroring the slack-forge pipeline pattern exactly
+2. **3 harvester agents** (email, calendar, meeting) each with corresponding skills, processing local transcript files only — no Chrome navigation from agents
+3. **Chrome-only scan strategy** — no API/OAuth, navigates `outlook.office.com` using the user's existing browser session. Only the scan command uses Chrome.
+4. **Zero forge-lib changes** — reuses existing harvest infrastructure (`forge harvest create/query/update`, `forge transcript filename`, harvest.json schema, harvest.md.j2 template)
+5. **Forge-shell view** — new `outlook-forge.js` view controller with Harvests + Transcripts tabs, CSS variables for harvest type colors, and navigation sidebar integration
+6. **4 harvest types:** task, knowledge, meeting-prep, meeting-notes
+7. **Field mapping:** `source_channel` = Outlook folder name (inbox, sent, calendar), `source_channel_id` = same value, `source_author` = email address or meeting organizer
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `forge-lib/forge.py` | CLI handlers — promote, triage-keep/archive/delete |
-| `forge-lib/core/memory_ops.py` | boost_entry(), record_triage_action(), promote logic |
-| `forge-lib/schemas/person.json` | Schema with additionalProperties: false |
-| `forge-lib/schemas/project-memory.json` | Schema with additionalProperties: false |
-| `forge-lib/schemas/glossary.json` | Schema with additionalProperties: false |
-| `docs/living-memory-user-guide.md` | Documentation naming fix |
-| `forge-lib/tests/test_memory_decay.py` | Existing boost and triage tests |
-| `forge-lib/tests/test_memory_harvest.py` | Existing harvest/boost tests |
-| `forge-lib/tests/test_memory_telemetry.py` | Existing telemetry tests |
-| `forge-lib/tests/test_forge_cli.py` | CLI command tests |
+Reference the slack-forge plugin as the primary pattern for all conventions:
+
+- `slack-forge/commands/*.md` — command structure and conversational patterns
+- `slack-forge/agents/*.md` — agent structure (tools, skills, assignment, rules)
+- `slack-forge/skills/*/SKILL.md` — skill structure (signals, confidence, quality rules)
+- `forge-shell/app/js/slack-forge.js` — view controller pattern (ForgeFS, tabs, detail panels)
+- `forge-shell/app/css/slack-forge.css` — CSS variable and styling pattern
+- `forge-shell/app/js/app.js` — navigation sidebar registration
+- `forge-shell/app/js/utils.js` — ForgeFS utility for filesystem scanning
+- `forge-lib/forge.py` — CLI commands used by the plugin
 
 ## Test Command
 
 ```bash
-cd forge-lib && python3 -m pytest
+python forge-lib/forge.py --help
 ```
 
 ## Developer Callouts
 
-- **Minimize schema changes.** Prefer removing `_boosts_today` from frontmatter over adding it to schemas. Keep schemas clean.
-- All 304 existing tests must continue to pass.
-- The `promote` command's actual promotion logic already exists in `harvest_signal()` — reuse it rather than duplicating.
+None specified. Follow the design doc and implementation plan as written.
 
 ## Success Criteria
 
-1. `forge memory promote` (without `--check`) actually promotes qualifying entries
-2. `forge memory promote --check` lists without promoting (dry run)
-3. `triage_history` in `telemetry.json` is populated after triage-keep/archive/delete
-4. `boost_entry()` no longer writes `_boosts_today` to frontmatter (or uses a separate tracking mechanism)
-5. Schema validation passes for boosted entries
-6. User guide uses `/forge-memory:triage` consistently
-7. All 304+ tests pass (existing + new regression tests)
+1. All 5 commands created and matching the design doc specifications
+2. All 3 agents created with proper tool restrictions and skill references
+3. All 3 skills created with signal patterns, confidence rules, and quality requirements
+4. Forge-shell view controller loads harvests and transcripts from filesystem
+5. Plugin structure matches `outlook-forge/` directory layout from design doc
+6. All harvest creation commands use the correct forge-lib CLI syntax
+7. Review and promote commands mirror slack-forge behavior exactly
+8. CSS follows existing forge-shell variable naming conventions
+9. Navigation sidebar includes outlook-forge entry

@@ -1,13 +1,14 @@
 """Harvest operations for forge-lib.
 
 This module provides operations for creating, reading, querying, and updating
-harvest entities for the slack-forge plugin. Harvests are items extracted from
-Slack channels using a review-first workflow.
+harvest entities. Harvests are items extracted from external sources using a
+review-first workflow. The module is plugin-agnostic: pass plugin='slack-forge'
+(default) or plugin='outlook-forge' to route storage to the appropriate directory.
 
 Harvest files use date-prefixed sequential naming:
   YYYY-MM-DD-{harvest_type}-NNN.md
 
-Harvests are markdown files with YAML frontmatter stored in the slack-forge/harvests/ directory.
+Harvests are markdown files with YAML frontmatter stored in the {plugin}/harvests/ directory.
 """
 
 import json
@@ -42,6 +43,8 @@ HARVEST_TYPE_FILENAME_MAP = {
     'task': 'task-harvest',
     'knowledge': 'knowledge-harvest',
     'jira-digest': 'jira-digest',
+    'meeting-prep': 'meeting-prep',
+    'meeting-notes': 'meeting-notes',
 }
 
 
@@ -68,28 +71,30 @@ def _normalize_dates(data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_slack_forge_directory(directory: str = '.') -> Path:
-    """Get the slack-forge root directory path.
+def _get_plugin_directory(directory: str = '.', plugin: str = 'slack-forge') -> Path:
+    """Get the plugin root directory path.
 
     Args:
-        directory: Base directory containing slack-forge directory
+        directory: Base directory containing plugin directory
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
-        Path to slack-forge directory
+        Path to plugin directory
     """
-    return Path(directory) / 'slack-forge'
+    return Path(directory) / plugin
 
 
-def _get_harvest_directory(directory: str = '.') -> Path:
-    """Get the slack-forge/harvests directory path.
+def _get_harvest_directory(directory: str = '.', plugin: str = 'slack-forge') -> Path:
+    """Get the plugin harvests directory path.
 
     Args:
-        directory: Base directory containing slack-forge directory
+        directory: Base directory containing plugin directory
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
-        Path to slack-forge/harvests directory
+        Path to plugin/harvests directory
     """
-    return _get_slack_forge_directory(directory) / 'harvests'
+    return _get_plugin_directory(directory, plugin) / 'harvests'
 
 
 def _generate_harvest_filename(directory: Path, harvest_type: str) -> str:
@@ -181,35 +186,36 @@ def _validate_status_transition(from_status: str, to_status: str) -> bool:
     return to_status in VALID_STATUS_TRANSITIONS[from_status]
 
 
-def harvest_init(directory: str = '.') -> Dict[str, Any]:
-    """Initialize slack-forge directory structure.
+def harvest_init(directory: str = '.', plugin: str = 'slack-forge') -> Dict[str, Any]:
+    """Initialize plugin harvest directory structure.
 
-    Creates the slack-forge/ and slack-forge/harvests/ directories if they don't exist.
+    Creates the plugin/ and plugin/harvests/ directories if they don't exist.
 
     Args:
         directory: Base directory for harvest storage
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         Dictionary with initialization status:
         {
             'success': True,
-            'directory': '/path/to/slack-forge/harvests',
+            'directory': '/path/to/plugin/harvests',
             'created': True/False
         }
 
     Raises:
         HarvestError: If directory creation fails
     """
-    harvest_dir = _get_harvest_directory(directory)
+    harvest_dir = _get_harvest_directory(directory, plugin)
 
     created = False
     if not harvest_dir.exists():
         try:
-            # parents=True creates slack-forge/ and slack-forge/harvests/
+            # parents=True creates plugin/ and plugin/harvests/
             harvest_dir.mkdir(parents=True, exist_ok=True)
             created = True
         except OSError as e:
-            raise HarvestError(f"Failed to create slack-forge/harvests directory: {e}")
+            raise HarvestError(f"Failed to create {plugin}/harvests directory: {e}")
 
     return {
         'success': True,
@@ -221,7 +227,8 @@ def harvest_init(directory: str = '.') -> Dict[str, Any]:
 def create_harvest(
     data: Dict[str, Any],
     directory: str = '.',
-    validate: bool = True
+    validate: bool = True,
+    plugin: str = 'slack-forge'
 ) -> Dict[str, Any]:
     """Create a new harvest record file with date-prefixed sequential numbering.
 
@@ -323,7 +330,7 @@ def create_harvest(
     data.update(template_extras)
 
     # Get harvest directory and ensure it exists
-    harvest_dir = _get_harvest_directory(directory)
+    harvest_dir = _get_harvest_directory(directory, plugin)
     harvest_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate sequential filename
@@ -385,12 +392,13 @@ def create_harvest(
     }
 
 
-def get_harvest(filename: str, directory: str = '.') -> Dict[str, Any]:
+def get_harvest(filename: str, directory: str = '.', plugin: str = 'slack-forge') -> Dict[str, Any]:
     """Read a harvest file and return its frontmatter data.
 
     Args:
         filename: Filename (with or without .md extension)
         directory: Base directory for harvest storage
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         Dictionary with harvest frontmatter data
@@ -398,7 +406,7 @@ def get_harvest(filename: str, directory: str = '.') -> Dict[str, Any]:
     Raises:
         HarvestError: If harvest file doesn't exist or can't be read
     """
-    harvest_dir = _get_harvest_directory(directory)
+    harvest_dir = _get_harvest_directory(directory, plugin)
 
     # Add .md extension if not present
     if not filename.endswith('.md'):
@@ -420,7 +428,8 @@ def get_harvest(filename: str, directory: str = '.') -> Dict[str, Any]:
 
 def query_harvests(
     filters: Optional[Dict[str, Any]] = None,
-    directory: str = '.'
+    directory: str = '.',
+    plugin: str = 'slack-forge'
 ) -> List[Dict[str, Any]]:
     """Query harvests with optional filters.
 
@@ -428,6 +437,7 @@ def query_harvests(
         filters: Optional filters (status, harvest_type, source_channel,
                  confidence, tags, etc.)
         directory: Base directory for harvest storage
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         List of harvest dictionaries matching filters
@@ -440,7 +450,7 @@ def query_harvests(
         >>> # Get high-confidence harvests from a channel
         >>> harvests = query_harvests({'confidence': 'high', 'source_channel': 'eng-team'})
     """
-    harvest_dir = _get_harvest_directory(directory)
+    harvest_dir = _get_harvest_directory(directory, plugin)
 
     if not harvest_dir.exists():
         return []
@@ -493,8 +503,8 @@ def _scan_harvest_files(harvest_dir: Path) -> List[Dict[str, Any]]:
     harvests = []
     seen_files = set()
 
-    # Scan for harvest and digest patterns
-    for pattern in ['*-harvest-*.md', '*-digest-*.md']:
+    # Scan for harvest, digest, and meeting patterns
+    for pattern in ['*-harvest-*.md', '*-digest-*.md', '*-meeting-prep-*.md', '*-meeting-notes-*.md']:
         for filepath in sorted(harvest_dir.glob(pattern)):
             if filepath.name in seen_files:
                 continue
@@ -515,7 +525,8 @@ def update_harvest(
     filename: str,
     updates: Dict[str, Any],
     directory: str = '.',
-    validate: bool = True
+    validate: bool = True,
+    plugin: str = 'slack-forge'
 ) -> Dict[str, Any]:
     """Update a harvest file.
 
@@ -524,6 +535,7 @@ def update_harvest(
         updates: Dictionary of fields to update
         directory: Base directory for harvest storage
         validate: Whether to validate status transitions (default: True)
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         Dictionary with updated harvest metadata
@@ -538,7 +550,7 @@ def update_harvest(
         >>> # Promote an approved harvest
         >>> update_harvest('2026-02-17-task-harvest-001', {'status': 'promoted'})
     """
-    harvest_dir = _get_harvest_directory(directory)
+    harvest_dir = _get_harvest_directory(directory, plugin)
 
     # Add .md extension if not present
     if not filename.endswith('.md'):
@@ -632,13 +644,14 @@ def update_harvest(
     }
 
 
-def get_config(directory: str = '.') -> Dict[str, Any]:
-    """Read the slack-forge configuration file.
+def get_config(directory: str = '.', plugin: str = 'slack-forge') -> Dict[str, Any]:
+    """Read the plugin configuration file.
 
     Returns a default empty config if config.json doesn't exist.
 
     Args:
-        directory: Base directory containing slack-forge/
+        directory: Base directory containing plugin directory
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         Configuration dictionary with structure:
@@ -651,8 +664,8 @@ def get_config(directory: str = '.') -> Dict[str, Any]:
     Raises:
         HarvestError: If config file exists but can't be read or parsed
     """
-    slack_forge_dir = _get_slack_forge_directory(directory)
-    config_path = slack_forge_dir / 'config.json'
+    plugin_dir = _get_plugin_directory(directory, plugin)
+    config_path = plugin_dir / 'config.json'
 
     # Return default config if file doesn't exist
     if not config_path.exists():
@@ -672,18 +685,19 @@ def get_config(directory: str = '.') -> Dict[str, Any]:
         raise HarvestError(f"Failed to read config file {config_path}: {e}")
 
 
-def set_config(directory: str = '.', config_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Write the slack-forge configuration file.
+def set_config(directory: str = '.', config_data: Optional[Dict[str, Any]] = None, plugin: str = 'slack-forge') -> Dict[str, Any]:
+    """Write the plugin configuration file.
 
     Automatically sets the 'updated' field to today's date.
 
     Args:
-        directory: Base directory containing slack-forge/
+        directory: Base directory containing plugin directory
         config_data: Configuration data to write. Expected structure:
             {
                 'channels': [...],
                 'jira_channel': '...' or null
             }
+        plugin: Plugin name (default: slack-forge)
 
     Returns:
         The written configuration dictionary (with updated timestamp)
@@ -694,19 +708,19 @@ def set_config(directory: str = '.', config_data: Optional[Dict[str, Any]] = Non
     if config_data is None:
         config_data = {}
 
-    slack_forge_dir = _get_slack_forge_directory(directory)
+    plugin_dir = _get_plugin_directory(directory, plugin)
 
     # Ensure directory exists
-    if not slack_forge_dir.exists():
+    if not plugin_dir.exists():
         raise HarvestError(
-            f"slack-forge directory does not exist: {slack_forge_dir}. "
+            f"{plugin} directory does not exist: {plugin_dir}. "
             "Run harvest_init first."
         )
 
     # Auto-set updated timestamp
     config_data['updated'] = date.today().strftime("%Y-%m-%d")
 
-    config_path = slack_forge_dir / 'config.json'
+    config_path = plugin_dir / 'config.json'
 
     try:
         with open(config_path, 'w', encoding='utf-8') as f:

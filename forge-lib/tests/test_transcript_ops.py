@@ -307,3 +307,31 @@ def test_generate_transcript_filename_nonexistent_directory():
     """Non-existent directory returns -001 (no existing files)"""
     result = generate_transcript_filename(Path('/tmp/nonexistent-dir-abc123'), '2026-02-20', '24h', 'dms')
     assert result == '2026-02-20-24h-dms-001.md'
+
+
+# ======================================================================
+# Outlook-forge transcript types
+# ======================================================================
+
+def test_generate_transcript_filename_calendar(tmp_path):
+    """Calendar transcript type produces valid filename"""
+    result = generate_transcript_filename(tmp_path, '2026-03-04', '1w', 'calendar')
+    assert result == '2026-03-04-1w-calendar-001.md'
+
+
+def test_generate_transcript_filename_inbox(tmp_path):
+    """Inbox transcript type produces valid filename"""
+    result = generate_transcript_filename(tmp_path, '2026-03-04', '24h', 'inbox')
+    assert result == '2026-03-04-24h-inbox-001.md'
+
+
+def test_generate_transcript_filename_sent(tmp_path):
+    """Sent transcript type produces valid filename"""
+    result = generate_transcript_filename(tmp_path, '2026-03-04', '72h', 'sent')
+    assert result == '2026-03-04-72h-sent-001.md'
+
+
+def test_generate_transcript_filename_folder(tmp_path):
+    """Folder transcript type produces valid filename"""
+    result = generate_transcript_filename(tmp_path, '2026-03-04', '24h', 'folder')
+    assert result == '2026-03-04-24h-folder-001.md'

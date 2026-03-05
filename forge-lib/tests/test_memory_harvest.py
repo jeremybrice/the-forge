@@ -275,3 +275,56 @@ class TestHarvestSignalSlugError:
                 context="test",
                 directory=str(temp_dir)
             )
+
+
+# --- Harvest filename generation tests for outlook-forge harvest types ---
+
+def test_generate_harvest_filename_meeting_prep(tmp_path):
+    """meeting-prep harvest type generates correct filename pattern."""
+    harvest_dir = tmp_path / "slack-forge" / "harvests"
+    harvest_dir.mkdir(parents=True)
+    from core.harvest_ops import _generate_harvest_filename
+    result = _generate_harvest_filename(harvest_dir, 'meeting-prep')
+    today = date.today().strftime("%Y-%m-%d")
+    assert result == f"{today}-meeting-prep-001.md"
+
+
+def test_generate_harvest_filename_meeting_notes(tmp_path):
+    """meeting-notes harvest type generates correct filename pattern."""
+    harvest_dir = tmp_path / "slack-forge" / "harvests"
+    harvest_dir.mkdir(parents=True)
+    from core.harvest_ops import _generate_harvest_filename
+    result = _generate_harvest_filename(harvest_dir, 'meeting-notes')
+    today = date.today().strftime("%Y-%m-%d")
+    assert result == f"{today}-meeting-notes-001.md"
+
+
+# --- Plugin-agnostic directory tests ---
+
+def test_get_plugin_directory_default(tmp_path):
+    """Default plugin should be slack-forge."""
+    from core.harvest_ops import _get_plugin_directory
+    result = _get_plugin_directory(str(tmp_path))
+    assert result == tmp_path / 'slack-forge'
+
+
+def test_get_plugin_directory_custom(tmp_path):
+    """Custom plugin name should use that directory."""
+    from core.harvest_ops import _get_plugin_directory
+    result = _get_plugin_directory(str(tmp_path), plugin='outlook-forge')
+    assert result == tmp_path / 'outlook-forge'
+
+
+def test_harvest_init_custom_plugin(tmp_path):
+    """harvest_init with custom plugin should create plugin-specific directory."""
+    from core.harvest_ops import harvest_init
+    result = harvest_init(directory=str(tmp_path), plugin='outlook-forge')
+    assert 'outlook-forge' in result['directory']
+    assert (tmp_path / 'outlook-forge' / 'harvests').exists()
+
+
+def test_get_harvest_directory_custom_plugin(tmp_path):
+    """_get_harvest_directory with custom plugin."""
+    from core.harvest_ops import _get_harvest_directory
+    result = _get_harvest_directory(str(tmp_path), plugin='outlook-forge')
+    assert result == tmp_path / 'outlook-forge' / 'harvests'

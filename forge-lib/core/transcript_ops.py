@@ -23,6 +23,10 @@ TRANSCRIPT_TYPE_FILENAME_MAP = {
     'public-channels': 'public-channels',
     'dms': 'dms',
     'jira-bot': 'jira-bot',
+    'calendar': 'calendar',
+    'inbox': 'inbox',
+    'sent': 'sent',
+    'folder': 'folder',
 }
 
 

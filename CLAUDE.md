@@ -28,6 +28,7 @@ python forge.py --help
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
 | **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/harvests/` + `slack-forge/harvests/index.json` + `slack-forge/config.json` |
+| **outlook-forge** | `/outlook-forge:init`, `/outlook-forge:scan`, `/outlook-forge:capture`, `/outlook-forge:review`, `/outlook-forge:promote` | `outlook-forge/harvests/` + `outlook-forge/harvests/index.json` |
 
 ## Architecture
 
@@ -74,6 +75,7 @@ python forge.py --help
 - `report-forge.js` — Report archive
 - `rovo-agent-forge.js` — Agent config viewer
 - `slack-forge.js` — Harvest dashboard with review workflow
+- `outlook-forge.js` — Outlook harvest dashboard with calendar integration
 - `roadmap.js` — Roadmap timeline view
 
 **Launch:**
