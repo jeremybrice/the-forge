@@ -1256,7 +1256,7 @@ def create_parser():
     report_update.set_defaults(func=handle_report_update)
 
     # ==================== HARVEST COMMANDS ====================
-    harvest_parser = subparsers.add_parser("harvest", help="Harvest operations (slack-forge)")
+    harvest_parser = subparsers.add_parser("harvest", help="Harvest operations")
     harvest_subparsers = harvest_parser.add_subparsers(dest="harvest_command", required=True)
 
     # harvest init
