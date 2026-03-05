@@ -278,7 +278,7 @@ if response['success']:
 
 ## Version
 
-**v2.0.0-alpha** — Complete architectural rebuild with Python data layer.
+**v2.2.0** — Complete architectural rebuild with Python data layer.
 
 ## Author
 
