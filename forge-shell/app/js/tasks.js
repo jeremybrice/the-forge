@@ -59,6 +59,7 @@ window.TasksView = (function () {
   let filterAssignee = '';
   let matchedFilenames = null;
   let searchDebounceTimer = null;
+  var _keydownHandler = null;
 
   var VIEW_TABS = [
     { key: 'board', icon: 'fa-table-columns', label: 'Board' },
@@ -442,19 +443,19 @@ window.TasksView = (function () {
     });
 
     /* Keyboard shortcut: Cmd/Ctrl+F */
-    document.addEventListener('keydown', function (e) {
+    _keydownHandler = function (e) {
+      var tasksView = document.getElementById('view-tasks');
+      if (!tasksView || !tasksView.classList.contains('active')) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-        var tasksView = document.getElementById('view-tasks');
-        if (tasksView && !tasksView.classList.contains('hidden')) {
-          e.preventDefault();
-          toggleSearchStrip();
-        }
+        e.preventDefault();
+        toggleSearchStrip();
       }
       if (e.key === 'Escape' && searchOpen) {
         clearAllFilters();
         toggleSearchStrip();
       }
-    });
+    };
+    document.addEventListener('keydown', _keydownHandler);
 
     /* View tab switching (with eye toggle interception) */
     view.addEventListener('click', function (e) {
@@ -2679,6 +2680,10 @@ window.TasksView = (function () {
   function destroy() {
     stopTaskWatching();
     if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+    if (_keydownHandler) {
+      document.removeEventListener('keydown', _keydownHandler);
+      _keydownHandler = null;
+    }
   }
 
   async function refresh() {
