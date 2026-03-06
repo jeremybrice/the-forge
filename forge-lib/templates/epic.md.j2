@@ -6,6 +6,7 @@ product: {{ product }}
 module: {{ module if module else 'null' }}
 client: {{ client if client else 'null' }}
 team: {{ team if team else 'null' }}
+jira_card: {{ jira_card if jira_card else 'null' }}
 parent: {{ parent if parent else 'null' }}
 children:
 {%- if children and children|length > 0 %}
