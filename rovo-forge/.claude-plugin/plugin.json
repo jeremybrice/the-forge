@@ -1,6 +1,6 @@
 {
   "name": "rovo-forge",
-  "version": "2.1.0-alpha",
+  "version": "2.2.0",
   "description": "Interactive builder for Atlassian Rovo agents. Guides through Jira and Confluence agent creation with copy-ready Rovo Studio configurations.",
   "author": { "name": "Jeremy Brice" }
 }

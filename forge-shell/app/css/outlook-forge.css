@@ -26,6 +26,15 @@
   background: var(--bg-secondary);
 }
 
+[data-of-panel="harvests-sidebar"],
+[data-of-panel="transcripts-sidebar"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ── Sidebar Header (with compact status badges) ── */
 .of-sidebar-header {
   display: flex;

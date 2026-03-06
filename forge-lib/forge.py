@@ -34,7 +34,7 @@ from core.agent_ops import AgentError
 from core.harvest_ops import HarvestError
 
 # Version info
-__version__ = "2.1.0-alpha"
+__version__ = "2.2.0"
 
 # Exit codes
 EXIT_SUCCESS = 0
@@ -1256,7 +1256,7 @@ def create_parser():
     report_update.set_defaults(func=handle_report_update)
 
     # ==================== HARVEST COMMANDS ====================
-    harvest_parser = subparsers.add_parser("harvest", help="Harvest operations (slack-forge)")
+    harvest_parser = subparsers.add_parser("harvest", help="Harvest operations")
     harvest_subparsers = harvest_parser.add_subparsers(dest="harvest_command", required=True)
 
     # harvest init
