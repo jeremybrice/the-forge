@@ -170,7 +170,7 @@ Card updated: cards/{type}s/{filename}.md
 If the `--force` flag is NOT present, prompt the user for confirmation:
 
 ```
-Card is already linked to Jira issue: {jira_key}
+Card is already linked to Jira issue: {jira_card}
 Jira URL: {jira_url}
 
 This will overwrite the Jira issue with the card's current content:
@@ -202,7 +202,7 @@ Reference the `jira-sync` skill for detailed field mapping.
 Call the MCP tool:
 ```
 jira_update_issue(
-  issue_key: <jira_key or jira_card>,
+  issue_key: <jira_card or jira_card>,
   summary: <card title>,
   description: <card body content>
 )
@@ -224,7 +224,7 @@ The `updated` date is automatically set by forge-lib.
 
 **Confirm to user:**
 ```
-Pushed to Jira: {jira_key}
+Pushed to Jira: {jira_card}
 Jira URL: {jira_url}
 Card: cards/{type}s/{filename}.md
 ```
@@ -247,7 +247,7 @@ Please check your Jira MCP configuration and permissions.
 
 **Jira update fails:**
 ```
-Failed to update Jira issue {jira_key}: {error message}
+Failed to update Jira issue {jira_card}: {error message}
 Please check that the issue still exists and you have edit permissions.
 ```
 

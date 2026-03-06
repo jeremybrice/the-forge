@@ -77,7 +77,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 1. Query cards via `forge card query --directory . --format json` and search for matching `jira_card` field
 2. If multiple matches found (unlikely but possible):
    ```
-   Multiple cards linked to {jira_key}:
+   Multiple cards linked to {jira_card}:
    [1] cards/epics/email-notification-engine.md
    [2] cards/stories/story-001-notification-template-builder.md
 
@@ -85,7 +85,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
    ```
 3. If no matches found:
    ```
-   No local card found linked to {jira_key}.
+   No local card found linked to {jira_card}.
    Use /link-to-jira to create a link first.
    ```
    Exit.
@@ -96,7 +96,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 
 Call the MCP tool:
 ```
-jira_get_issue(issue_key: <jira_key or jira_card>)
+jira_get_issue(issue_key: <jira_card or jira_card>)
 ```
 
 Extract the following fields from the response:
@@ -133,7 +133,7 @@ Perform a semantic comparison to detect changes:
 **No changes detected:**
 If no changes are detected in any of the above fields:
 ```
-No changes detected in Jira issue {jira_key}.
+No changes detected in Jira issue {jira_card}.
 Local card is already up to date.
 ```
 Exit without modifying the card.
@@ -145,7 +145,7 @@ Exit without modifying the card.
 If the `--force` flag is NOT present, display a detailed diff of detected changes:
 
 ```
-Changes detected in Jira issue {jira_key}:
+Changes detected in Jira issue {jira_card}:
 
 Title:
 - Local:  "Build notification system"
@@ -202,7 +202,7 @@ forge card update {type} {card_identifier} --data '{
 
 **Confirm to user:**
 ```
-Card updated from Jira: {jira_key}
+Card updated from Jira: {jira_card}
 Jira URL: {jira_url}
 Local card: cards/{type}s/{filename}.md
 
@@ -255,13 +255,13 @@ Use /link-to-jira first to establish a connection.
 
 **Jira fetch fails:**
 ```
-Failed to fetch Jira issue {jira_key}: {error message}
+Failed to fetch Jira issue {jira_card}: {error message}
 Please check that the issue exists and you have view permissions.
 ```
 
 **Jira key not found in local cards:**
 ```
-No local card found linked to {jira_key}.
+No local card found linked to {jira_card}.
 Use /link-to-jira to create a link first, or create a new card.
 ```
 
