@@ -529,6 +529,7 @@
         const initiatives = store.getByType('initiative');
         const parentOpts = initiatives.map(c => c.filename);
         html += this._buildField('parent', 'Parent Initiative', 'select', fm.parent, { options: parentOpts, labels: initiatives.map(c => c.frontmatter.title || c.filename) });
+        html += this._buildField('jira_card', 'Jira Card', 'text', fm.jira_card);
         html += this._buildField('source_intake', 'Source Intake', 'text', fm.source_intake);
       }
 
