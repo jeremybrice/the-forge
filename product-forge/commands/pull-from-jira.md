@@ -65,7 +65,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 
 **If user provided filename or title:**
 1. Retrieve card via `forge card get {type} {card_identifier} --directory .`
-2. Extract `jira_key` (for Epic) or `jira_card` (for Initiative/Story) from frontmatter
+2. Extract `jira_card` from frontmatter
 3. If no linking field is present:
    ```
    Card is not linked to Jira.
@@ -74,7 +74,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
    Exit.
 
 **If user provided Jira key (format: `PROJ-123`):**
-1. Query cards via `forge card query --directory . --format json` and search for matching `jira_key` or `jira_card` field
+1. Query cards via `forge card query --directory . --format json` and search for matching `jira_card` field
 2. If multiple matches found (unlikely but possible):
    ```
    Multiple cards linked to {jira_key}:
@@ -273,7 +273,7 @@ Use /link-to-jira to create a link first, or create a new card.
 - Jira is the source of truth. Local content is replaced, not merged.
 - The `jira-sync` skill provides the MCP tool interface and field mapping logic.
 - The `jira_last_synced` timestamp uses ISO 8601 format with timezone (e.g., `2026-02-12T14:30:00Z`).
-- Epic cards use `jira_key` for backward compatibility. Initiative and Story cards use `jira_card`.
+- All card types (Initiative, Epic, Story) use `jira_card` for Jira linkage.
 - Always present a diff for user approval unless `--force` is specified.
 - If no changes are detected, exit without modifying the card.
 - Jira status is stored in `jira_status`, NOT in the local `status` field. This preserves the Product Forge status workflow.
