@@ -140,7 +140,7 @@ jira_create_issue(
   summary: <card title>,
   description: <card body content or description>,
   issuetype: <mapped type>,
-  parent: <parent card's jira_card or jira_card, if parent exists and card type is Story/Epic>
+  parent: <parent card's jira_card, if parent exists and card type is Story/Epic>
 )
 ```
 

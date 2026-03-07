@@ -202,7 +202,7 @@ Reference the `jira-sync` skill for detailed field mapping.
 Call the MCP tool:
 ```
 jira_update_issue(
-  issue_key: <jira_card or jira_card>,
+  issue_key: <jira_card>,
   summary: <card title>,
   description: <card body content>
 )

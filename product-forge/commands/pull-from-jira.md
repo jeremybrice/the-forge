@@ -96,7 +96,7 @@ If the user provides ambiguous input, ask for clarification before proceeding.
 
 Call the MCP tool:
 ```
-jira_get_issue(issue_key: <jira_card or jira_card>)
+jira_get_issue(issue_key: <jira_card>)
 ```
 
 Extract the following fields from the response:
