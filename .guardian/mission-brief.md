@@ -1,51 +1,48 @@
 # Mission Brief
 
 **Playbook:** feature-build
-**Design Doc:** `docs/plans/2026-03-04-tasks-search-design.md`
-**Frontend Spec:** `docs/plans/2026-03-04-tasks-search-frontend-design.md`
-**Implementation Plan:** `docs/plans/2026-03-04-tasks-search-implementation.md`
-**Created:** 2026-03-04
+**Design Doc:** /Users/jeremybrice/Documents/GitHub/the-forge-feature/docs/plans/2026-03-06-epic-jira-card-attribute.md
+**Created:** 2026-03-06
 
 ## Requirements Summary
 
-1. **Filter strip UI** — Collapsible horizontal bar between the `plugin-toolbar` and content panels. Contains: search text input, priority chips (High/Medium/Low), status chips (Active/Waiting/Someday/Done), assignee dropdown, match counter, and clear button.
-2. **Dim-not-hide filtering** — Non-matching cards dim (opacity 0.25, pointer-events: none, saturate 0.3) rather than disappear, preserving spatial context across all five views.
-3. **Board view integration** — Matching cards get accent left border, non-matching dim. Column counts show "X / Y" format. Drag-drop blocked on dimmed cards. Empty columns show "No matching tasks" message.
-4. **Timeline view integration** — Non-matching task bars dim (opacity 0.15). Today line stays visible regardless of filter state.
-5. **Summary view integration** — All stats recompute from filtered task set only. "Filtered (X of Y)" badge appears when filters are active.
-6. **Workload view integration** — Lane status bars recompute from filtered set. Non-matching mini-cards dim. Lane header counts show "X / Y" when filtered.
-7. **Matrix view integration** — Cell counts and heat coloring recompute from filtered set. Non-matching mini-cards dim.
-8. **Keyboard shortcuts** — Cmd/Ctrl+F toggles strip, Escape closes and clears all filters, Tab navigates through controls.
-9. **hideDone interaction** — Done chip hidden when hideDone is true. Done filter clears automatically if hideDone toggles on.
-10. **State persistence** — Strip open/closed state persisted to localStorage. Filter values reset on page load.
-11. **External file changes** — Re-run filter computation after task reload to keep matches current.
+1. Add `jira_card` attribute to Epic JSON Schema, matching the existing pattern from Initiative and Story schemas
+2. Add `jira_card` to the Epic Jinja2 template frontmatter so new epics render the field
+3. Add `jira_card` to the forge-shell Epic card data (field order) and edit form UI
+4. Update all three Jira command docs (`link-to-jira`, `push-to-jira`, `pull-from-jira`) to use unified `jira_card` field name for all card types, removing `jira_key` backward compatibility references
+5. Update the `jira-sync` skill to reference `jira_card` consistently for all card types
+6. Add test coverage for epic card creation with `jira_card` attribute
+7. Add a slide-out per-type status filter panel to the Product Forge view (Initiative/Epic/Story status multi-select filters), following the Roadmap filter pattern
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `forge-shell/app/js/tasks.js` | Tasks view controller — all JS additions (~210 lines new/modified) |
-| `forge-shell/app/css/productivity.css` | Task view styles — all CSS additions (~80 lines new) |
+- `forge-lib/schemas/epic.json` — Epic JSON Schema to extend with `jira_card` property
+- `forge-lib/templates/epic.md.j2` — Epic Jinja2 template to extend with `jira_card` frontmatter
+- `forge-shell/app/js/card-data.js` — Card field ordering config (add `jira_card` to epic order)
+- `forge-shell/app/js/product-forge.js` — Product Forge view controller (edit form + tree rendering + filter panel)
+- `forge-shell/app/css/product-forge.css` — Product Forge styles (filter panel CSS)
+- `product-forge/commands/link-to-jira.md` — Jira link command docs
+- `product-forge/commands/push-to-jira.md` — Jira push command docs
+- `product-forge/commands/pull-from-jira.md` — Jira pull command docs
+- `product-forge/skills/jira-sync/SKILL.md` — Jira sync skill docs
+- `forge-lib/tests/test_card_ops.py` — Card operations test file
 
 ## Test Command
 
-Manual verification only. No automated test framework in forge-shell. The developer will test after implementation.
+```bash
+cd forge-lib && python -m pytest tests/ -v
+```
 
 ## Developer Callouts
 
-None specified. No special constraints.
+None specified.
 
 ## Success Criteria
 
-1. Filter strip toggles open/closed via toolbar button and Cmd/Ctrl+F keyboard shortcut
-2. Text search dims non-matching cards in real-time with 150ms debounce
-3. Priority chips support multi-select and filter cards correctly
-4. Status chips support multi-select and filter across columns
-5. Assignee dropdown dynamically populated and filters correctly
-6. Clear button resets all filters and restores all cards
-7. Filtering works correctly across all 5 views (Board, Timeline, Summary, Workload, Matrix)
-8. hideDone toggle correctly interacts with Done chip visibility
-9. Strip open/closed state persists across page loads via localStorage
-10. External file changes re-apply active filters
-11. Works in both light and dark themes
-12. No visual regressions to existing task views
+- All three card types (Initiative, Epic, Story) use `jira_card` as the unified Jira linkage field
+- Epic schema validates with `jira_card` attribute, epic template renders it in frontmatter
+- forge-shell epic edit form includes a "Jira Card" text field
+- All Jira command docs and jira-sync skill reference only `jira_card` (no more `jira_key` backward compatibility)
+- New test passes: creating an epic with `jira_card` stores and retrieves the value correctly
+- Product Forge view has a slide-out filter panel with per-type status filters (Initiative, Epic, Story)
+- Full test suite passes with no regressions

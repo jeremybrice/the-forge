@@ -1,7 +1,7 @@
 # Decisions Log
 
-**Mission:** Tasks Search & Filtering Feature
-**Started:** 2026-03-04
+**Mission:** Epic jira_card Attribute + Product Forge Status Filters
+**Started:** 2026-03-06
 
 ---
 
