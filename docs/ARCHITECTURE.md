@@ -67,7 +67,9 @@ forge-shell is a **Tauri desktop app** — not a plugin. It provides visual dash
 
 **Routing** — Unified SPA with hash-based routing, pre-rendered view containers, IndexedDB for persisting the workspace directory handle.
 
-See `forge-shell/README.md` and `forge-shell/STYLE_GUIDE.md` for UI conventions.
+**Style guide** — `forge-shell/STYLE_GUIDE.md` defines the standardized toolbar pattern, mandatory CSS classes (12 documented), layout dimensions, and Font Awesome icon conventions. All view controllers must follow this guide.
+
+See `forge-shell/README.md` for setup, directory structure, and plugin registration details.
 
 ## Version
 
