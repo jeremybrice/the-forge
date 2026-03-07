@@ -631,7 +631,8 @@
       }
 
       html += this._buildField('product', 'Product', 'select', fm.product, { options: taxonomy.products });
-      html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
+      if (type !== 'epic') html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
+      if (type === 'epic') html += this._buildField('source_intake', 'Source Intake', 'text', fm.source_intake);
       html += this._buildField('client', 'Client', 'select', fm.client, { options: taxonomy.clients });
 
       if (type === 'initiative' || type === 'epic' || type === 'story') {
@@ -650,7 +651,7 @@
         const parentOpts = initiatives.map(c => c.filename);
         html += this._buildField('parent', 'Parent Initiative', 'select', fm.parent, { options: parentOpts, labels: initiatives.map(c => c.frontmatter.title || c.filename) });
         html += this._buildField('jira_card', 'Jira Card', 'text', fm.jira_card);
-        html += this._buildField('source_intake', 'Source Intake', 'text', fm.source_intake);
+        html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
       }
 
       if (type === 'story') {
