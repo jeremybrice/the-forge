@@ -92,6 +92,10 @@ See `forge-shell/README.md` for details.
 - `README.md` — Architecture overview, installation, verification plan
 - `forge-lib/README.md` — CLI reference, usage patterns, examples
 - `{plugin}/README.md` — Plugin-specific workflows and command details
+- `docs/ARCHITECTURE.md` — System architecture, layer separation, plugin anatomy
+- `docs/PATTERNS.md` — Recurring implementation patterns and conventions
+- `docs/DATA_FLOW.md` — Inter-plugin data flow and shared data contracts
+- `docs/DECISION_LOG.md` — Indexed design decisions with links to design docs
 
 ## Version
 

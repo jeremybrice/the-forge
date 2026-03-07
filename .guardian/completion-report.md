@@ -1,61 +1,81 @@
 # Completion Report
 
-**Playbook:** feature-build
-**Design Doc:** /Users/jeremybrice/Documents/GitHub/the-forge-feature/docs/plans/2026-03-06-epic-jira-card-attribute.md
-**Completed:** 2026-03-06
+**Playbook:** doc-sprint
+**Design Doc:** docs/plans/2026-03-07-documentation-sprint-design.md
+**Completed:** 2026-03-07
 **Branch:** memory
 
 ## Summary
 
-Added the `jira_card` attribute to Epic cards (schema, template, forge-shell UI) to unify Jira linkage across all three card types (Initiative, Epic, Story). Updated all Jira command docs and the jira-sync skill to use `jira_card` consistently, removing all `jira_key` backward compatibility references. Added a slide-out per-type status filter panel to the Product Forge view with separate Initiative/Epic/Story status multi-select filters.
+Created 4 cross-cutting reference documents and updated CLAUDE.md to close documentation gaps identified in the project inventory. All docs target AI agents as primary audience, optimized for discoverability and conciseness. Two accuracy issues were caught and resolved during the sprint.
 
 ## Requirements Mapping
 
 | Requirement | Status | Implementation | Notes |
 |-------------|--------|----------------|-------|
-| Add jira_card to Epic JSON Schema | Done | `forge-lib/schemas/epic.json` (e7b4788) | Property added between team and parent |
-| Add jira_card to Epic template | Done | `forge-lib/templates/epic.md.j2` (6eae314) | Frontmatter line between team and parent |
-| Add jira_card to forge-shell UI | Done | `card-data.js`, `product-forge.js` (4585e70) | FIELD_ORDER + edit form text field |
-| Update Jira command docs | Done | `link-to-jira.md`, `push-to-jira.md`, `pull-from-jira.md` (6753a9a, 8cd34d0) | All jira_key refs replaced |
-| Update jira-sync skill | Done | `product-forge/skills/jira-sync/SKILL.md` (0058b2c) | All jira_key refs replaced |
-| Add test for epic with jira_card | Done | `forge-lib/tests/test_card_ops.py` (769a1b8) | Roundtrip create/read + content verification |
-| Add per-type status filter panel | Done | `product-forge.js`, `product-forge.css` (9bf8408) | FilterPanel module with 3 status groups |
+| Create docs/ARCHITECTURE.md (~100 lines) | Done | `docs/ARCHITECTURE.md` (74 lines) | System layers, plugin anatomy, forge-shell architecture |
+| Create docs/PATTERNS.md (~130 lines) | Done | `docs/PATTERNS.md` (126 lines) | Orchestrator, agent-less, skill, agent recruitment, CLI integration |
+| Create docs/DATA_FLOW.md (~140 lines) | Done | `docs/DATA_FLOW.md` (130 lines) | Ownership map, Mermaid diagram, shared contracts, breaking change risks |
+| Create docs/DECISION_LOG.md (~70 lines) | Done | `docs/DECISION_LOG.md` (37 lines) | 22 rows covering all 35 design docs, grouped by month |
+| Update CLAUDE.md Documentation section | Done | `CLAUDE.md` (102 lines, was 98) | 4 pointer lines added |
 
 ## Guardian Results
 
 ### Spec Guardian
-- Issues caught: 1
-- All resolved: Yes
-- Details: Reviewer found 14 remaining `jira_key` template placeholders in Jira command docs (fix Task #14, commit 8cd34d0)
-
-### Test Guardian
 - Issues caught: 0
 - All resolved: N/A
-- Test command: `cd forge-lib && python -m pytest tests/ -v`
-- Final result: PASS (356 passed in 1.96s)
-- Details: All tests passed throughout implementation, no regressions
+- Details: All 5 deliverables from the design doc were produced. Success criteria verified by accuracy-checker.
 
 ### Convention Guardian
 - Issues caught: 0
 - All resolved: N/A
-- Details: All changes follow existing naming patterns and file conventions
+- Details: All files follow kebab-case naming, placed in correct directories, consistent markdown structure.
+
+### Test Guardian
+- Enabled: No (documentation sprint — no code changes)
+- Test command: `cd forge-lib && python3 -m pytest tests/ -v`
+- Final result: PASS (356 passed in 1.98s)
+- Details: Test suite run as validation check — no code was modified.
 
 ### Integration Guardian
-- Issues caught: 0
-- All resolved: N/A
-- Full suite result: PASS
-- Details: No cross-module conflicts; implementers worked on independent file sets
+- Enabled: No (documentation sprint)
+
+## Accuracy Issues Found and Resolved
+
+| # | Issue | Document | Resolution |
+|---|-------|----------|------------|
+| 1 | Incorrectly claimed slack-forge and outlook-forge have no agents (they have 3 each) | ARCHITECTURE.md | Task #15 — fixed to list tasks-forge, forge-memory, rovo-forge as agent-less |
+| 2 | Relationship CLI syntax used `--parent`/`--child` flags instead of positional args | DATA_FLOW.md | Task #16 — fixed to `forge relationship link <parent> <child>` |
 
 ## Deviations from Spec
 
-None. All implementation matches the design doc exactly.
+Three factual corrections from the implementation plan were incorporated during writing (not deviations from the design doc):
+
+1. **Exit codes**: Implementation plan assumed 0/1/2. Actual: 0=success, 1=error, 2=validation_error, 3=not_found. Docs use correct values.
+2. **PLUGINS array location**: Implementation plan assumed app.js. Actual: shell.js. Docs use correct location.
+3. **Agent directories**: Implementation plan assumed slack-forge/outlook-forge were agent-less. Both have 3 agents each. Docs corrected via Task #15.
 
 ## Test Results
 
 ```
-============================= 356 passed in 1.96s ==============================
+============================= 356 passed in 1.98s ==============================
 ```
 
 ## Key Decisions
 
-No design decisions were required — the implementation followed the spec without ambiguity or deviation.
+No design decisions were required beyond the corrections above. The documentation accurately reflects the codebase as verified by the accuracy-checker.
+
+## Coverage Assessment
+
+**Documented:**
+- System architecture and layer separation
+- All 6 recurring implementation patterns
+- Inter-plugin data flow for all 8 plugins + forge-shell
+- Shared data contracts with breaking change risk ratings
+- All 35 design docs indexed in decision log
+
+**Known gaps deferred to future work:**
+- Living Memory algorithm formal specification (forge-memory)
+- Migration guides for post-v2 plugins
+- Unified TESTING.md
+- forge-shell view controller implementation guide with code examples

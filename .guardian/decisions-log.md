@@ -1,7 +1,7 @@
 # Decisions Log
 
-**Mission:** Epic jira_card Attribute + Product Forge Status Filters
-**Started:** 2026-03-06
+**Mission:** Documentation Sprint — Cross-cutting reference docs
+**Started:** 2026-03-07
 
 ---
 
