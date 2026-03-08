@@ -9,7 +9,7 @@
 Manage products, track tasks, capture knowledge, debate decisions, generate reports,
 and configure Atlassian agents — all from your terminal.
 
-[![Version](https://img.shields.io/badge/version-2.2.0-orange)]()
+[![Version](https://img.shields.io/badge/version-2.2.1-orange)]()
 [![Python](https://img.shields.io/badge/python-3.8+-blue)]()
 [![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)]()
 [![Plugins](https://img.shields.io/badge/plugins-8-blueviolet)]()

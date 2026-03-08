@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "the-forge",
   "description": "A curated suite for product management and productivity tools with deterministic Python data layer (forge-lib) and LLM reasoning layer. Commands simplified 60% from v1.",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "owner": {
     "name": "Jeremy Brice"
   },
