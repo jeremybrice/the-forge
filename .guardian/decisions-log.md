@@ -1,7 +1,7 @@
 # Decisions Log
 
-**Mission:** Tasks Search & Filtering Feature
-**Started:** 2026-03-04
+**Mission:** Documentation Sprint — Cross-cutting reference docs
+**Started:** 2026-03-07
 
 ---
 

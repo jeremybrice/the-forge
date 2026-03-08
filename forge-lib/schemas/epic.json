@@ -42,6 +42,11 @@
       "description": "Team responsible for the epic",
       "default": null
     },
+    "jira_card": {
+      "type": ["string", "null"],
+      "description": "Link to Jira epic",
+      "default": null
+    },
     "parent": {
       "type": ["string", "null"],
       "description": "Parent initiative filename (without extension)",

@@ -17,7 +17,7 @@ This skill provides reasoning guidance for bidirectional synchronization between
 | `title` | `summary` | Truncate to 255 chars if needed |
 | Body content | `description` | Convert markdown to Jira wiki markup or plain text |
 | `type` | `issuetype` | Initiative → Initiative, Epic → Epic, Story → Story |
-| `parent` (reference) | `parent` link | Resolve parent's `jira_key` before creating child |
+| `parent` (reference) | `parent` link | Resolve parent's `jira_card` before creating child |
 
 **Not synced to Jira:** `status`, `product`, `module`, `client`, `team`, `confidence` (local-only fields)
 
@@ -27,7 +27,7 @@ This skill provides reasoning guidance for bidirectional synchronization between
 |------------|-------------|-------|
 | `summary` | `title` | Direct mapping |
 | `description` | Body content | Convert from Jira wiki markup to markdown |
-| `key` | `jira_key` | Store for bidirectional reference |
+| `key` | `jira_card` | Store for bidirectional reference |
 | `self` | `jira_url` | Full URL for easy access |
 | `status.name` | `jira_status` | **Read-only reference field** (never pushed back) |
 | `timeestimate` | `estimate_hours` | Convert seconds to hours (÷ 3600) |
@@ -88,7 +88,7 @@ Both the local card and Jira issue have been modified since the last sync.
 Before creating a child issue in Jira:
 
 1. Read the parent card file (specified in `parent` field)
-2. Check if parent has `jira_key` or `jira_card` field
+2. Check if parent has `jira_card` field
 3. If parent is not synced: **Error - "Parent card must be synced to Jira first"**
 4. Use parent's Jira key for the `parent` parameter in `jira_create_issue`
 
@@ -126,7 +126,7 @@ Only sync these card types: **Initiative**, **Epic**, **Story**
 ### Required Fields for Creation
 - `type` (Initiative, Epic, or Story)
 - `title` (must be present)
-- Card must NOT already have `jira_key` or `jira_card`
+- Card must NOT already have `jira_card`
 
 ## Batch Sync Guidance
 
@@ -165,7 +165,7 @@ All Jira sync operations are performed via MCP tools, not forge-lib. However, fo
 forge card get story story-001-user-auth
 
 # Update card with Jira fields after sync
-forge card update story story-001-user-auth --data '{"jira_key":"PROJ-123","last_synced":"2024-01-15T10:30:00Z"}'
+forge card update story story-001-user-auth --data '{"jira_card":"PROJ-123","last_synced":"2024-01-15T10:30:00Z"}'
 ```
 
 MCP operations (jira_create_issue, jira_update_issue, jira_get_issue) are called directly from commands, following the patterns defined in this skill.

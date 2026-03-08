@@ -66,7 +66,7 @@ Extract from response:
 - `type` (from frontmatter)
 - `description` (from frontmatter)
 - `parent` (from frontmatter, if present)
-- `jira_key` or `jira_card` field (from frontmatter)
+- `jira_card` field (from frontmatter)
 - Card body content (for Jira description field)
 
 ---
@@ -74,8 +74,7 @@ Extract from response:
 ### Phase 2: Determine Mode (Create or Update)
 
 Inspect the frontmatter for linking fields:
-- **Epic cards:** Check for `jira_key`
-- **Initiative and Story cards:** Check for `jira_card`
+- **All card types:** Check for `jira_card`
 
 **If linking field is null or missing:** Enter **Create Mode**.
 
@@ -89,7 +88,7 @@ Inspect the frontmatter for linking fields:
 
 If the card has a `parent` field in frontmatter:
 1. Retrieve parent card via `forge card get {parent_type} {parent} --directory .`
-2. Extract the parent's `jira_key` or `jira_card` field
+2. Extract the parent's `jira_card` field
 3. If the parent is not linked to Jira:
    ```
    Warning: Parent card "{parent}" is not linked to Jira.
@@ -119,7 +118,7 @@ Construct the payload for the Jira create call:
 - Decision → `Task`
 
 **Optional fields (if applicable):**
-- `parent`: Parent's `jira_key` or `jira_card` (only if parent is linked and card type is Story/Epic)
+- `parent`: Parent's `jira_card` (only if parent is linked and card type is Story/Epic)
 
 Reference the `jira-sync` skill for detailed field mapping.
 
@@ -144,16 +143,7 @@ Reference the `jira-sync` skill for MCP tool usage.
 
 Delegate frontmatter updates to forge-lib:
 
-**For Epic cards:**
-```bash
-forge card update {type} {card_identifier} --data '{
-  "jira_key": "PROJ-123",
-  "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
-  "jira_last_synced": "2026-02-12T14:30:00Z"
-}' --directory .
-```
-
-**For Initiative and Story cards:**
+**For all card types (Initiative, Epic, Story):**
 ```bash
 forge card update {type} {card_identifier} --data '{
   "jira_card": "PROJ-123",
@@ -180,7 +170,7 @@ Card updated: cards/{type}s/{filename}.md
 If the `--force` flag is NOT present, prompt the user for confirmation:
 
 ```
-Card is already linked to Jira issue: {jira_key}
+Card is already linked to Jira issue: {jira_card}
 Jira URL: {jira_url}
 
 This will overwrite the Jira issue with the card's current content:
@@ -212,7 +202,7 @@ Reference the `jira-sync` skill for detailed field mapping.
 Call the MCP tool:
 ```
 jira_update_issue(
-  issue_key: <jira_key or jira_card>,
+  issue_key: <jira_card>,
   summary: <card title>,
   description: <card body content>
 )
@@ -234,7 +224,7 @@ The `updated` date is automatically set by forge-lib.
 
 **Confirm to user:**
 ```
-Pushed to Jira: {jira_key}
+Pushed to Jira: {jira_card}
 Jira URL: {jira_url}
 Card: cards/{type}s/{filename}.md
 ```
@@ -257,7 +247,7 @@ Please check your Jira MCP configuration and permissions.
 
 **Jira update fails:**
 ```
-Failed to update Jira issue {jira_key}: {error message}
+Failed to update Jira issue {jira_card}: {error message}
 Please check that the issue still exists and you have edit permissions.
 ```
 
@@ -278,7 +268,7 @@ Proceed with creation anyway (don't block).
 - The card is always the source of truth. Jira content is replaced, not merged.
 - The `jira-sync` skill provides the MCP tool interface and field mapping logic.
 - The `jira_last_synced` timestamp uses ISO 8601 format with timezone (e.g., `2026-02-12T14:30:00Z`).
-- Epic cards use `jira_key` for backward compatibility. Initiative and Story cards use `jira_card`.
+- All card types (Initiative, Epic, Story) use `jira_card` for Jira linkage.
 - In Update Mode, status and parent are NOT updated. Status is managed by Jira workflows. Parent changes require a separate Jira move operation.
 - Always prompt for confirmation in Update Mode unless `--force` is specified.
 

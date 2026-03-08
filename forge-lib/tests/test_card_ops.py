@@ -419,3 +419,25 @@ class TestCardOperations:
         # Verify parent in frontmatter
         card = card_ops.get_card('story', result['filename'], temp_dir)
         assert card['parent'] == 'epic-name'
+
+    def test_create_epic_with_jira_card(self, temp_dir):
+        """Test creating an epic with jira_card attribute."""
+        data = {
+            'title': 'Email Notification Engine',
+            'type': 'epic',
+            'status': 'Draft',
+            'product': 'WebApp',
+            'description': 'Build email notification engine',
+            'jira_card': 'PROJ-456'
+        }
+
+        result = card_ops.create_card('epic', data, temp_dir)
+
+        # Verify jira_card in frontmatter
+        card = card_ops.get_card('epic', result['filename'], temp_dir)
+        assert card['jira_card'] == 'PROJ-456'
+
+        # Verify jira_card in file content
+        filepath = Path(result['filepath'])
+        content = filepath.read_text()
+        assert 'jira_card: PROJ-456' in content

@@ -62,7 +62,7 @@ Extract from response:
 - `title` (from frontmatter)
 - `type` (from frontmatter)
 - `description` (from frontmatter)
-- `jira_key` or `jira_card` field (from frontmatter)
+- `jira_card` field (from frontmatter)
 - Card body content (for description field when creating)
 
 ---
@@ -70,12 +70,11 @@ Extract from response:
 ### Phase 2: Check for Existing Link
 
 Inspect the frontmatter for linking fields:
-- **Epic cards:** `jira_key`
-- **Initiative and Story cards:** `jira_card`
+- **All card types:** `jira_card`
 
 If a link already exists:
 ```
-Card is already linked to Jira issue: {jira_key}
+Card is already linked to Jira issue: {jira_card}
 Jira URL: {jira_url}
 
 Options:
@@ -141,7 +140,7 @@ jira_create_issue(
   summary: <card title>,
   description: <card body content or description>,
   issuetype: <mapped type>,
-  parent: <parent card's jira_key or jira_card, if parent exists and card type is Story/Epic>
+  parent: <parent card's jira_card, if parent exists and card type is Story/Epic>
 )
 ```
 
@@ -169,16 +168,7 @@ Exit without making changes.
 
 Delegate frontmatter updates to forge-lib:
 
-**For Epic cards:**
-```bash
-forge card update {type} {card_identifier} --data '{
-  "jira_key": "PROJ-123",
-  "jira_url": "https://your-domain.atlassian.net/browse/PROJ-123",
-  "jira_last_synced": "2026-02-12T14:30:00Z"
-}' --directory .
-```
-
-**For Initiative and Story cards:**
+**For all card types (Initiative, Epic, Story):**
 ```bash
 forge card update {type} {card_identifier} --data '{
   "jira_card": "PROJ-123",
@@ -235,7 +225,7 @@ Proceed with creation anyway (don't block), but omit the `parent` field from the
 - This command is non-destructive. It only adds linking fields to the card frontmatter via forge-lib.
 - The `jira-sync` skill provides the MCP tool interface and field mapping logic.
 - The `jira_last_synced` timestamp uses ISO 8601 format with timezone (e.g., `2026-02-12T14:30:00Z`).
-- Epic cards use `jira_key` for backward compatibility with the original schema. Initiative and Story cards use `jira_card`.
+- All card types (Initiative, Epic, Story) use `jira_card` for Jira linkage.
 - Always present the user with options. Never silently create a Jira issue without confirmation.
 - If the user later unlinks the card (by manually removing the fields), they can re-run `/link-to-jira` to establish a new link.
 

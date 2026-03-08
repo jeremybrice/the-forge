@@ -468,6 +468,126 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
+     FilterPanel — Per-type status filtering
+     ═══════════════════════════════════════════════════════════════ */
+  const FilterPanel = {
+    open: false,
+    filters: { initiative_status: [], epic_status: [], story_status: [] },
+
+    getActiveCount() {
+      let count = 0;
+      for (const k in this.filters) {
+        count += this.filters[k].length;
+      }
+      return count;
+    },
+
+    clearAll() {
+      this.filters = { initiative_status: [], epic_status: [], story_status: [] };
+    },
+
+    _cardMatchesTypeStatus(card, typeKey, statusArr) {
+      if (statusArr.length === 0) return true;
+      const fm = card.frontmatter || card;
+      return statusArr.indexOf(fm.status) !== -1;
+    },
+
+    filterHierarchy(hierarchy) {
+      if (this.getActiveCount() === 0) return hierarchy;
+      const self = this;
+
+      // Filter initiative tree: init must match initiative_status,
+      // child epics must match epic_status, child stories must match story_status
+      const filteredTree = hierarchy.tree.filter(function (n) {
+        return self._cardMatchesTypeStatus(n.card, 'initiative_status', self.filters.initiative_status);
+      }).map(function (n) {
+        return {
+          card: n.card,
+          children: n.children.filter(function (en) {
+            return self._cardMatchesTypeStatus(en.card, 'epic_status', self.filters.epic_status);
+          }).map(function (en) {
+            return {
+              card: en.card,
+              children: en.children.filter(function (s) {
+                return self._cardMatchesTypeStatus(s, 'story_status', self.filters.story_status);
+              })
+            };
+          })
+        };
+      });
+
+      // Filter orphan epics by epic_status, their child stories by story_status
+      const filteredOrphanEpics = hierarchy.orphanEpics.filter(function (en) {
+        return self._cardMatchesTypeStatus(en.card, 'epic_status', self.filters.epic_status);
+      }).map(function (en) {
+        return {
+          card: en.card,
+          children: en.children.filter(function (s) {
+            return self._cardMatchesTypeStatus(s, 'story_status', self.filters.story_status);
+          })
+        };
+      });
+
+      // Filter orphan stories by story_status
+      const filteredOrphanStories = hierarchy.orphanStories.filter(function (s) {
+        return self._cardMatchesTypeStatus(s, 'story_status', self.filters.story_status);
+      });
+
+      return {
+        tree: filteredTree,
+        orphanEpics: filteredOrphanEpics,
+        orphanStories: filteredOrphanStories,
+        intakes: hierarchy.intakes,
+        checkpoints: hierarchy.checkpoints,
+        decisions: hierarchy.decisions,
+        releaseNotes: hierarchy.releaseNotes
+      };
+    },
+
+    render(container) {
+      let html = '<div class="pfl-filter-header">';
+      html += '<span>Status Filters</span>';
+      html += '<button class="btn-icon pfl-filter-close-btn" title="Close"><i class="fa-solid fa-xmark"></i></button>';
+      html += '</div>';
+      html += '<div class="pfl-filter-body">';
+
+      html += this._renderFilterGroup('initiative_status', 'Initiative Status', STATUS_OPTIONS.initiative || []);
+      html += this._renderFilterGroup('epic_status', 'Epic Status', STATUS_OPTIONS.epic || []);
+      html += this._renderFilterGroup('story_status', 'Story Status', STATUS_OPTIONS.story || []);
+
+      html += '</div>';
+      html += '<div class="pfl-filter-footer">';
+      html += '<button data-pfl-filter-clear>Clear All Filters</button>';
+      html += '</div>';
+
+      container.innerHTML = html;
+    },
+
+    _renderFilterGroup(key, label, options) {
+      let html = '<div class="pfl-filter-group">';
+      html += '<label>' + ESC(label) + '</label>';
+      html += '<select data-pfl-filter-select="' + key + '">';
+      html += '<option value="">Add ' + ESC(label) + '...</option>';
+      options.forEach(function (o) {
+        html += '<option value="' + ESC(o) + '">' + ESC(o) + '</option>';
+      });
+      html += '</select>';
+
+      if (this.filters[key].length > 0) {
+        html += '<div class="pfl-filter-chips">';
+        this.filters[key].forEach(function (v) {
+          html += '<span class="pfl-filter-chip" data-pfl-filter-remove="' + key + '" data-pfl-filter-value="' + ESC(v) + '">' +
+            ESC(v) + ' <i class="fa-solid fa-xmark"></i></span>';
+        });
+        html += '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
      Edit Modal
      ═══════════════════════════════════════════════════════════════ */
   const editModal = {
@@ -511,7 +631,8 @@
       }
 
       html += this._buildField('product', 'Product', 'select', fm.product, { options: taxonomy.products });
-      html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
+      if (type !== 'epic') html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
+      if (type === 'epic') html += this._buildField('source_intake', 'Source Intake', 'text', fm.source_intake);
       html += this._buildField('client', 'Client', 'select', fm.client, { options: taxonomy.clients });
 
       if (type === 'initiative' || type === 'epic' || type === 'story') {
@@ -529,7 +650,8 @@
         const initiatives = store.getByType('initiative');
         const parentOpts = initiatives.map(c => c.filename);
         html += this._buildField('parent', 'Parent Initiative', 'select', fm.parent, { options: parentOpts, labels: initiatives.map(c => c.frontmatter.title || c.filename) });
-        html += this._buildField('source_intake', 'Source Intake', 'text', fm.source_intake);
+        html += this._buildField('jira_card', 'Jira Card', 'text', fm.jira_card);
+        html += this._buildField('module', 'Module', 'select', fm.module, { options: taxonomy.modules });
       }
 
       if (type === 'story') {
@@ -813,6 +935,9 @@
               '<span>' + ESC(dirName) + '/cards</span>' +
             '</div>' +
             '<div class="spacer"></div>' +
+            '<div class="pfl-filter-badge">' +
+              '<button class="btn-icon" data-pfl-filter-toggle title="Filter"><i class="fa-solid fa-filter"></i></button>' +
+            '</div>' +
             '<span class="refresh-indicator" data-pfl-refresh-ind></span>' +
             '<button class="btn-icon" data-pfl-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
           '</div>' +
@@ -833,6 +958,7 @@
               '<div>Select a card from the tree to view details</div>' +
             '</div>' +
             '<div class="pfl-card-detail hidden"></div>' +
+            '<div class="pfl-filter-panel" data-pfl-filter-panel></div>' +
           '</main>' +
 
         '</div>' +
@@ -857,6 +983,17 @@
       var refreshBtn = $q('[data-pfl-action="refresh"]');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function () { ctrl.refresh(); });
+      }
+
+      /* Bind filter toggle */
+      var filterBtn = $q('[data-pfl-filter-toggle]');
+      if (filterBtn) {
+        filterBtn.addEventListener('click', function () {
+          FilterPanel.open = !FilterPanel.open;
+          var panel = $q('[data-pfl-filter-panel]');
+          if (panel) panel.classList.toggle('pfl-open', FilterPanel.open);
+          if (FilterPanel.open) ctrl._renderFilterPanel();
+        });
       }
 
       /* Bind modal actions */
@@ -968,6 +1105,9 @@
         treeView.collapsedSections.clear();
       }
 
+      // Apply status filters
+      hierarchy = FilterPanel.filterHierarchy(hierarchy);
+
       treeView.render(hierarchy);
 
       // Restore collapsed sections after render so user state is preserved
@@ -976,6 +1116,7 @@
       }
 
       if (selectedCard) treeView.highlightSelected(selectedCard);
+      this._updateFilterBadge();
     },
 
     _updateRefreshIndicator() {
@@ -985,6 +1126,76 @@
       var now = new Date();
       var time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       el.textContent = count + ' cards \u00B7 ' + time;
+    },
+
+    _renderFilterPanel() {
+      var panel = $q('[data-pfl-filter-panel]');
+      if (!panel) return;
+      FilterPanel.render(panel);
+      this._bindFilterEvents();
+    },
+
+    _bindFilterEvents() {
+      var self = this;
+
+      /* Filter selects */
+      $qa('[data-pfl-filter-select]').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          if (!sel.value) return;
+          var key = sel.dataset.pflFilterSelect;
+          if (FilterPanel.filters[key].indexOf(sel.value) === -1) {
+            FilterPanel.filters[key].push(sel.value);
+          }
+          sel.value = '';
+          self._renderFilterPanel();
+          self._renderTree();
+        });
+      });
+
+      /* Remove filter chips */
+      $qa('[data-pfl-filter-remove]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var key = el.dataset.pflFilterRemove;
+          var val = el.dataset.pflFilterValue;
+          FilterPanel.filters[key] = FilterPanel.filters[key].filter(function (v) { return v !== val; });
+          self._renderFilterPanel();
+          self._renderTree();
+        });
+      });
+
+      /* Clear all */
+      var clearBtn = $q('[data-pfl-filter-clear]');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          FilterPanel.clearAll();
+          self._renderFilterPanel();
+          self._renderTree();
+        });
+      }
+
+      /* Close button */
+      var closeBtn = $q('.pfl-filter-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+          FilterPanel.open = false;
+          var panel = $q('[data-pfl-filter-panel]');
+          if (panel) panel.classList.remove('pfl-open');
+        });
+      }
+    },
+
+    _updateFilterBadge() {
+      var count = FilterPanel.getActiveCount();
+      var badge = $q('.pfl-filter-badge');
+      if (!badge) return;
+      var existing = badge.querySelector('.pfl-filter-count');
+      if (existing) existing.remove();
+      if (count > 0) {
+        var span = document.createElement('span');
+        span.className = 'pfl-filter-count';
+        span.textContent = count;
+        badge.appendChild(span);
+      }
     },
 
     /* ─── Auto Refresh ─── */

@@ -8,7 +8,7 @@ window.CardData = (function () {
   /* ─── Field Orders (for YAML serialization) ─── */
   const FIELD_ORDER = {
     initiative: ['title','type','status','release','product','module','client','team','confidence','estimate_hours','jira_card','source_intake','children','description','source_conversation','created','updated'],
-    epic: ['title','type','status','release','product','module','client','team','parent','children','description','source_intake','source_conversation','created','updated'],
+    epic: ['title','type','status','release','product','module','client','team','jira_card','parent','children','description','source_intake','source_conversation','created','updated'],
     story: ['title','type','status','product','module','client','team','parent','story_points','jira_card','source_conversation','created','updated'],
     intake: ['title','type','status','product','module','client','generated_initiatives','generated_epics','source_conversation','created','updated'],
     checkpoint: ['title','type','checkpoint_date','product','module','client','domain','status','source_conversation','created','updated'],
