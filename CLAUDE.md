@@ -100,4 +100,4 @@ See `forge-shell/README.md` for details.
 
 ## Version
 
-**v2.2.0** — Complete architectural rebuild with Python data layer and simplified LLM commands.
+**v2.2.1** — Cross-cutting documentation, epic jira_card attribute, and status filter panel.

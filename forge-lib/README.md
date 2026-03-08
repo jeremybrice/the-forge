@@ -278,7 +278,7 @@ if response['success']:
 
 ## Version
 
-**v2.2.0** — Complete architectural rebuild with Python data layer.
+**v2.2.1** — Epic jira_card schema, cross-cutting documentation.
 
 ## Author
 

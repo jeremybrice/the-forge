@@ -1,6 +1,6 @@
 {
   "name": "product-forge",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Product management workflows for Initiatives, Epics, Stories, and planning artifacts. Delegates all file operations to forge-lib.",
   "author": { "name": "Jeremy Brice" }
 }
