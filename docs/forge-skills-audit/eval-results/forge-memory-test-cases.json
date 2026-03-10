@@ -1,0 +1,505 @@
+{
+  "plugin": "forge-memory",
+  "eval_candidates": ["memory-management", "recall", "org-context"],
+  "contracts": ["1", "2", "3", "5", "6", "IF5"],
+  "test_cases": [
+    {
+      "id": "isolation-memory-mgmt-001",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Four-tier cascade resolves a known glossary term",
+      "user_prompt": "Ask todd about the PSR for oracle",
+      "setup_context": "Glossary contains: todd -> Todd Martinez (Finance lead, importance 55), PSR -> Pipeline Status Report (importance 60), oracle -> Oracle Systems deal (importance 45). Taxonomy has no matching entries.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill decodes all three terms: todd -> Todd Martinez (Finance lead), PSR -> Pipeline Status Report, oracle -> Oracle Systems deal. Tier 1 (taxonomy) checked first, falls through to Tier 2 (glossary) where all three resolve. No Tier 3 or Tier 4 needed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-memory-mgmt-002",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Lifecycle filtering skips sunset entries and flags probationary ones",
+      "user_prompt": "What's the status on the phoenix migration and the aurora project?",
+      "setup_context": "memory/projects/phoenix.md exists with importance 25 (probationary). memory/projects/aurora.md exists with importance 8 (sunset). Glossary has no matching entries.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Phoenix is returned with (fading) flag since importance 25 is probationary (10-39). Aurora is skipped/not returned since importance 8 is below sunset threshold (<10). Skill suggests confirming Phoenix is still active.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-memory-mgmt-003",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Fuzzy matching resolves partial terms",
+      "user_prompt": "Check with todd about the phoen project",
+      "setup_context": "Glossary contains: todd -> Todd Martinez. memory/projects/phoenix.md exists with importance 50.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill resolves 'phoen' to 'Phoenix' via fuzzy/partial matching. Todd resolves via glossary. Both terms decoded before acting on request.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-memory-mgmt-004",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Tier 4 ask-user fires when term not found, checks pending.json",
+      "user_prompt": "Send the TPS report to Jenkins",
+      "setup_context": "No glossary entry for TPS or Jenkins. memory/pending.json contains {\"TPS\": {\"first_seen\": \"2026-03-01\"}}. No taxonomy match.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill checks all tiers, finds nothing for TPS and Jenkins. Before asking user, checks pending.json and finds TPS was seen before. Output says something like 'I've seen TPS mentioned before but don't have a definition yet. Can you clarify?' For Jenkins, asks user directly since it's not in pending either.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-memory-mgmt-005",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Recall boost mechanic strengthens recalled entries",
+      "user_prompt": "Who is todd?",
+      "setup_context": "Glossary contains: todd -> Todd Martinez (importance 45). memory/people/todd-martinez.md exists (importance 45).",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After resolving todd, the skill notes that recalled entries get +5 importance boost. The boost-on-recall mechanic is mentioned or applied. Cross-reference from glossary to people file is noted.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-memory-mgmt-006",
+      "component": "memory-management",
+      "category": "isolation",
+      "description": "Context assembly combines multiple tiers",
+      "user_prompt": "Tell me about todd and the billing module",
+      "setup_context": "Glossary: todd -> Todd Martinez. memory/people/todd-martinez.md exists with details about role, preferences, and projects. Taxonomy: products contains WebApp, modules contains Billing.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill combines Tier 1 (taxonomy resolves 'Billing' as a module) with Tier 2 (glossary resolves 'todd') and Tier 3 (deep memory provides full Todd profile). Assembled context includes both the person profile and the validated module name.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-memory-mgmt-001",
+      "component": "memory-management",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "After decoding terms, skill suggests downstream consumer relevance",
+      "user_prompt": "Ask todd about the PSR for oracle",
+      "setup_context": "All terms resolvable in glossary/deep memory.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After decoding, output mentions that resolved context is available for Product Forge card enrichment and/or Report Forge scoping. At minimum, acknowledges downstream plugins exist.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "All three terms decoded correctly via tiered lookup.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-memory-mgmt-002",
+      "component": "memory-management",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Memory-first resolution works as workspace-level behavior",
+      "user_prompt": "Create a story for the PSR dashboard",
+      "setup_context": "PSR exists in glossary (Pipeline Status Report, importance 60). This prompt would normally trigger Product Forge, but memory-management should fire first to decode PSR.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Skill triggers on unrecognized shorthand 'PSR' and resolves it before any downstream action. The description mentions decoding workplace shorthand — this should activate even when the user's primary intent is a Product Forge action.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "PSR resolved to Pipeline Status Report via glossary lookup.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-memory-mgmt-003",
+      "component": "memory-management",
+      "category": "ecosystem",
+      "contract": "IF5",
+      "description": "Lifecycle filtering removal notifies about downstream impact",
+      "user_prompt": "What about the legacy SOAP integration?",
+      "setup_context": "memory/projects/soap-integration.md exists with importance 8 (sunset).",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "When the entry is filtered out as sunset, the skill notes that downstream content (Product Forge cards, Report Forge reports) referencing this integration may need reviewing.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Entry correctly identified as sunset (importance < 10) and skipped or flagged accordingly.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-001",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Taxonomy query returns product list",
+      "user_prompt": "What products do we have?",
+      "setup_context": "Taxonomy contains: products = [WebApp, MobileApp, API Platform].",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill calls forge memory get-taxonomy products, returns the full list. Output formatted as taxonomy result with source noted as forge-lib managed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-002",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Person query searches knowledge entries",
+      "user_prompt": "Who is Maya?",
+      "setup_context": "Knowledge entry exists: person type, name Maya Chen, role Engineering Manager, team Platform Team.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill calls forge memory query-knowledge --type person, finds Maya in results, returns full profile with source path noted.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-003",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Glossary term lookup via knowledge query",
+      "user_prompt": "What does PSR mean?",
+      "setup_context": "Knowledge entry exists: glossary type, term PSR, definition Pipeline Status Report.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill extracts 'PSR' as search keyword, queries glossary entries, returns definition. Output includes the term expansion and any usage context.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-004",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Not-found triggers remember suggestion",
+      "user_prompt": "Tell me about the Zenith project",
+      "setup_context": "No taxonomy, knowledge, or context file matches for 'Zenith'.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After searching all three tiers and finding nothing, skill outputs 'I don't have that in memory yet' and offers to transition to /memory:remember workflow.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-005",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Partial matches suggest related entries",
+      "user_prompt": "Tell me about the mobile project",
+      "setup_context": "Taxonomy has MobileApp product. Knowledge has a project 'mobile-redesign'. No exact match for 'mobile project'.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill finds partial matches in both taxonomy (MobileApp) and knowledge (mobile-redesign). Presents both as related entries and asks 'Did you mean one of these?'",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-recall-006",
+      "component": "recall",
+      "category": "isolation",
+      "description": "Tiered search uses progressive disclosure — stops at first tier with results",
+      "user_prompt": "What teams exist?",
+      "setup_context": "Taxonomy contains: teams = [Platform Team, Finance Team, Product Team]. Knowledge also has team-related person entries.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill finds the answer at Tier 1 (taxonomy) and returns it. Does NOT redundantly search Tier 2/3 since the query was fully answered. Output notes this is forge-lib managed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-recall-001",
+      "component": "recall",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Recall of project info suggests Product Forge card creation",
+      "user_prompt": "Tell me about the Phoenix project",
+      "setup_context": "memory/projects/phoenix.md exists with full project details. No Product Forge card exists for Phoenix.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After presenting Phoenix project info, output suggests: 'Would you like to create a Product Forge card for this project?' or references /product-forge:create.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Phoenix project details returned correctly from knowledge query.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-recall-002",
+      "component": "recall",
+      "category": "ecosystem",
+      "contract": "Contract 3",
+      "description": "Substantial recall results suggest Report Forge generation",
+      "user_prompt": "What do we know about the payments integration?",
+      "setup_context": "Taxonomy has 'Stripe' integration. Knowledge has project 'payments-overhaul' and person entries for payment team members. Rich context available.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After presenting substantial knowledge about payments, output suggests: 'There's enough context here to generate a focused report with /report-forge:generate' or similar.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Multi-source results assembled from taxonomy (Stripe integration) and knowledge (project + people). Cross-references noted.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-recall-003",
+      "component": "recall",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Recall of person info suggests enriching related tasks/cards",
+      "user_prompt": "Who is Todd?",
+      "setup_context": "Knowledge entry: person Todd Martinez, Finance lead, owns PSR process.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After presenting Todd's profile, output suggests person is available for Product Forge card enrichment or Tasks Forge task assignment context.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Todd's full profile returned with role, team, and context details.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-org-context-001",
+      "component": "org-context",
+      "category": "isolation",
+      "description": "Exact taxonomy match resolves correctly",
+      "user_prompt": "Write a story for the billing module in WebApp",
+      "setup_context": "Taxonomy: products = [WebApp], modules = [Billing, Authentication, Notifications].",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill queries forge memory get-taxonomy, resolves 'WebApp' to product and 'billing module' to Billing module. Canonical names used: 'WebApp' and 'Billing'.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-org-context-002",
+      "component": "org-context",
+      "category": "isolation",
+      "description": "Fuzzy/informal reference resolves to canonical name",
+      "user_prompt": "Create something for the mobile app",
+      "setup_context": "Taxonomy: products = [MobileApp, WebApp, API Platform].",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill resolves 'the mobile app' to 'MobileApp' via fuzzy, case-insensitive matching. Canonical name 'MobileApp' used in output.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-org-context-003",
+      "component": "org-context",
+      "category": "isolation",
+      "description": "Unknown value triggers add suggestion with three options",
+      "user_prompt": "This is for the Nexus platform",
+      "setup_context": "Taxonomy: products = [WebApp, MobileApp, API Platform]. 'Nexus' not present.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill flags 'Nexus' as not in product taxonomy. Offers three options: 'Should I add it? / Use it anyway / Enter different value'. If user confirms, calls forge memory set-taxonomy products --add 'Nexus'.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-org-context-004",
+      "component": "org-context",
+      "category": "isolation",
+      "description": "Missing taxonomy gracefully degrades to freeform",
+      "user_prompt": "This card is for the billing module",
+      "setup_context": "No taxonomy exists (memory system not initialized).",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill accepts 'billing' as freeform value without blocking. Informs user: 'Run /memory:setup-org to configure your taxonomy'. After workflow, offers to add the value.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-org-context-005",
+      "component": "org-context",
+      "category": "isolation",
+      "description": "Taxonomy suggestion presents numbered list of options",
+      "user_prompt": "Which product should this story be for?",
+      "setup_context": "Taxonomy: products = [WebApp, MobileApp, API Platform].",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill queries taxonomy and presents a numbered list: '1. WebApp 2. MobileApp 3. API Platform [Enter number or name]'. Accepts both number and name as input.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-org-context-001",
+      "component": "org-context",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Taxonomy addition confirms downstream Product Forge impact",
+      "user_prompt": "Add WebApp to our product taxonomy",
+      "setup_context": "Taxonomy exists but WebApp not yet present.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After adding WebApp, output confirms: 'Product Forge cards will now validate against this product name when creating or updating cards.' Names Product Forge specifically.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "WebApp added via forge memory set-taxonomy products --add 'WebApp'. Confirmation shows the addition succeeded.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-org-context-002",
+      "component": "org-context",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Resolution consistency with Product Forge product-context",
+      "user_prompt": "Write a story for billing stuff in the mobile app for Acme",
+      "setup_context": "Taxonomy: products = [MobileApp], modules = [Billing], clients = [Acme Corp].",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Resolved terms match what Product Forge product-context would produce: 'billing stuff' -> Billing, 'the mobile app' -> MobileApp, 'Acme' -> Acme Corp. No inconsistency between org-context and product-context resolution.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "All three informal references resolved to canonical taxonomy names via fuzzy matching.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-org-context-003",
+      "component": "org-context",
+      "category": "ecosystem",
+      "contract": "IF5",
+      "description": "Taxonomy rename notes downstream impact on existing content",
+      "user_prompt": "Rename the Payments module to Payment Processing",
+      "setup_context": "Taxonomy: modules = [Payments, Authentication, Notifications]. Existing Product Forge cards reference 'Payments'.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After rename, output notes: 'Existing Product Forge cards referencing Payments should be reviewed. Existing tasks with this module should be checked.' Acknowledges downstream propagation impact.",
+          "level": "specificity",
+          "weight": 0.4
+        },
+        "isolation_correctness": {
+          "assertion": "Old value removed and new value added via forge memory set-taxonomy. Rename completed successfully.",
+          "weight": 0.6
+        }
+      }
+    },
+    {
+      "id": "ecosystem-remember-001",
+      "component": "remember",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Remembered knowledge acknowledges availability for Slack Forge context",
+      "user_prompt": "Remember that Todd owns the billing module",
+      "setup_context": "Memory system initialized. No existing entry for Todd.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After saving, output acknowledges: 'This is now available for Product Forge card enrichment and Report Forge scoping' or mentions Slack Forge context enrichment during future harvests.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Person entry created via forge memory create-knowledge person 'Todd' with role and module context. Confirmation shows file path.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-remember-002",
+      "component": "remember",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "After remembering a project, suggests Product Forge card creation",
+      "user_prompt": "Remember the Phoenix project — it's our DB migration initiative starting Q2",
+      "setup_context": "Memory system initialized. No existing Phoenix entry.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After saving, output suggests: 'This project is now available for Product Forge card creation' or 'Would you like to create a Product Forge card for Phoenix?' References /product-forge:create specifically.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Project entry created with name, description, status. Confirmation shows file path and entry details.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-setup-org-001",
+      "component": "setup-org",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "After taxonomy setup, notes downstream plugin availability",
+      "user_prompt": "/memory:setup-org (completing the full interview)",
+      "setup_context": "Fresh memory system, no existing taxonomy.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Final report mentions: 'Product Forge cards and Report Forge reports will now validate against this taxonomy.' Names specific downstream consumers.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "All taxonomy types saved via forge-lib. Report shows counts per type. Re-run instructions provided.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-triage-001",
+      "component": "triage",
+      "category": "ecosystem",
+      "contract": "IF5",
+      "description": "Archived entry notes downstream content impact",
+      "user_prompt": "Archive the entry about the legacy SOAP integration",
+      "setup_context": "Knowledge entry 'soap-integration' exists at importance 12 (probationary). Product Forge cards reference SOAP integration.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After archiving, output notes: 'Report Forge reports referencing this integration may need updating' or similar downstream impact notification.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Entry archived via forge memory triage-archive. Summary shows action taken. No silent deletion.",
+          "weight": 0.7
+        }
+      }
+    }
+  ]
+}

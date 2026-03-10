@@ -1,0 +1,269 @@
+{
+  "plugin": "rovo-forge",
+  "version": "2.2.0",
+  "eval_date": "2026-03-09",
+  "contracts": [5, 6],
+  "eval_candidates": [
+    "validation-remediation",
+    "permission-model-configuration",
+    "deep-research-surfacing",
+    "automation-mode-handling",
+    "agent-testing-framework"
+  ],
+  "test_cases": [
+    {
+      "id": "isolation-rovo-validation-001",
+      "eval_candidate": "validation-remediation",
+      "category": "isolation",
+      "description": "Phase 10 validation catches behavior word count exceeding 500-word limit and provides remediation",
+      "user_prompt": "Build me a Jira agent for our SUPPORT project that triages incoming tickets. [User provides extremely detailed behavior text exceeding 500 words during Phase 3]",
+      "setup_context": "User is in Phase 3 of jira-agent builder and provides behavior text over 500 words",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder detects the over-limit behavior text, flags it with a FAIL status, and provides specific remediation guidance: which content to move to scenarios vs. keep in behavior. Should not just say 'too long' but explain how to restructure.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-validation-002",
+      "eval_candidate": "validation-remediation",
+      "category": "isolation",
+      "description": "Phase 10 validation catches scenario instructions under 300-word minimum and guides expansion",
+      "user_prompt": "Build me a Confluence agent for documentation. [User provides minimal scenario instructions during Phase 4, approximately 150 words]",
+      "setup_context": "User is in Phase 4 of confluence-agent builder and provides scenario instructions under 300 words",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder flags the under-count scenario instructions during Phase 4 (incremental validation), not waiting until Phase 10. It suggests specific areas to expand: missing TCREI components, missing decision points, or missing output format specification.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-validation-003",
+      "eval_candidate": "validation-remediation",
+      "category": "isolation",
+      "description": "Phase 10 validation catches skills exceeding 5 and provides prioritization guidance",
+      "user_prompt": "I want all 9 Jira skills enabled for my agent.",
+      "setup_context": "User is in Phase 6 of jira-agent builder and requests all skills",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder warns about the 4-5 skill maximum, explains WHY (slower response times, less focused behavior), and helps the user prioritize by asking which use cases are most critical. It should reference the skill selection strategy for the detected pattern.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-permission-001",
+      "eval_candidate": "permission-model-configuration",
+      "category": "isolation",
+      "description": "Builder surfaces permission awareness during knowledge source configuration",
+      "user_prompt": "Build me a Jira agent that works across ALL our Jira projects.",
+      "setup_context": "User is in Phase 5 of jira-agent builder and wants broad project access",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder explains the permission model: agents never grant more permissions than the user has, so broad access is safe because each user only sees their accessible data. It should also recommend narrowing to specific projects for focused agents and explain that broad access may produce noisy results.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-permission-002",
+      "eval_candidate": "permission-model-configuration",
+      "category": "isolation",
+      "description": "Builder includes permission awareness in behavior instructions automatically",
+      "user_prompt": "Build me a Confluence agent that manages our Engineering Documentation space.",
+      "setup_context": "User is completing Phase 3 of confluence-agent builder",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The assembled behavior text auto-includes permission awareness ('You respect user permissions and only create or modify pages in spaces the user has access to') and confirmation gates ('You generate previews and request user confirmation before publishing'). These should appear without the user explicitly asking for them.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-deepresearch-001",
+      "eval_candidate": "deep-research-surfacing",
+      "category": "isolation",
+      "description": "Builder surfaces Deep Research as an option during scenario design",
+      "user_prompt": "Build me a Jira agent that analyzes sprint retrospective data across multiple projects to find patterns.",
+      "setup_context": "User describes a use case involving multi-source research and synthesis during Phase 1",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "During Phase 4 (Scenario Design), the builder proactively suggests enabling Deep Research for the analysis scenario, explaining: it enables multi-step research workflows, is available at scenario level only, has a 30 requests/user/day limit and 15-minute timeout. It should recommend creating a dedicated scenario with Deep Research enabled rather than putting it on the default scenario.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-deepresearch-002",
+      "eval_candidate": "deep-research-surfacing",
+      "category": "isolation",
+      "description": "Builder warns about Deep Research timeout in automation context",
+      "user_prompt": "I want this agent to also run from Jira automation rules to analyze new sprints weekly.",
+      "setup_context": "User is in Phase 9 of jira-agent builder and wants automation integration with Deep Research already enabled",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder explicitly warns that Deep Research has a 15-minute timeout and automation will fail if exceeded. It recommends either: (a) creating a separate automation scenario without Deep Research, or (b) ensuring the automation prompt is scoped narrowly enough to complete within the timeout.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-automation-001",
+      "eval_candidate": "automation-mode-handling",
+      "category": "isolation",
+      "description": "Builder guides creation of dedicated automation scenario with structured output",
+      "user_prompt": "This agent should also run from Jira automation when new bugs are created.",
+      "setup_context": "User is in Phase 9 of jira-agent builder",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder explains the automation constraint (no skills, text response only via {{agentResponse}}), and guides creation of a dedicated automation scenario with structured output format (e.g., '[PRIORITY: High] [TEAM: Backend] [LABELS: urgent, critical]'). It should produce a concrete template, not just mention the concept.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-automation-002",
+      "eval_candidate": "automation-mode-handling",
+      "category": "isolation",
+      "description": "Builder differentiates automation scenario from interactive scenarios",
+      "user_prompt": "Build a Confluence agent that creates weekly release notes. It should run from a scheduled automation rule.",
+      "setup_context": "User describes a primarily automation-driven use case during Phase 1",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "The builder recognizes this is primarily an automation use case and adjusts the approach: (a) explains that automation mode means text-only responses, (b) designs scenarios optimized for structured text output rather than interactive clipboard blocks, (c) warns about limitations (no Confluence skills like Create Page or Publish Page in automation), (d) suggests the automation captures the text response and a subsequent automation action creates the page.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-testing-001",
+      "eval_candidate": "agent-testing-framework",
+      "category": "isolation",
+      "description": "Builder provides testing guidance after configuration assembly",
+      "user_prompt": "Build me a Jira ticket triage agent for the SUPPORT project.",
+      "setup_context": "User has completed all phases and the builder has produced the final configuration",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After presenting the copy-ready configuration and saving to forge-lib, the builder provides testing guidance: (a) how to test each scenario in Rovo Studio (specific test prompts to try), (b) what to look for in agent responses (does it apply the priority matrix? does it use the right skills?), (c) how to iterate if behavior doesn't match expectations (which section to adjust).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-rovo-testing-002",
+      "eval_candidate": "agent-testing-framework",
+      "category": "isolation",
+      "description": "Builder suggests test cases based on configured scenarios",
+      "user_prompt": "Build me a Confluence documentation specialist agent.",
+      "setup_context": "User has completed all phases with 3 scenarios (creation, review, maintenance)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After assembly, the builder suggests specific test prompts for each scenario: (a) for creation: 'Create a user guide for the authentication module', (b) for review: 'Review the API documentation page', (c) for maintenance: 'Audit the Engineering Documentation space for outdated content'. Each suggested test should exercise the configured skills and knowledge sources.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-rovo-contract5-001",
+      "eval_candidate": "validation-remediation",
+      "category": "ecosystem",
+      "contract": "Contract 5: Proactive Handoff Suggestions",
+      "description": "After jira-agent produces completed config, suggests testing against Product Forge cards",
+      "user_prompt": "Build me a Jira ticket triage agent for the SUPPORT project.",
+      "setup_context": "User has completed the full jira-agent builder flow and received the copy-ready configuration",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After producing the agent configuration, the builder suggests: 'You can test this agent against Jira issues referenced in your Product Forge cards' or similar cross-plugin handoff. At minimum, it should mention that the agent's behavior could be validated against existing project artifacts.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "The configuration is complete, valid, and copy-ready with all validation checks passing.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-rovo-contract5-002",
+      "eval_candidate": "agent-testing-framework",
+      "category": "ecosystem",
+      "contract": "Contract 5: Proactive Handoff Suggestions",
+      "description": "After confluence-agent produces completed config, suggests linking to relevant knowledge in Forge Memory",
+      "user_prompt": "Build me a Confluence documentation specialist for the Engineering space.",
+      "setup_context": "User has completed the full confluence-agent builder flow",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After producing the agent configuration, the builder suggests that the agent's knowledge sources could be enriched with organizational context from Forge Memory, or that the configuration could be shared with relevant teams tracked in Forge Memory.",
+          "level": "awareness",
+          "weight": 0.25
+        },
+        "isolation_correctness": {
+          "assertion": "The configuration is complete, valid, and copy-ready with proper content lifecycle coverage across all three scenarios.",
+          "weight": 0.75
+        }
+      }
+    },
+    {
+      "id": "ecosystem-rovo-contract6-001",
+      "eval_candidate": "permission-model-configuration",
+      "category": "ecosystem",
+      "contract": "Contract 6: Memory-First Resolution",
+      "description": "Builder resolves team shorthand against Forge Memory during Phase 3",
+      "user_prompt": "Build me a Jira agent for the payments team's triage workflow.",
+      "setup_context": "Forge Memory taxonomy contains 'Payments Processing Team' with associated Jira project 'PAYMENTS' and Confluence space 'Payments Docs'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "During Phase 1 or Phase 3, the builder checks Forge Memory to resolve 'payments team' to canonical 'Payments Processing Team' and uses this to pre-fill knowledge source suggestions (PAYMENTS Jira project, Payments Docs Confluence space). If not found, suggests adding the team to memory with /forge-memory:remember.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "The builder correctly identifies the triage use case, proposes triage-pattern pre-fill, and guides through all 11 phases with appropriate Jira configuration.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-rovo-contract6-002",
+      "eval_candidate": "deep-research-surfacing",
+      "category": "ecosystem",
+      "contract": "Contract 6: Memory-First Resolution",
+      "description": "Builder resolves acronym in agent scope description against Forge Memory",
+      "user_prompt": "Build me a Confluence agent that documents the PSR module for the WebApp product.",
+      "setup_context": "Forge Memory taxonomy contains 'PSR' = 'Product Status Reporting' and 'WebApp' = canonical product name",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "The builder checks Forge Memory to resolve 'PSR' to 'Product Status Reporting' and 'WebApp' to the canonical product name. Resolved names are used in the agent's description and behavior text. If terms are unknown, suggests /forge-memory:remember before proceeding.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "The builder correctly identifies a documentation generation use case, proposes documentation-pattern pre-fill, and scopes knowledge sources to the relevant Confluence spaces.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-rovo-contract5-003",
+      "eval_candidate": "automation-mode-handling",
+      "category": "ecosystem",
+      "contract": "Contract 5: Proactive Handoff Suggestions",
+      "description": "Automation-mode agent suggests task tracking for automation failures",
+      "user_prompt": "Build me a Jira agent that runs from automation to triage new bugs. What if the automation fails?",
+      "setup_context": "User is discussing automation integration in Phase 9",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "When discussing automation failure modes, the builder suggests tracking recurring failures as tasks in Tasks Forge or documenting automation patterns in a report via Report Forge.",
+          "level": "awareness",
+          "weight": 0.2
+        },
+        "isolation_correctness": {
+          "assertion": "The builder explains automation failure modes (Deep Research timeout, skill unavailability, permission issues) and provides concrete mitigation strategies.",
+          "weight": 0.8
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,337 @@
+{
+  "plugin": "report-forge",
+  "eval_date": "2026-03-09",
+  "eval_candidates": ["forge-investigator", "forge-analyst", "forge-synthesizer"],
+  "test_cases": [
+    {
+      "id": "isolation-investigator-001",
+      "component": "forge-investigator",
+      "type": "isolation",
+      "description": "Investigator produces structured findings with all required sections",
+      "user_prompt": "Generate an architecture review for the notification system module",
+      "setup_context": "Codebase contains src/modules/notification/ with 8 JS files, config/notifications/ with config files, docs/architecture/ with one architecture doc",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output contains all required sections: Scope Summary, Data Sources Examined, Key Observations (with subsections), Metrics Collected, Gaps Identified. Each section has substantive content, not placeholders.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-investigator-002",
+      "component": "forge-investigator",
+      "type": "isolation",
+      "description": "Investigator respects scope boundaries from related_entities",
+      "user_prompt": "Investigate the billing module performance for the WebApp product",
+      "setup_context": "Report brief specifies products=['WebApp'], modules=['billing']. Codebase has billing/ and auth/ and notifications/ modules.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Investigation focuses on billing module files and WebApp product. Does not scan auth/ or notifications/ directories. Scope Summary explicitly states the boundary.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-investigator-003",
+      "component": "forge-investigator",
+      "type": "isolation",
+      "description": "Investigator reports gaps honestly when data is missing",
+      "user_prompt": "Investigate production performance metrics for the API gateway",
+      "setup_context": "No performance logs, no monitoring config, no metrics files exist in the codebase",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Gaps Identified section explicitly lists missing performance logs, missing monitoring configuration, and missing metrics. Does NOT fabricate metrics or performance data.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-investigator-004",
+      "component": "forge-investigator",
+      "type": "isolation",
+      "description": "Investigator uses appropriate tools for data gathering",
+      "user_prompt": "Investigate the test coverage of the payment processing module",
+      "setup_context": "Module has src/payments/ with implementation files and tests/payments/ with test files",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent uses Glob for file discovery, Grep for content search, Read for file examination, and Bash for metric collection (e.g., file counts, LOC). Data Sources Examined section lists specific files read and commands executed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-investigator-005",
+      "component": "forge-investigator",
+      "type": "isolation",
+      "description": "Investigator adapts strategy based on report type",
+      "user_prompt": "Investigate for an incident postmortem about the outage on 2026-02-15",
+      "setup_context": "Report brief specifies report_type='incident-postmortem', coverage_period around 2026-02-15",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Investigation strategy follows incident-postmortem guidance: focuses on error logs, recent code changes (git log around incident date), configuration changes, monitoring/alerting setup, deployment history. Does NOT follow architecture-review or performance-analysis strategy.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-analyst-001",
+      "component": "forge-analyst",
+      "type": "isolation",
+      "description": "Analyst produces structured analysis with all required sections",
+      "user_prompt": "Analyze the investigator's findings on the notification system architecture",
+      "setup_context": "Analyst receives complete Investigator findings with file structure, configuration, code patterns, metrics, and gaps",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output contains all required sections: Patterns Identified, Anomalies and Inconsistencies, Risk Assessment (with severity levels), Opportunities, Comparative Context, Interpretation, Confidence Assessment. Each section cites evidence from Investigator findings.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-analyst-002",
+      "component": "forge-analyst",
+      "type": "isolation",
+      "description": "Analyst distinguishes fact from inference",
+      "user_prompt": "Analyze findings showing 5 test files for 8 implementation files with no coverage reports",
+      "setup_context": "Investigator findings include file counts but no test coverage metrics",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Analysis clearly distinguishes factual observations ('5 test files for 8 implementation files') from inferences ('this suggests incomplete test coverage'). Uses qualifying language for inferences ('suggests', 'indicates', 'likely'). Does NOT state coverage percentages as fact when only file counts are available.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-analyst-003",
+      "component": "forge-analyst",
+      "type": "isolation",
+      "description": "Analyst categorizes risks by severity with justification",
+      "user_prompt": "Analyze findings revealing no monitoring, missing tests, and outdated documentation",
+      "setup_context": "Investigator findings include: no monitoring config, 5/8 test files, docs last updated 6 months ago",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Risk Assessment section categorizes risks by severity (High/Medium/Low) with explicit justification for each severity level. No monitoring is rated higher severity than outdated docs. Each risk includes likelihood assessment.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-analyst-004",
+      "component": "forge-analyst",
+      "type": "isolation",
+      "description": "Analyst sets confidence level accurately based on data gaps",
+      "user_prompt": "Analyze findings where Investigator reported multiple significant gaps",
+      "setup_context": "Investigator findings include 4+ items in Gaps Identified section (no perf logs, no coverage reports, no incident history, no monitoring data)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Confidence Assessment is Medium or Low (not High). Rationale explicitly references the Investigator's gaps. Specifies what additional data would increase confidence.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-analyst-005",
+      "component": "forge-analyst",
+      "type": "isolation",
+      "description": "Analyst adapts analysis strategy based on report type",
+      "user_prompt": "Analyze investigator findings for a feasibility study on migrating to event-driven architecture",
+      "setup_context": "Report brief specifies report_type='feasibility-study'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Analysis follows feasibility-study strategy: focuses on technical viability, resource requirements, integration challenges, risk factors, alternative approaches. Does NOT follow architecture-review or performance-analysis strategy patterns.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-synthesizer-001",
+      "component": "forge-synthesizer",
+      "type": "isolation",
+      "description": "Synthesizer produces complete report with frontmatter and narrative body",
+      "user_prompt": "Synthesize an architecture review report from investigation and analysis",
+      "setup_context": "Synthesizer receives Investigator findings + Analyst interpretation for architecture review of notification system",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output contains complete YAML frontmatter (title, type, report_type, status, category, topic, related_entities, coverage_period, investigators, confidence, created, updated) AND markdown body with sections matching architecture-review template (Current Architecture, Strengths, Weaknesses, Recommendations, Migration Path).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-synthesizer-002",
+      "component": "forge-synthesizer",
+      "type": "isolation",
+      "description": "Synthesizer produces narrative prose, not copy-paste of agent outputs",
+      "user_prompt": "Synthesize a technical deep dive from raw findings and analysis",
+      "setup_context": "Synthesizer receives bullet-point Investigator findings and structured Analyst output",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Report body uses flowing narrative prose, not bullet-point lists copied from agent outputs. Sections contain paragraphs, not just reformatted agent content. The example bad/good synthesis pattern from the agent spec is followed (good pattern, not bad).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-synthesizer-003",
+      "component": "forge-synthesizer",
+      "type": "isolation",
+      "description": "Synthesizer handles 2-agent pipeline (no analyst input)",
+      "user_prompt": "Synthesize an executive summary from investigation findings only",
+      "setup_context": "Report type is executive-summary, so Analyst was skipped. Synthesizer receives only Investigator findings.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Report follows executive-summary structure (Overview paragraph, Key Findings 3-5 bullets, Recommendations, Next Steps). Uses business-focused tone. Does NOT reference or expect Analyst input. Recommendations are derived directly from Investigator findings.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-synthesizer-004",
+      "component": "forge-synthesizer",
+      "type": "isolation",
+      "description": "Synthesizer references missing templates gracefully",
+      "user_prompt": "Synthesize a performance analysis report",
+      "setup_context": "Template file at skills/report-methodology/templates/performance-analysis-template.md does NOT exist",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Synthesizer either falls back to the inline Synthesis Strategies section for performance-analysis structure (Performance Metrics, Bottlenecks, Root Causes, Optimization Opportunities, Implementation Plan) OR acknowledges the missing template and uses the strategy guidance. Does NOT fail silently or produce unstructured output.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-synthesizer-005",
+      "component": "forge-synthesizer",
+      "type": "isolation",
+      "description": "Synthesizer enforces formatting rules",
+      "user_prompt": "Synthesize a quarterly review report",
+      "setup_context": "Agent receives findings with tables and dash-separated content",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output follows formatting rules: no dashes as thought separators, no tables in report body, substantive bullets (1-2 sentences each), prose for narrative sections, blank lines between major sections, proper heading hierarchy (## for sections, ### for subsections).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-contract3-001",
+      "component": "forge-investigator",
+      "type": "ecosystem",
+      "description": "Investigator uses Product Forge card references to scope investigation",
+      "contract": "Contract 3",
+      "user_prompt": "Generate an architecture review for the billing module — here are the relevant cards: billing-initiative, story-001-payment-processing",
+      "setup_context": "Report brief includes cards=['billing-initiative', 'story-001-payment-processing']. Card files exist in cards/ directory.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Investigator reads the referenced Product Forge card files and uses their content to scope the investigation. Card content (affected_systems, acceptance criteria, technical details) influences which files and directories are examined.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Investigation produces complete structured findings with all required sections. Card references appear in Data Sources Examined.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-contract3-002",
+      "component": "forge-investigator",
+      "type": "ecosystem",
+      "description": "Investigator validates product name against Forge Memory taxonomy",
+      "contract": "Contract 3",
+      "user_prompt": "Generate a performance analysis for the WebApp product",
+      "setup_context": "Report brief includes products=['WebApp']. Forge Memory taxonomy stores flat arrays: products=['WebApp','MobileApp'], modules=['Billing','Auth','Notifications']. NOTE: No product-to-module mapping exists in taxonomy (confirmed by memory-eval). Validation is limited to name existence, not hierarchical scoping.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Investigator validates 'WebApp' exists in Forge Memory taxonomy via forge memory get-taxonomy. Canonical name is used in investigation scope. NOTE: Hierarchical scoping (which modules belong to WebApp) is NOT possible with current flat taxonomy model — this is a data model limitation, not a Report Forge deficiency.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Investigation is scoped to the product name provided and produces complete findings.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-contract5-001",
+      "component": "forge-synthesizer",
+      "type": "ecosystem",
+      "description": "Generated report suggests downstream handoffs (tasks, card updates)",
+      "contract": "Contract 5",
+      "user_prompt": "Generate a technical deep dive on the authentication module",
+      "setup_context": "Report has been synthesized with recommendations including action items",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Report output or post-generation summary mentions that action items could be tracked as tasks via /tasks-forge:add, and that recommendations could inform product card updates via /product-forge:update.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Report is complete, well-structured, and contains actionable recommendations.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-contract6-001",
+      "component": "forge-investigator",
+      "type": "ecosystem",
+      "description": "Investigator checks Forge Memory for unrecognized terms",
+      "contract": "Contract 6",
+      "user_prompt": "Generate a deep-dive on the mobile app performance issues",
+      "setup_context": "'mobile app' is an informal term. Forge Memory has canonical product name 'MobileApp' with defined modules.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Before investigation begins, 'mobile app' is resolved against Forge Memory taxonomy to canonical name 'MobileApp'. If resolution fails, user is asked to clarify. Canonical name is used throughout investigation.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Investigation proceeds with correctly scoped product name and produces complete findings.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-IF3-001",
+      "component": "forge-synthesizer",
+      "type": "ecosystem",
+      "description": "Report suggests Cognitive Forge exploration for decision-worthy findings",
+      "contract": "Implied Flow 3",
+      "user_prompt": "Generate an architecture review that surfaces a significant design decision",
+      "setup_context": "Analyst identifies a critical architectural risk requiring a decision (e.g., monolith vs. microservices migration)",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Report recommendations or post-generation output includes suggestion to explore the decision further via /cognitive-forge:debate or /cognitive-forge:explore. The specific decision topic is named.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Report correctly synthesizes the architectural risk and provides clear recommendations.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-report-IF4-001",
+      "component": "forge-synthesizer",
+      "type": "ecosystem",
+      "description": "Report Forge can accept Tasks Forge triage data as input context",
+      "contract": "Implied Flow 4",
+      "user_prompt": "Generate a status report based on our recent task triage showing 5 blocked and 12 overdue tasks",
+      "setup_context": "User provides triage summary data from Tasks Forge as input context for report generation",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Generate command accepts triage data as input context and passes it to Investigator as part of the report brief. The triage findings appear in the generated report.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Report is generated as quarterly-review or executive-summary type incorporating the triage data meaningfully.",
+          "weight": 0.7
+        }
+      }
+    }
+  ]
+}

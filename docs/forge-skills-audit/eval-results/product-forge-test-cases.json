@@ -1,0 +1,880 @@
+{
+  "plugin": "product-forge",
+  "eval_date": "2026-03-09",
+  "eval_candidates": [
+    "create (orchestrator)",
+    "forge-initiative (agent)",
+    "forge-story (agent)",
+    "forge-intake (agent)",
+    "jira-sync system (jira-sync skill + push-to-jira + pull-from-jira)"
+  ],
+  "contracts": ["2", "3", "4", "5", "6", "IF1"],
+  "test_cases": [
+    {
+      "id": "isolation-create-001",
+      "component": "create",
+      "category": "isolation",
+      "description": "Card type detection from explicit user signal",
+      "user_prompt": "Create a story for implementing user authentication",
+      "setup_context": "cards/ directory initialized, no existing cards",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Detects 'story' card type from signal word 'story'. Proceeds to Phase 2 context assembly without asking for type clarification.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-002",
+      "component": "create",
+      "category": "isolation",
+      "description": "Ambiguous card type triggers disambiguation prompt",
+      "user_prompt": "Create a card for user authentication",
+      "setup_context": "cards/ directory initialized",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Detects ambiguity (no signal words like 'story', 'epic', 'initiative'). Presents the 6-option disambiguation prompt and waits for user selection before proceeding.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-003",
+      "component": "create",
+      "category": "isolation",
+      "description": "Type override via --type flag bypasses detection",
+      "user_prompt": "/product-forge:create user authentication --type epic",
+      "setup_context": "cards/ directory initialized",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Uses 'epic' type directly from --type flag. Does not run card type detection logic. Proceeds to Phase 2 context assembly.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-004",
+      "component": "create",
+      "category": "isolation",
+      "description": "Agent recruitment spawns correct agent via Task tool",
+      "user_prompt": "Create an initiative for the notification system overhaul",
+      "setup_context": "cards/ directory initialized, product taxonomy available",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Spawns Task tool with subagent_type 'general-purpose', prompt references 'product-forge/agents/forge-initiative.md', concept brief includes user description, detected type, and taxonomy data.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-005",
+      "component": "create",
+      "category": "isolation",
+      "description": "User approval gate presents draft and waits for confirmation",
+      "user_prompt": "Create a story for implementing user authentication",
+      "setup_context": "Agent returns draft content with title, frontmatter, and sections",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Presents formatted draft with '## Draft Story: [Title]' header, all card sections, and 'Create this card? Confirm, request revisions, or cancel.' prompt. Does not call forge-lib until user confirms.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-006",
+      "component": "create",
+      "category": "isolation",
+      "description": "Revision loop feeds changes back to agent",
+      "user_prompt": "The acceptance tests need more edge cases",
+      "setup_context": "Draft story card presented, user requests revisions",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Spawns follow-up Task tool call with revision instructions. Presents revised draft. Repeats approval gate.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-007",
+      "component": "create",
+      "category": "isolation",
+      "description": "Persistence calls forge-lib with correct arguments",
+      "user_prompt": "Confirm (after draft approval)",
+      "setup_context": "User approved a Story card draft titled 'Implement User Authentication'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Calls 'forge card create story \"Implement User Authentication\" --data '{...}' --directory .' with JSON frontmatter from agent. Parses response envelope. Reports filename from response.data.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-008",
+      "component": "create",
+      "category": "isolation",
+      "description": "Relationship linking for child cards",
+      "user_prompt": "Create a story for the notification template builder under EPIC notification-system-overhaul",
+      "setup_context": "Epic card 'notification-system-overhaul.md' exists in cards/epics/",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After card creation, calls 'forge relationship link notification-system-overhaul.md {new-story-filename}.md'. On link failure, reports card was created but linking failed, with manual command suggestion.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-009",
+      "component": "create",
+      "category": "isolation",
+      "description": "Batch story generation from Epic breakdown",
+      "user_prompt": "Break down the notification system epic into stories",
+      "setup_context": "Epic card exists with scope definition and story candidates",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Spawns forge-story agent with batch flag. Agent returns multiple story objects. Each story gets individual 'forge card create story' call. Confirmation lists all created story files.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-create-010",
+      "component": "create",
+      "category": "isolation",
+      "description": "No description provided triggers follow-up question",
+      "user_prompt": "/product-forge:create",
+      "setup_context": "cards/ directory initialized",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Asks 'What would you like to create?' and waits for user response before proceeding to type detection.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-001",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Card creation resolves taxonomy terms from Forge Memory",
+      "user_prompt": "Create a story card for improving the PSR dashboard for Acme Corp",
+      "setup_context": "Forge Memory taxonomy contains: products=['PSR', 'WebApp'], clients=['Acme Corp']",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Phase 2 context assembly queries taxonomy via 'forge memory get-taxonomy products' (or product-context skill resolves 'PSR' and 'Acme Corp'). Resolved names appear in the card's product/client frontmatter fields.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Story card is created with correct type detection, agent recruitment, approval gate, and persistence.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-002",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Unknown terms trigger memory addition suggestion",
+      "user_prompt": "Create an initiative for the Phoenix project",
+      "setup_context": "Forge Memory taxonomy does NOT contain 'Phoenix project'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "When 'Phoenix project' is not found in taxonomy, output includes suggestion: 'Phoenix project isn't in organizational memory yet. Would you like me to add it with /forge-memory:remember?' or equivalent.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Initiative card creation proceeds with freeform product value. Card is created successfully even without taxonomy match.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-003",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Card creation suggests Jira push as follow-up",
+      "user_prompt": "Create an epic for the authentication overhaul",
+      "setup_context": "cards/ directory initialized, no Jira link exists",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After card creation confirmation (Phase 7), output includes suggestion to push to Jira: 'Push to Jira with /product-forge:push-to-jira' or equivalent specific command reference.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Epic card created correctly with all phases executed.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-004",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Card creation suggests Tasks Forge for implementation tracking",
+      "user_prompt": "Create a story for implementing the notification preferences UI",
+      "setup_context": "cards/ directory initialized",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After story creation, output suggests tracking implementation with '/tasks-forge:add' or similar specific Tasks Forge command.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Story card created correctly.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-005",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Acronym in card request triggers memory-first lookup",
+      "user_prompt": "Create a story for the PSR v2 migration",
+      "setup_context": "Forge Memory taxonomy may or may not contain 'PSR'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Before proceeding with card creation, checks Forge Memory for 'PSR'. If found, uses canonical expansion. If not found, asks user to clarify and offers to remember it.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Card type correctly detected as 'story'. Creation proceeds after taxonomy resolution.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-create-006",
+      "component": "create",
+      "category": "ecosystem",
+      "contract": "IF1",
+      "description": "Post-creation Jira sync loop suggestion",
+      "user_prompt": "Create an epic for the authentication overhaul",
+      "setup_context": "cards/ directory initialized",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After creation, suggests push-to-jira AND notes that future Jira changes can be pulled back, establishing the sync loop awareness.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Epic card created correctly.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-initiative-001",
+      "component": "forge-initiative",
+      "category": "isolation",
+      "description": "Create mode produces all required sections with executive tone",
+      "user_prompt": "Create an initiative for overhauling the notification system to support multi-channel delivery",
+      "setup_context": "Agent receives concept brief with user description, product taxonomy with 'Notification Service' product",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output includes: title, frontmatter (status=Draft, product, confidence), and all required sections (background, proposed_solution, affected_systems, potential_requirements, additional_considerations, open_questions). Background and proposed_solution are 2-3 paragraphs of prose (not bullets). Tone is executive/business-focused, not technical jargon.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-initiative-002",
+      "component": "forge-initiative",
+      "category": "isolation",
+      "description": "Affected systems references taxonomy correctly",
+      "user_prompt": "Create an initiative for cross-platform mobile support",
+      "setup_context": "Product taxonomy contains: products=['WebApp', 'MobileApp', 'API Gateway'], modules=['Auth', 'Billing', 'Notifications']",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Affected_systems section lists system names that match taxonomy entries (e.g., 'MobileApp', 'API Gateway') rather than inventing new names. Uses canonical names from provided taxonomy.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-initiative-003",
+      "component": "forge-initiative",
+      "category": "isolation",
+      "description": "Ambiguous brief triggers assumption statement",
+      "user_prompt": "Create an initiative for improving performance",
+      "setup_context": "Vague brief with no product/module context",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent states assumptions clearly (e.g., 'Assuming this refers to application performance across all products') rather than guessing silently. Asks for clarification or proceeds with stated assumptions.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-initiative-004",
+      "component": "forge-initiative",
+      "category": "isolation",
+      "description": "Review mode produces quality assessment with correct criteria",
+      "user_prompt": "Review the billing initiative card",
+      "setup_context": "Existing initiative card with Background, Proposed Solution, Affected Systems, Potential Requirements, Open Questions",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output includes strengths, gaps, suggestions, and verdict (Ready/Needs Work/Major Revision). Reviews against specific criteria: Background clarity, solution-problem alignment, taxonomy accuracy of affected_systems, requirements estimability, open questions specificity.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-initiative-005",
+      "component": "forge-initiative",
+      "category": "isolation",
+      "description": "Content guidelines compliance (no dashes, no tables, prose paragraphs)",
+      "user_prompt": "Create an initiative for the data warehouse migration",
+      "setup_context": "Standard concept brief",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Generated content uses no dashes as thought separators, no tables, prose paragraphs for Background and Proposed Solution (not bullet lists), and substantive bullets (1-2 sentences minimum) for list sections.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-initiative-001",
+      "component": "forge-initiative",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Initiative affected_systems uses taxonomy canonical names",
+      "user_prompt": "Create an initiative for improving the billing module performance",
+      "setup_context": "Taxonomy contains module='Billing' (canonical), product='WebApp'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Affected_systems section uses 'Billing' (canonical) not 'billing module' or variations. Product field uses 'WebApp' from taxonomy.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Initiative created with correct structure, executive tone, and all required sections.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-story-001",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Create mode produces engineering-precise story with acceptance tests",
+      "user_prompt": "Create a story for building a notification template builder UI",
+      "setup_context": "Parent epic exists, product taxonomy available",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output includes: title (user story or directive format), frontmatter (status=Draft, product, parent), sections (background 1-2 paragraphs, requirements with UI behavior and business rules, acceptance_tests with 4-6 named tests in 'Test N: Name / Steps / Expected Result' format, optional implementation_context). Acceptance tests cover happy path, edge cases, and error states.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-story-002",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Acceptance tests use named test format consistently",
+      "user_prompt": "Create a story for implementing password reset flow",
+      "setup_context": "Standard concept brief",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Each acceptance test follows format: 'Test N: [Descriptive Name]' with Steps and Expected Result subsections. Tests are specific and testable (not vague). At least one happy path, one edge case, one error state test.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-story-003",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Business rules written from business perspective, not implementation",
+      "user_prompt": "Create a story for adding role-based access control to the dashboard",
+      "setup_context": "Standard concept brief",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Business rules describe 'what' from business perspective (e.g., 'Admins can view all dashboards; regular users see only their team's data') NOT implementation details (e.g., 'Check user.role in middleware before rendering'). No database fields, API endpoints, or code-level references in business rules.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-story-004",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Atomic scope validation (1-3 days)",
+      "user_prompt": "Create a story for rebuilding the entire reporting system with new charts, filters, export, and scheduling",
+      "setup_context": "Overly broad request",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent identifies scope is too large (not completable in 1-3 days). Either suggests breaking into multiple stories or flags that scope exceeds atomic work item guidance. Does not silently create an oversized story.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-story-005",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Batch generation produces consistent quality across stories",
+      "user_prompt": "Break down the authentication epic into stories",
+      "setup_context": "Parent epic with scope covering login, registration, password reset, session management",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Returns array of story objects. Each story has consistent structure (title, frontmatter, all sections). All stories reference same parent epic. Each story has unique, non-overlapping scope. All use named test format for acceptance tests.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-story-006",
+      "component": "forge-story",
+      "category": "isolation",
+      "description": "Title format selection (user story vs directive)",
+      "user_prompt": "Create a story for adding database indexes to improve query performance",
+      "setup_context": "Backend/infrastructure work",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Uses Simple Directive Format (brief, action-oriented, 5-10 words) for backend/infrastructure work, NOT user story format. E.g., 'Add Database Indexes for Query Performance' rather than 'As a developer, I want database indexes...'",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-story-001",
+      "component": "forge-story",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Story references product module from taxonomy",
+      "user_prompt": "Create a story for fixing the billing calculation bug",
+      "setup_context": "Taxonomy contains module='Billing', product='WebApp'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Story frontmatter uses canonical module name 'Billing' from taxonomy, not user's informal 'billing calculation'. Product field set to 'WebApp' if billing belongs to WebApp in taxonomy.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Story created with correct structure, engineering tone, acceptance tests.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-story-002",
+      "component": "forge-story",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Batch generation uses consistent taxonomy across all stories",
+      "user_prompt": "Break down the billing module epic into stories",
+      "setup_context": "Taxonomy contains module='Billing', product='WebApp'. Parent epic references these.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "All generated stories consistently use 'Billing' module and 'WebApp' product from taxonomy. No story uses a variant name.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Batch of stories generated with consistent structure, each with unique scope.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-story-003",
+      "component": "forge-story",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Story creation suggests implementation task tracking",
+      "user_prompt": "Create a story for implementing the notification preferences UI",
+      "setup_context": "Story created successfully",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After story creation, suggests tracking implementation tasks in Tasks Forge with specific command reference (e.g., '/tasks-forge:add').",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Story created correctly with all required sections.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-001",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Initial assessment acknowledges provided context",
+      "user_prompt": "I need to gather requirements for a new dashboard feature. Here's a mockup screenshot and some notes from the product meeting.",
+      "setup_context": "User provides screenshot and meeting notes as context",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Phase 1 initial assessment references the provided screenshot and notes specifically. Skips questions where answers are evident from provided materials. Acknowledges what's already known before asking for more.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-002",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Guided interview asks 3-4 questions per batch",
+      "user_prompt": "Start an intake for the notification preferences feature",
+      "setup_context": "No prior context provided",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "First batch contains 3-4 related questions (not 1, not 7), grouped by topic area (likely Problem & Driver first). Questions are open-ended and conversational, not a checklist.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-003",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Red flag probing triggers on vague language",
+      "user_prompt": "It's just a simple toggle for turning notifications on and off",
+      "setup_context": "Mid-interview, user gives vague response",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent recognizes 'just a simple toggle' as a red flag phrase. Probes deeper: What are the defaults? Who can change it? What happens to in-flight notifications? Does it apply per-channel or globally? Does not accept the vague answer at face value.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-004",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Red flag: 'handle that later' captured as Open Question",
+      "user_prompt": "We'll handle the migration later",
+      "setup_context": "Mid-interview, user defers a topic",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent captures 'migration' as an Open Question rather than dropping it. Notes it in the intake card under open_questions or risks_dependencies. Does not push the user but acknowledges the deferral.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-005",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Seven topic areas covered adaptively",
+      "user_prompt": "Full intake interview for a new CRM integration feature",
+      "setup_context": "Complete interview flow across multiple exchanges",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Over the course of the interview, all seven topic areas are addressed: Problem & Driver, Scope Boundaries, Solution Details, Defaults & Behaviors, Technical Considerations, Open Questions, Card Type Manifest. Topics are covered adaptively (skipping known answers, probing gaps) not as a rigid checklist.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-006",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Confirmation summary produces correct intake card structure",
+      "user_prompt": "That covers everything, let's summarize",
+      "setup_context": "Interview complete with all topic areas covered",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Phase 4 output includes: title in INTAKE-{Product}-{Feature} format, frontmatter (status=Draft, product, module, client, source, requested_by, priority=null), and sections (intake_summary, problem_statement, proposed_solution, in_scope, out_of_scope, affected_systems, user_impact, plus optional sections).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-intake-007",
+      "component": "forge-intake",
+      "category": "isolation",
+      "description": "Handles 'I don't know' gracefully",
+      "user_prompt": "I'm not sure about the technical dependencies",
+      "setup_context": "Mid-interview, technical considerations topic",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent captures 'technical dependencies' as an Open Question. Does not push the user or make them feel inadequate. Moves to next topic gracefully.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-intake-001",
+      "component": "forge-intake",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Intake interview uses taxonomy for context enrichment",
+      "user_prompt": "Start an intake for improving the PSR dashboard for Acme Corp",
+      "setup_context": "Taxonomy contains products=['PSR'], clients=['Acme Corp']",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Agent resolves 'PSR' against taxonomy during interview. Uses canonical product name in the intake card. Tags 'Acme Corp' as client from taxonomy.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Interview proceeds correctly with all phases and topic coverage.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-intake-002",
+      "component": "forge-intake",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Intake completion suggests creating Product Forge cards",
+      "user_prompt": "That covers everything, let's summarize",
+      "setup_context": "Interview complete, card type manifest identifies Initiative + 3 Stories",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After intake card creation, suggests creating Product Forge cards from the requirements: 'Based on this intake, you could create an Initiative with /product-forge:create and break it into Stories.' References specific card types identified in the Card Type Manifest topic.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Intake card created with all required sections and correct structure.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-intake-003",
+      "component": "forge-intake",
+      "category": "ecosystem",
+      "contract": "Contract 4",
+      "description": "Intake identifies unresolved decision, suggests Cognitive Forge debate",
+      "user_prompt": "We're torn between building this in-house or using a third-party service",
+      "setup_context": "Mid-interview, user surfaces unresolved decision",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Agent captures the build-vs-buy decision as an Open Question AND suggests: 'This decision could benefit from structured analysis with /cognitive-forge:debate' or equivalent.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Decision is captured in intake card under open_questions or risks_dependencies.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-push-001",
+      "component": "push-to-jira",
+      "category": "isolation",
+      "description": "Create mode: new card pushed to Jira successfully",
+      "user_prompt": "/product-forge:push-to-jira notification-system-overhaul",
+      "setup_context": "Initiative card exists with no jira_card field",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Phase 1 retrieves card via forge-lib. Phase 2 detects no jira_card (Create Mode). Phase 3A resolves parent if applicable. Phase 4A builds payload with correct type mapping (Initiative). Phase 5A calls jira_create_issue MCP. Phase 6A updates card frontmatter with jira_card, jira_url, jira_last_synced via forge-lib.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-push-002",
+      "component": "push-to-jira",
+      "category": "isolation",
+      "description": "Update mode: confirmation prompt before overwrite",
+      "user_prompt": "/product-forge:push-to-jira notification-system-overhaul",
+      "setup_context": "Card exists with jira_card='PROJ-123', --force NOT specified",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Detects existing jira_card (Update Mode). Presents confirmation showing: linked issue key, Jira URL, summary to be pushed, line count of description. Waits for user confirmation before calling jira_update_issue.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-push-003",
+      "component": "push-to-jira",
+      "category": "isolation",
+      "description": "Parent not linked warning in create mode",
+      "user_prompt": "/product-forge:push-to-jira story-001-notification-template",
+      "setup_context": "Story card has parent='notification-system-overhaul', parent card has no jira_card",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Retrieves parent card, detects no jira_card. Presents warning about parent not linked. Suggests /link-to-jira for parent. Asks user to proceed anyway or exit. On proceed, creates Jira issue without parent link.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-push-004",
+      "component": "push-to-jira",
+      "category": "isolation",
+      "description": "Force flag skips confirmation in update mode",
+      "user_prompt": "/product-forge:push-to-jira notification-system-overhaul --force",
+      "setup_context": "Card exists with jira_card='PROJ-123'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Detects Update Mode. Skips confirmation prompt due to --force. Immediately calls jira_update_issue. Updates jira_last_synced.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-push-005",
+      "component": "push-to-jira",
+      "category": "isolation",
+      "description": "Type mapping: Decision/Intake/Checkpoint map to Task",
+      "user_prompt": "/product-forge:push-to-jira decision-graphql-migration",
+      "setup_context": "Decision card exists with no jira_card",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Maps Decision card type to 'Task' issuetype in Jira payload (not 'Decision'). Creates Jira Task issue correctly.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-001",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "Pull by filename with diff presentation",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Card linked to PROJ-123, Jira issue has updated title and description",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Phase 1 retrieves card, extracts jira_card. Phase 2 calls jira_get_issue MCP. Phase 3 compares fields and detects title+description changes. Phase 4 presents diff with -/+ format. Waits for user approval before Phase 5 apply.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-002",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "Pull by Jira key lookup",
+      "user_prompt": "/product-forge:pull-from-jira PROJ-123",
+      "setup_context": "Local card exists linked to PROJ-123",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Detects Jira key format. Queries all cards via forge-lib. Finds card with matching jira_card='PROJ-123'. Proceeds with normal pull flow.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-003",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "No changes detected exits cleanly",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Card linked to PROJ-123, no changes in Jira since last sync",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After comparing all fields, reports 'No changes detected in Jira issue PROJ-123. Local card is already up to date.' Exits without modifying card.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-004",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "Status independence: Jira status stored in jira_status, not status",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Card has status='Draft', Jira issue has status='In Progress'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Jira status 'In Progress' stored in jira_status field. Local status 'Draft' preserved unchanged. Diff presentation explicitly notes: 'Stored in jira_status field; local status field unchanged.'",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-005",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "Estimate conversion from seconds to hours",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Jira issue has timeestimate=144000 (40 hours)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Converts 144000 seconds to 40.0 hours (144000/3600). Stores as estimate_hours=40.0 in card frontmatter. Presents in diff as '+ Jira: 40 hours'.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-jira-pull-006",
+      "component": "pull-from-jira",
+      "category": "isolation",
+      "description": "Card not linked to Jira exits with guidance",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Card exists but has no jira_card field",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Reports 'Card is not linked to Jira. Use /link-to-jira first to establish a connection.' Exits without modification.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-jira-001",
+      "component": "push-to-jira",
+      "category": "ecosystem",
+      "contract": "IF1",
+      "description": "Post-push suggests pull-from-jira for future changes",
+      "user_prompt": "/product-forge:push-to-jira notification-system-overhaul",
+      "setup_context": "Card pushed successfully to Jira",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After successful push, notes: 'If this issue gets updated in Jira, you can pull changes back with /product-forge:pull-from-jira' or equivalent.",
+          "level": "specificity",
+          "weight": 0.5
+        },
+        "isolation_correctness": {
+          "assertion": "Push completes successfully with correct MCP call and frontmatter update.",
+          "weight": 0.5
+        }
+      }
+    },
+    {
+      "id": "ecosystem-jira-002",
+      "component": "pull-from-jira",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Post-pull suggests notifying downstream consumers",
+      "user_prompt": "/product-forge:pull-from-jira notification-system-overhaul",
+      "setup_context": "Card updated from Jira with significant changes",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After applying Jira changes, suggests reviewing downstream impact: related tasks in Tasks Forge, or re-push if local changes were made subsequently. Any mention of downstream plugins counts.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Pull completes correctly with diff presentation and field updates.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-jira-003",
+      "component": "jira-sync",
+      "category": "ecosystem",
+      "contract": "Contract 2",
+      "description": "Jira sync uses taxonomy for field enrichment",
+      "user_prompt": "Sync the billing story with Jira",
+      "setup_context": "Taxonomy contains module='Billing', product='WebApp'",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "During sync operations, taxonomy-derived fields (product, module) are preserved as local-only fields and not synced to Jira. The skill explicitly documents that product/module/client are 'Not synced to Jira' (local-only fields).",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Field mapping correctly handles all documented fields. Status independence maintained.",
+          "weight": 0.7
+        }
+      }
+    }
+  ]
+}
