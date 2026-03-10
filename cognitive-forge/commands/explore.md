@@ -44,6 +44,10 @@ Does this capture it? Anything I should adjust before we dig in?
 
 Wait for user confirmation. Do not proceed until the user confirms or corrects.
 
+### Resolve Domain Terms
+
+Before proceeding, check Forge Memory for any domain terms, acronyms, or shorthand in the user's concept description. Use `/forge-memory:recall` to resolve unfamiliar terms against organizational taxonomy. If a term resolves, use the canonical name in the exploration map.
+
 ## Phase 2: Decomposition
 
 Apply **Cognitive Decomposition** to break the concept into its constituent parts:
@@ -180,6 +184,15 @@ The synthesis should address:
 - What tensions remain unresolved?
 - What is the refined understanding?
 - What are the concrete next steps?
+
+## Phase 6b: Suggest Next Steps
+
+After delivering the synthesis, suggest relevant downstream actions based on what emerged:
+
+- Action items identified → "Track these with `/tasks-forge:add`"
+- Decision reached → "Capture this as a decision card with `/product-forge:create --type decision`"
+- New terminology or concepts defined → "Add these to organizational memory with `/forge-memory:remember`"
+- Topic warrants adversarial testing → "Test this further with `/cognitive-forge:debate`"
 
 ## Phase 7: Persist Session
 

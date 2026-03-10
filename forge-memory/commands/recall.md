@@ -116,6 +116,11 @@ Source: memory/[path]
 Source: memory/context/[file]
 ```
 
+**After presenting results, suggest relevant next steps based on content type:**
+- Project/product info → "Would you like to create a Product Forge card? `/product-forge:create`"
+- Rich multi-source results → "There's enough context here for a focused report: `/report-forge:generate`"
+- Person info with task context → "This person's context is available for task and card enrichment."
+
 ### Phase 4: Handle Not Found
 
 If not found:

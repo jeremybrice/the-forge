@@ -49,6 +49,10 @@ Is this accurate, or should I adjust my understanding before we begin?
 
 Wait for user confirmation. Do not proceed until the user confirms or corrects.
 
+### Step 2b: Resolve Domain Terms
+
+Before proceeding, check Forge Memory for any domain terms, acronyms, or shorthand in the user's concept description. Use `/forge-memory:recall` to resolve unfamiliar terms against organizational taxonomy. If a term resolves, use the canonical name in the concept brief.
+
 ### Step 3: Assess complexity for recruitment
 
 Evaluate whether to recruit optional agents:
@@ -239,6 +243,19 @@ After all agent perspectives (and any cross-examination), produce the final synt
 - **Honor the strongest critique** — if the Challenger found a real weakness, it must appear in the synthesis even if other agents were positive.
 - **Preserve surprise** — if an agent produced an unexpected insight, highlight it.
 - **Be actionable** — the user should leave with specific next steps, not just analysis.
+
+## Phase 5b: Suggest Next Steps
+
+After delivering the synthesis, suggest relevant downstream actions based on what emerged:
+
+- If the debate produced a clear decision or recommendation:
+  "This debate produced a clear recommendation. Capture it as a decision card with `/product-forge:create --type decision`."
+
+- If the synthesis includes actionable next steps:
+  "These next steps could be tracked as tasks with `/tasks-forge:add`."
+
+- If key insights should be preserved in organizational memory:
+  "Key insights from this debate could enrich organizational memory with `/forge-memory:remember`."
 
 ## Phase 6: Persist Session
 

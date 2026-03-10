@@ -1,6 +1,6 @@
 ---
 name: memory-management
-description: Tiered memory lookup strategy for decoding workplace shorthand, acronyms, and internal language. Transform "ask todd about PSR" into full context using taxonomy and knowledge files.
+description: Decodes workplace shorthand, acronyms, nicknames, and internal language into full context using a tiered lookup strategy. Use this skill when the user mentions people, projects, or terms by informal names — even if they don't explicitly ask for a definition. Also activates when any plugin encounters unrecognized entity names that need resolution against organizational memory.
 ---
 
 # Memory Management

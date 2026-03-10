@@ -81,7 +81,12 @@ Before spawning agents, establish parameters:
    - coverage_period: `--coverage-start` and `--coverage-end`
    - related_entities: `--products`, `--modules`, `--clients`, `--teams`, `--cards`
 
-5. **Confirm scope** with user:
+5. **Validate entities** against Forge Memory taxonomy:
+   - Check each product, module, client, and team name against `forge memory get-taxonomy`
+   - If a term resolves, use the canonical name
+   - If unknown, ask user to clarify and offer `/forge-memory:remember`
+
+6. **Confirm scope** with user:
    ```
    ## Report Brief
 
@@ -314,6 +319,9 @@ The report has been created. You can:
 - Update it: /report-forge:update {filename}
 - List all reports: /report-forge:list
 - View the file directly: {file_path}
+- Track action items as tasks: /tasks-forge:add
+- Update related product cards: /product-forge:update
+- Explore complex decisions deeper: /cognitive-forge:debate {topic}
 ```
 
 **Do not display the full report content** (it's already saved to file).

@@ -216,6 +216,8 @@ Updated fields:
 
 Customize the "Updated fields" list to show only the fields that actually changed.
 
+If you make further local changes, push them with `/product-forge:push-to-jira {filename}`.
+
 ---
 
 ## Field Mapping Details

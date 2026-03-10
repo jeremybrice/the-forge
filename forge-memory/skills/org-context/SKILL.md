@@ -1,6 +1,6 @@
 ---
 name: org-context
-description: Organizational taxonomy (products, modules, clients, teams, integrations) provides validated vocabulary for all commands. Enables Claude to resolve shorthand like "the mobile app" or "Acme" to canonical names.
+description: Resolves informal product, team, client, and module references to canonical names using organizational taxonomy. Use this skill when any command needs to validate an entity name against the org's vocabulary — even if the user doesn't explicitly mention taxonomy or org context. Triggers on shorthand like "the mobile app", "billing stuff", or "Acme" in any plugin context.
 ---
 
 # Org Context
