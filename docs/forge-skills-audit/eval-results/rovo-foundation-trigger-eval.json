@@ -1,0 +1,82 @@
+[
+  {
+    "query": "build me a Rovo agent for ticket triage",
+    "should_trigger": true
+  },
+  {
+    "query": "what's the TCREI framework?",
+    "should_trigger": false
+  },
+  {
+    "query": "configure a Confluence agent for our knowledge base",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I set up a Jira agent with Rovo?",
+    "should_trigger": true
+  },
+  {
+    "query": "what knowledge sources can I connect to a Rovo agent?",
+    "should_trigger": true
+  },
+  {
+    "query": "create a Rovo agent that automatically categorizes support tickets",
+    "should_trigger": true
+  },
+  {
+    "query": "what are the validation rules for Rovo agent configuration?",
+    "should_trigger": true
+  },
+  {
+    "query": "help me write instructions for a Rovo agent that summarizes PRDs",
+    "should_trigger": true
+  },
+  {
+    "query": "what governance model should I use for our Rovo agents?",
+    "should_trigger": true
+  },
+  {
+    "query": "design a Rovo agent that monitors Confluence pages for outdated content",
+    "should_trigger": true
+  },
+  {
+    "query": "create a story card for the notification system",
+    "should_trigger": false
+  },
+  {
+    "query": "what tasks are blocked this sprint?",
+    "should_trigger": false
+  },
+  {
+    "query": "who is the lead on the infrastructure team?",
+    "should_trigger": false
+  },
+  {
+    "query": "decode: PSR stands for what in our org?",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a report on team velocity",
+    "should_trigger": false
+  },
+  {
+    "query": "help me build a chatbot using the OpenAI API",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a GitHub Actions workflow for automated testing",
+    "should_trigger": false
+  },
+  {
+    "query": "what products does our company sell?",
+    "should_trigger": false
+  },
+  {
+    "query": "explain the difference between agents and assistants in AI",
+    "should_trigger": false
+  },
+  {
+    "query": "write a Python script to automate Jira ticket creation via REST API",
+    "should_trigger": false
+  }
+]

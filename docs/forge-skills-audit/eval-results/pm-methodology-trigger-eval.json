@@ -1,0 +1,22 @@
+[
+  {"query": "help me write a story card for the checkout redesign", "should_trigger": true},
+  {"query": "break this initiative into epics", "should_trigger": true},
+  {"query": "what makes a good acceptance test?", "should_trigger": true},
+  {"query": "I need to create an epic for the platform migration", "should_trigger": true},
+  {"query": "how should I structure acceptance criteria for this feature?", "should_trigger": true},
+  {"query": "review my story card — is the scope right?", "should_trigger": true},
+  {"query": "what's the difference between an initiative, epic, and story?", "should_trigger": true},
+  {"query": "help me decompose this large feature into manageable stories", "should_trigger": true},
+  {"query": "I'm writing a product decision document — what should it include?", "should_trigger": true},
+  {"query": "create a new initiative card for improving developer experience", "should_trigger": true},
+  {"query": "what tasks am I working on this sprint?", "should_trigger": false},
+  {"query": "triage my overdue tasks", "should_trigger": false},
+  {"query": "decode the acronym PSR for me", "should_trigger": false},
+  {"query": "which teams are in our engineering org?", "should_trigger": false},
+  {"query": "generate a weekly status report", "should_trigger": false},
+  {"query": "build a Rovo agent for Confluence", "should_trigger": false},
+  {"query": "explain how React hooks work", "should_trigger": false},
+  {"query": "set up automated testing for our CI pipeline", "should_trigger": false},
+  {"query": "who is the PM for the platform team?", "should_trigger": false},
+  {"query": "write a Python function to calculate story points", "should_trigger": false}
+]

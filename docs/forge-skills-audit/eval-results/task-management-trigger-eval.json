@@ -1,0 +1,82 @@
+[
+  {
+    "query": "what should I work on next?",
+    "should_trigger": true
+  },
+  {
+    "query": "triage my overdue tasks",
+    "should_trigger": true
+  },
+  {
+    "query": "mark the task as done",
+    "should_trigger": true
+  },
+  {
+    "query": "I've finished — update my tasks",
+    "should_trigger": true
+  },
+  {
+    "query": "which tasks are blocked right now?",
+    "should_trigger": true
+  },
+  {
+    "query": "change the priority of this task to critical",
+    "should_trigger": true
+  },
+  {
+    "query": "show me all in-progress tasks for this sprint",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to reassign the tasks — what's currently open?",
+    "should_trigger": true
+  },
+  {
+    "query": "move the task from backlog to in-progress",
+    "should_trigger": true
+  },
+  {
+    "query": "what's the status of the deployment pipeline task?",
+    "should_trigger": true
+  },
+  {
+    "query": "write a story card for the notification system",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how to use Jira's sprint planning features",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a report on team velocity this quarter",
+    "should_trigger": false
+  },
+  {
+    "query": "who is the lead on the infrastructure team?",
+    "should_trigger": false
+  },
+  {
+    "query": "decode this acronym: KTLO",
+    "should_trigger": false
+  },
+  {
+    "query": "build a Rovo agent for ticket triage",
+    "should_trigger": false
+  },
+  {
+    "query": "what products does our company offer?",
+    "should_trigger": false
+  },
+  {
+    "query": "help me write acceptance criteria for the login feature",
+    "should_trigger": false
+  },
+  {
+    "query": "create a project timeline for the Q2 roadmap",
+    "should_trigger": false
+  },
+  {
+    "query": "review the architecture of our task queue system",
+    "should_trigger": false
+  }
+]
