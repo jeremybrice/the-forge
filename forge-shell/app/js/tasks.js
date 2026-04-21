@@ -200,7 +200,7 @@ window.TasksView = (function () {
     }
     if (fieldVisibility.due_date && task.due_date && task.due_date !== 'null') {
       var today = new Date().toISOString().split('T')[0];
-      var isOverdue = task.due_date < today && task.status !== 'done';
+      var isOverdue = task.due_date < today && !TERMINAL_STATUSES.includes(task.status);
       html += '<div class="prod-tooltip-row' + (isOverdue ? ' prod-tooltip-overdue' : '') + '"><i class="fa-regular fa-calendar" style="width:14px;text-align:center;"></i> ' + esc(task.due_date) + (isOverdue ? ' (overdue)' : '') + '</div>';
     }
     if (fieldVisibility.tags && task.tags && task.tags.length > 0) {
@@ -1164,7 +1164,7 @@ window.TasksView = (function () {
 
     if (fieldVisibility.due_date && task.due_date) {
       var today = new Date().toISOString().split('T')[0];
-      var isOverdue = task.due_date < today && task.status !== 'done';
+      var isOverdue = task.due_date < today && !TERMINAL_STATUSES.includes(task.status);
       var dueDateColor = isOverdue ? '#e74c3c' : 'var(--text-muted)';
       html += '<div class="prod-card-note" style="margin-top:8px;color:' + dueDateColor + ';"><i class="fa-regular fa-calendar-day"></i> ' + task.due_date + '</div>';
     }
@@ -2061,7 +2061,7 @@ window.TasksView = (function () {
     var withDates = [];
     var noDates = [];
 
-    var timelineTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var timelineTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     timelineTasks.forEach(function (t) {
       if (t.created && t.due_date && t.due_date !== 'null') withDates.push(t);
       else noDates.push(t);
@@ -2119,7 +2119,7 @@ window.TasksView = (function () {
       var endPct = (dayOffset(t.due_date) / rangeDays) * 100;
       var width = Math.max(1, endPct - startPct);
       var prio = priorityBand(t.priority);
-      var isOverdue = t.due_date < today && t.status !== 'done';
+      var isOverdue = t.due_date < today && !TERMINAL_STATUSES.includes(t.status);
 
       var tlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
       html += '<div class="prod-tl-row' + tlDimmed + '" data-task-id="' + esc(t.filename) + '">';
@@ -2223,7 +2223,7 @@ window.TasksView = (function () {
       var p = (t.priority === null || t.priority === undefined) ? 'null' : t.priority;
       if (priorityCounts[p] !== undefined) priorityCounts[p]++;
 
-      if (t.due_date && t.due_date !== 'null' && t.due_date < today && s !== 'done') overdue++;
+      if (t.due_date && t.due_date !== 'null' && t.due_date < today && !TERMINAL_STATUSES.includes(s)) overdue++;
 
       if (t.tags && t.tags.length) {
         t.tags.forEach(function (tag) {
@@ -2377,7 +2377,7 @@ window.TasksView = (function () {
 
     // Upcoming due tasks
     var upcoming = sourceTasks.filter(function (t) {
-      return t.due_date && t.due_date !== 'null' && t.status !== 'done';
+      return t.due_date && t.due_date !== 'null' && !TERMINAL_STATUSES.includes(t.status);
     }).sort(function (a, b) {
       return a.due_date.localeCompare(b.due_date);
     }).slice(0, 8);
@@ -2430,7 +2430,7 @@ window.TasksView = (function () {
     var lanes = {};
     var unassigned = [];
 
-    var workloadTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var workloadTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     workloadTasks.forEach(function (t) {
       if (t.assignee && t.assignee !== 'null') {
         if (!lanes[t.assignee]) lanes[t.assignee] = [];
@@ -2549,7 +2549,7 @@ window.TasksView = (function () {
         var statusSlug = String(status).toLowerCase().replace(/\s+/g, '-');
         html += '<span class="prod-wl-mini-status prod-wl-status-' + esc(statusSlug) + '">' + esc(statusLabels[status] || status) + '</span>';
         if (t.due_date && t.due_date !== 'null') {
-          var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && status !== 'done';
+          var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && !TERMINAL_STATUSES.includes(status);
           html += '<span class="prod-wl-mini-due' + (isOverdue ? ' prod-wl-mini-overdue' : '') + '"><i class="fa-regular fa-calendar"></i> ' + esc(t.due_date) + '</span>';
         }
         html += '</div></div>';
@@ -2590,7 +2590,7 @@ window.TasksView = (function () {
     });
     statuses.forEach(function (s) { colTotals[s] = 0; });
 
-    var matrixTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var matrixTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     matrixTasks.forEach(function (t) {
       var p = priorityBand(t.priority);
       var s = t.status || DEFAULT_STATUS;
