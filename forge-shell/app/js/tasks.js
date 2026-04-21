@@ -337,10 +337,10 @@ window.TasksView = (function () {
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Status</span>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="active" aria-pressed="false">Active</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="waiting" aria-pressed="false">Waiting</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="someday" aria-pressed="false">Someday</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="done" data-ref="chip-done" aria-pressed="false">Done</button>' +
+              STATUS_VALUES.map(function (s) {
+                var refAttr = (s === 'Completed') ? ' data-ref="chip-done"' : '';
+                return '<button class="prod-filter-chip" data-filter="status" data-value="' + esc(s) + '"' + refAttr + ' aria-pressed="false">' + esc(STATUS_LABELS[s]) + '</button>';
+              }).join('') +
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Assignee</span>' +
