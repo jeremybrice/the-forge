@@ -2253,7 +2253,7 @@ window.TasksView = (function () {
     var dailyCompletions = {};
     sourceTasks.forEach(function (t) {
       if (t.created && t.created >= thirtyAgoStr) createdLast30++;
-      if (t.status === 'done' && t.updated && t.updated >= thirtyAgoStr) {
+      if (t.status === 'Completed' && t.updated && t.updated >= thirtyAgoStr) {
         completedLast30++;
         dailyCompletions[t.updated] = (dailyCompletions[t.updated] || 0) + 1;
       }
