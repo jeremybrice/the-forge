@@ -27,6 +27,45 @@ window.TasksView = (function () {
   let taskSignature = '';
   let suppressExternalToasts = false;
 
+  /* ══════════════════════════════════════════════════════════
+     Task Schema (canonical — see forge-lib/schemas/task.json)
+     ══════════════════════════════════════════════════════════ */
+  const STATUS_VALUES = ['Open', 'In Progress', 'Blocked', 'Completed', 'Cancelled'];
+  const TERMINAL_STATUSES = ['Completed', 'Cancelled'];
+  const PRIORITY_VALUES = [1, 2, 3, 4, 5];
+  const DEFAULT_STATUS = 'Open';
+  const DEFAULT_PRIORITY = 3;
+
+  const STATUS_LABELS = {
+    'Open': 'Open',
+    'In Progress': 'In Progress',
+    'Blocked': 'Blocked',
+    'Completed': 'Completed',
+    'Cancelled': 'Cancelled',
+  };
+  const STATUS_ICONS = {
+    'Open': 'fa-regular fa-circle',
+    'In Progress': 'fa-regular fa-square-caret-right',
+    'Blocked': 'fa-regular fa-circle-pause',
+    'Completed': 'fa-regular fa-square-check',
+    'Cancelled': 'fa-regular fa-circle-xmark',
+  };
+  const PRIORITY_LABELS = {
+    1: 'P1 – Critical',
+    2: 'P2 – High',
+    3: 'P3 – Medium',
+    4: 'P4 – Low',
+    5: 'P5 – Someday',
+  };
+  // Reuse existing 3-class chip palette — no new CSS.
+  const PRIORITY_CHIP_CLASS = {
+    1: 'prod-chip-high',
+    2: 'prod-chip-high',
+    3: 'prod-chip-medium',
+    4: 'prod-chip-low',
+    5: 'prod-chip-low',
+  };
+
   /* Active view tab */
   let activeView = 'board';
 
