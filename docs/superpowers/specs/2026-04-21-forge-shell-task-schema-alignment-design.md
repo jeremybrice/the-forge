@@ -46,12 +46,13 @@ const STATUS_LABELS = {
   'Completed': 'Completed',
   'Cancelled': 'Cancelled',
 };
+// FontAwesome classes — match existing shell icon convention (not emoji).
 const STATUS_ICONS = {
-  'Open': '📋',
-  'In Progress': '🔄',
-  'Blocked': '⏸️',
-  'Completed': '✅',
-  'Cancelled': '❌',
+  'Open': 'fa-regular fa-circle',
+  'In Progress': 'fa-regular fa-square-caret-right',
+  'Blocked': 'fa-regular fa-circle-pause',
+  'Completed': 'fa-regular fa-square-check',
+  'Cancelled': 'fa-regular fa-circle-xmark',
 };
 
 const PRIORITY_LABELS = {
@@ -159,6 +160,38 @@ Net: 9 terminal-checks, 1 strict Completed, 1 refactor.
 | 1529 | Render 6 options (P1–P5 + "— (no priority)"); serialize P1–P5 as integer, no-priority as `null` |
 | 1088, 131, 199, 295–297 | Replace string-label branching with `PRIORITY_CHIP_CLASS[p]` lookup; null → neutral/omit |
 | 2141, 2150–2151 | `priorityCounts` keyed by 1..5 (drop string buckets); increment only when `p` is in `PRIORITY_VALUES` |
+
+### 4.5.1 `_buildField` helper extension (line 1560)
+
+Current `_buildField` always emits `<option value="">— None —</option>` before rendered options. For status this is invalid (no null-status state); for priority it's reusable as the null-priority slot.
+
+Extend the helper to accept two new opts:
+- `nullable: false` → suppress the leading `<option value="">`
+- `nullLabel: '— (no priority)'` → customize the blank-option label when `nullable` is truthy
+
+Also extend `options` items to accept `{value, label}` objects (in addition to plain strings) so priority can render `value=1, label='P1 – Critical'`. Keep the existing string-array behavior for back-compat with other call sites.
+
+Call-site usage:
+- Status (1528): `{ options: STATUS_VALUES, nullable: false }` (values and labels coincide, so plain strings still work — `STATUS_LABELS` only matters for filter chips and status-bucket display)
+- Priority (1529): `{ options: Object.entries(PRIORITY_LABELS).map(([v, l]) => ({value: Number(v), label: l})), nullable: true, nullLabel: '— (no priority)' }`
+
+### 4.5.2 Priority parse coercion (parseTaskFile, line 672)
+
+`parseYAML` returns strings, not numbers — `priority: 3` parses to `"3"`. To preserve null AND coerce integers AND let invalid values fall through for validator warning:
+
+```js
+var priority;
+if (!('priority' in frontmatter)) {
+  priority = DEFAULT_PRIORITY;
+} else if (frontmatter.priority === null) {
+  priority = null;
+} else {
+  var n = parseInt(frontmatter.priority, 10);
+  priority = (isNaN(n) || String(n) !== String(frontmatter.priority).trim())
+    ? frontmatter.priority  // preserve raw invalid value so validator can warn
+    : n;
+}
+```
 
 ### 4.6 Parse / save guards
 
