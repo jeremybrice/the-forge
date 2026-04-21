@@ -1592,10 +1592,18 @@ window.TasksView = (function () {
 
       if (type === 'select') {
         var options = opts.options || [];
+        var nullable = opts.nullable !== false;  // default true for back-compat
+        var nullLabel = opts.nullLabel || '— None —';
+        var nullOpt = nullable
+          ? '<option value=""' + ((value === null || value === undefined || value === '') ? ' selected' : '') + '>' + esc(nullLabel) + '</option>'
+          : '';
         input = '<select data-task-field="' + key + '">' +
-          '<option value="">&mdash; None &mdash;</option>' +
+          nullOpt +
           options.map(function (o) {
-            return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>';
+            var v = (o !== null && typeof o === 'object') ? o.value : o;
+            var l = (o !== null && typeof o === 'object') ? o.label : o;
+            var sel = (String(v) === String(value)) ? ' selected' : '';
+            return '<option value="' + esc(String(v)) + '"' + sel + '>' + esc(l) + '</option>';
           }).join('') +
         '</select>';
       } else if (type === 'date') {
