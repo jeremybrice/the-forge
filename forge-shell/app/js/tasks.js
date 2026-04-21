@@ -2496,7 +2496,8 @@ window.TasksView = (function () {
         html += '<span class="prod-wl-mini-title">' + esc(t.title) + '</span>';
         html += '</div>';
         html += '<div class="prod-wl-mini-bottom">';
-        html += '<span class="prod-wl-mini-status prod-wl-status-' + status + '">' + (statusLabels[status] || status) + '</span>';
+        var statusSlug = String(status).toLowerCase().replace(/\s+/g, '-');
+        html += '<span class="prod-wl-mini-status prod-wl-status-' + esc(statusSlug) + '">' + esc(statusLabels[status] || status) + '</span>';
         if (t.due_date && t.due_date !== 'null') {
           var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && status !== 'done';
           html += '<span class="prod-wl-mini-due' + (isOverdue ? ' prod-wl-mini-overdue' : '') + '"><i class="fa-regular fa-calendar"></i> ' + esc(t.due_date) + '</span>';
