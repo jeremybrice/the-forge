@@ -2210,14 +2210,15 @@ window.TasksView = (function () {
     var overdue = 0;
     var done = 0;
     var nonDone = [];
-    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
+    var statusCounts = {};
+    STATUS_VALUES.forEach(function (s) { statusCounts[s] = 0; });
     var priorityCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 'null': 0 };
     var tagCounts = {};
 
     sourceTasks.forEach(function (t) {
       var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
-      if (s === 'done') done++;
+      if (TERMINAL_STATUSES.includes(s)) done++;
       else nonDone.push(t);
 
       var p = (t.priority === null || t.priority === undefined) ? 'null' : t.priority;
@@ -2488,7 +2489,8 @@ window.TasksView = (function () {
       ? laneTasks.filter(function (t) { return isTaskMatched(t); })
       : laneTasks;
     var statusSource = matchedFilenames !== null ? filteredLaneTasks : laneTasks;
-    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
+    var statusCounts = {};
+    STATUS_VALUES.forEach(function (s) { statusCounts[s] = 0; });
     statusSource.forEach(function (t) {
       var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
