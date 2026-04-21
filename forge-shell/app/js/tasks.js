@@ -36,6 +36,7 @@ window.TasksView = (function () {
   const DEFAULT_STATUS = 'Open';
   const DEFAULT_PRIORITY = 3;
 
+  // Identity map today; kept as a seam so UI labels can diverge from canonical values without a schema change.
   const STATUS_LABELS = {
     'Open': 'Open',
     'In Progress': 'In Progress',
@@ -2307,7 +2308,6 @@ window.TasksView = (function () {
       'Completed': '#27ae60',
       'Cancelled': '#6c757d',
     };
-    var statusLabels = STATUS_LABELS;
     var statusColorRaw = {
       'Open': '#868e96',
       'In Progress': document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
@@ -2356,7 +2356,7 @@ window.TasksView = (function () {
       var count = statusCounts[s];
       html += '<div class="prod-donut-legend-item">';
       html += '<span class="prod-donut-swatch" style="background:' + statusColorRaw[s] + '"></span>';
-      html += '<span class="prod-donut-legend-label">' + statusLabels[s] + '</span>';
+      html += '<span class="prod-donut-legend-label">' + STATUS_LABELS[s] + '</span>';
       html += '<span class="prod-donut-legend-count">' + count + '</span>';
       html += '</div>';
     });
@@ -2564,7 +2564,6 @@ window.TasksView = (function () {
     if (laneTasks.length === 0) {
       html += '<div class="prod-wl-empty">No tasks</div>';
     } else {
-      var statusLabels = STATUS_LABELS;
       laneTasks.forEach(function (t) {
         var prio = t.priority;
         var status = t.status || DEFAULT_STATUS;
@@ -2576,7 +2575,7 @@ window.TasksView = (function () {
         html += '</div>';
         html += '<div class="prod-wl-mini-bottom">';
         var statusSlug = String(status).toLowerCase().replace(/\s+/g, '-');
-        html += '<span class="prod-wl-mini-status prod-wl-status-' + esc(statusSlug) + '">' + esc(statusLabels[status] || status) + '</span>';
+        html += '<span class="prod-wl-mini-status prod-wl-status-' + esc(statusSlug) + '">' + esc(STATUS_LABELS[status] || status) + '</span>';
         if (t.due_date && t.due_date !== 'null') {
           var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && !TERMINAL_STATUSES.includes(status);
           html += '<span class="prod-wl-mini-due' + (isOverdue ? ' prod-wl-mini-overdue' : '') + '"><i class="fa-regular fa-calendar"></i> ' + esc(t.due_date) + '</span>';
@@ -2603,7 +2602,6 @@ window.TasksView = (function () {
     var statuses = hideDone
       ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
       : STATUS_VALUES.slice();
-    var statusLabels = STATUS_LABELS;
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
 
@@ -2669,7 +2667,7 @@ window.TasksView = (function () {
     var html = '<div class="prod-matrix-wrap"><table class="prod-matrix-table">';
     html += '<thead><tr><th></th>';
     statuses.forEach(function (s) {
-      html += '<th>' + statusLabels[s] + ' <span class="prod-matrix-col-badge">' + displayColTotals[s] + '</span></th>';
+      html += '<th>' + STATUS_LABELS[s] + ' <span class="prod-matrix-col-badge">' + displayColTotals[s] + '</span></th>';
     });
     html += '</tr></thead><tbody>';
 
