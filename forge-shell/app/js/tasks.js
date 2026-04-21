@@ -723,6 +723,17 @@ window.TasksView = (function () {
 
     var frontmatter = parseYAML(yamlStr);
 
+    if (frontmatter.status !== undefined && frontmatter.status !== null && !STATUS_VALUES.includes(frontmatter.status)) {
+      console.warn('[forge-shell] Task file has invalid status: ' + JSON.stringify(frontmatter.status) + '. File: ' + filename + '. Valid: ' + STATUS_VALUES.join(', '));
+    }
+    if (frontmatter.priority !== undefined && frontmatter.priority !== null) {
+      var _testP = String(frontmatter.priority).trim();
+      var _testN = parseInt(_testP, 10);
+      if (isNaN(_testN) || !PRIORITY_VALUES.includes(_testN) || String(_testN) !== _testP) {
+        console.warn('[forge-shell] Task file has invalid priority: ' + JSON.stringify(frontmatter.priority) + '. File: ' + filename + '. Valid: 1-5 or null.');
+      }
+    }
+
     var priority;
     if (!('priority' in frontmatter)) {
       priority = DEFAULT_PRIORITY;
