@@ -1316,7 +1316,7 @@ window.TasksView = (function () {
       title: 'New Task',
       type: 'task',
       status: status,
-      priority: 'medium',
+      priority: DEFAULT_PRIORITY,
       assignee: null,
       creator: null,
       created: today,
