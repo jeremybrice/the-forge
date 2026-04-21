@@ -169,7 +169,7 @@ window.TasksView = (function () {
   function buildTooltipHtml(task) {
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
     var prio = (task.priority || 'medium').toLowerCase();
-    var statusLabel = (task.status || 'active').charAt(0).toUpperCase() + (task.status || 'active').slice(1);
+    var statusLabel = (task.status || DEFAULT_STATUS).charAt(0).toUpperCase() + (task.status || DEFAULT_STATUS).slice(1);
     var html = '<div class="prod-tooltip-title">' + esc(task.title) + '</div>';
 
     if (fieldVisibility.priority) {
@@ -238,7 +238,7 @@ window.TasksView = (function () {
         if (filterPriority.indexOf((task.priority || 'medium').toLowerCase()) === -1) return;
       }
       if (filterStatus.length > 0) {
-        if (filterStatus.indexOf(task.status || 'active') === -1) return;
+        if (filterStatus.indexOf(task.status || DEFAULT_STATUS) === -1) return;
       }
       if (filterAssignee) {
         if ((task.assignee || '').toLowerCase() !== filterAssignee.toLowerCase()) return;
@@ -707,7 +707,7 @@ window.TasksView = (function () {
       filename: filename,
       title: frontmatter.title || '',
       type: frontmatter.type || 'task',
-      status: frontmatter.status || 'active',
+      status: frontmatter.status || DEFAULT_STATUS,
       priority: frontmatter.priority || 'medium',
       assignee: frontmatter.assignee || null,
       creator: frontmatter.creator || null,
@@ -1000,7 +1000,7 @@ window.TasksView = (function () {
     statuses.forEach(function (status) { tasksByStatus[status] = []; });
 
     tasks.forEach(function (task) {
-      var status = task.status || 'active';
+      var status = task.status || DEFAULT_STATUS;
       if (!tasksByStatus[status]) tasksByStatus[status] = [];
       tasksByStatus[status].push(task);
     });
@@ -2177,7 +2177,7 @@ window.TasksView = (function () {
     var tagCounts = {};
 
     sourceTasks.forEach(function (t) {
-      var s = t.status || 'active';
+      var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
       if (s === 'done') done++;
       else nonDone.push(t);
@@ -2447,7 +2447,7 @@ window.TasksView = (function () {
     var statusSource = matchedFilenames !== null ? filteredLaneTasks : laneTasks;
     var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
     statusSource.forEach(function (t) {
-      var s = t.status || 'active';
+      var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
     });
     var statusTotal = statusSource.length;
@@ -2496,7 +2496,7 @@ window.TasksView = (function () {
       var statusLabels = STATUS_LABELS;
       laneTasks.forEach(function (t) {
         var prio = (t.priority || 'medium').toLowerCase();
-        var status = t.status || 'active';
+        var status = t.status || DEFAULT_STATUS;
         var wlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-wl-dimmed' : '';
         html += '<div class="prod-wl-mini-card' + wlDimmed + '" data-task-id="' + esc(t.filename) + '">';
         html += '<div class="prod-wl-mini-top">';
@@ -2551,7 +2551,7 @@ window.TasksView = (function () {
     var matrixTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
     matrixTasks.forEach(function (t) {
       var p = (t.priority || 'medium').toLowerCase();
-      var s = t.status || 'active';
+      var s = t.status || DEFAULT_STATUS;
       if (!matrix[p]) matrix[p] = {};
       if (!matrix[p][s]) matrix[p][s] = [];
       matrix[p][s].push(t);
