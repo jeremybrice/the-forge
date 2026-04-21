@@ -75,6 +75,18 @@ window.TasksView = (function () {
     5: '#3498db',
   };
 
+  /* ══════════════════════════════════════════════════════════
+     Schema helpers
+     ══════════════════════════════════════════════════════════ */
+  // Integer priority → legacy 3-band label, used where UI still speaks
+  // 3-band vocabulary (timeline CSS classes, matrix bucketing, etc.)
+  function priorityBand(p) {
+    if (p === 1 || p === 2) return 'high';
+    if (p === 3) return 'medium';
+    if (p === 4 || p === 5) return 'low';
+    return 'medium';
+  }
+
   /* Active view tab */
   let activeView = 'board';
 
@@ -2106,7 +2118,7 @@ window.TasksView = (function () {
       var startPct = (dayOffset(t.created) / rangeDays) * 100;
       var endPct = (dayOffset(t.due_date) / rangeDays) * 100;
       var width = Math.max(1, endPct - startPct);
-      var prio = t.priority;
+      var prio = priorityBand(t.priority);
       var isOverdue = t.due_date < today && t.status !== 'done';
 
       var tlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
@@ -2114,7 +2126,7 @@ window.TasksView = (function () {
 
       // Label column: priority dot + title + assignee initial
       html += '<div class="prod-tl-label-col">';
-      html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>';
+      html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[t.priority] || '#f39c12') + '"></span>';
       html += '<span class="prod-tl-title" title="' + esc(t.title) + '">' + esc(t.title) + '</span>';
       if (t.assignee && t.assignee !== 'null') {
         html += '<span class="prod-tl-avatar" style="background:' + hashColor(t.assignee) + '">' + getInitial(t.assignee) + '</span>';
@@ -2137,7 +2149,7 @@ window.TasksView = (function () {
     if (noDates.length > 0) {
       html += '<div class="prod-tl-no-dates"><span class="prod-tl-no-dates-label"><i class="fa-regular fa-calendar-xmark"></i> No due date</span>';
       noDates.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
+        var prio = priorityBand(t.priority);
         var chipDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
         html += '<span class="prod-tl-chip prod-tl-' + prio + chipDimmed + '" data-task-id="' + esc(t.filename) + '">' + esc(t.title) + '</span>';
       });
@@ -2558,13 +2570,6 @@ window.TasksView = (function () {
       return;
     }
 
-    // Integer priority → legacy 3-band label for matrix bucketing.
-    var priorityBand = function (p) {
-      if (p === 1 || p === 2) return 'high';
-      if (p === 3) return 'medium';
-      if (p === 4 || p === 5) return 'low';
-      return 'medium';
-    };
     var priorities = ['high', 'medium', 'low'];
     var statuses = hideDone
       ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
