@@ -703,12 +703,24 @@ window.TasksView = (function () {
 
     var frontmatter = parseYAML(yamlStr);
 
+    var priority;
+    if (!('priority' in frontmatter)) {
+      priority = DEFAULT_PRIORITY;
+    } else if (frontmatter.priority === null) {
+      priority = null;
+    } else {
+      var _rawP = String(frontmatter.priority).trim();
+      var _n = parseInt(_rawP, 10);
+      // Coerce only if the string fully represents the integer (rejects "3abc").
+      priority = (isNaN(_n) || String(_n) !== _rawP) ? frontmatter.priority : _n;
+    }
+
     return {
       filename: filename,
       title: frontmatter.title || '',
       type: frontmatter.type || 'task',
       status: frontmatter.status || DEFAULT_STATUS,
-      priority: frontmatter.priority || 'medium',
+      priority: priority,
       assignee: frontmatter.assignee || null,
       creator: frontmatter.creator || null,
       created: frontmatter.created || '',
