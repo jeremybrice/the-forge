@@ -66,6 +66,15 @@ window.TasksView = (function () {
     5: 'prod-chip-low',
   };
 
+  // Priority dot colors — integer-keyed mirror of the 3-band chip palette.
+  const PRIORITY_DOT_COLOR = {
+    1: '#e74c3c',
+    2: '#e74c3c',
+    3: '#f39c12',
+    4: '#3498db',
+    5: '#3498db',
+  };
+
   /* Active view tab */
   let activeView = 'board';
 
@@ -167,13 +176,12 @@ window.TasksView = (function () {
   };
 
   function buildTooltipHtml(task) {
-    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
-    var prio = (task.priority || 'medium').toLowerCase();
+    var prio = task.priority;
     var statusLabel = (task.status || DEFAULT_STATUS).charAt(0).toUpperCase() + (task.status || DEFAULT_STATUS).slice(1);
     var html = '<div class="prod-tooltip-title">' + esc(task.title) + '</div>';
 
     if (fieldVisibility.priority) {
-      html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>' + esc(prio.charAt(0).toUpperCase() + prio.slice(1)) + ' &middot; ' + esc(statusLabel) + '</div>';
+      html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>' + esc(PRIORITY_LABELS[prio] || '') + ' &middot; ' + esc(statusLabel) + '</div>';
     }
     if (fieldVisibility.assignee && task.assignee && task.assignee !== 'null') {
       html += '<div class="prod-tooltip-row"><i class="fa-regular fa-user" style="width:14px;text-align:center;"></i> ' + esc(task.assignee) + '</div>';
@@ -2038,7 +2046,6 @@ window.TasksView = (function () {
     }
 
     var today = new Date().toISOString().split('T')[0];
-    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
     var withDates = [];
     var noDates = [];
 
@@ -2099,7 +2106,7 @@ window.TasksView = (function () {
       var startPct = (dayOffset(t.created) / rangeDays) * 100;
       var endPct = (dayOffset(t.due_date) / rangeDays) * 100;
       var width = Math.max(1, endPct - startPct);
-      var prio = (t.priority || 'medium').toLowerCase();
+      var prio = t.priority;
       var isOverdue = t.due_date < today && t.status !== 'done';
 
       var tlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
@@ -2107,7 +2114,7 @@ window.TasksView = (function () {
 
       // Label column: priority dot + title + assignee initial
       html += '<div class="prod-tl-label-col">';
-      html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+      html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>';
       html += '<span class="prod-tl-title" title="' + esc(t.title) + '">' + esc(t.title) + '</span>';
       if (t.assignee && t.assignee !== 'null') {
         html += '<span class="prod-tl-avatar" style="background:' + hashColor(t.assignee) + '">' + getInitial(t.assignee) + '</span>';
@@ -2368,10 +2375,10 @@ window.TasksView = (function () {
       html += '<div class="prod-summary-section-title">Upcoming Due</div>';
       html += '<table class="prod-due-table"><tbody>';
       upcoming.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
+        var prio = t.priority;
         var isOverdue = t.due_date < today;
         html += '<tr class="prod-due-row' + (isOverdue ? ' prod-due-overdue' : '') + '" data-task-id="' + esc(t.filename) + '">';
-        html += '<td><span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span></td>';
+        html += '<td><span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span></td>';
         html += '<td class="prod-due-title">' + esc(t.title) + '</td>';
         html += '<td class="prod-due-assignee">' + (t.assignee && t.assignee !== 'null' ? esc(t.assignee) : '<span style="color:var(--text-muted)">—</span>') + '</td>';
         html += '<td class="prod-due-date">' + esc(t.due_date) + '</td>';
@@ -2516,15 +2523,14 @@ window.TasksView = (function () {
     if (laneTasks.length === 0) {
       html += '<div class="prod-wl-empty">No tasks</div>';
     } else {
-      var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
       var statusLabels = STATUS_LABELS;
       laneTasks.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
+        var prio = t.priority;
         var status = t.status || DEFAULT_STATUS;
         var wlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-wl-dimmed' : '';
         html += '<div class="prod-wl-mini-card' + wlDimmed + '" data-task-id="' + esc(t.filename) + '">';
         html += '<div class="prod-wl-mini-top">';
-        html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+        html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>';
         html += '<span class="prod-wl-mini-title">' + esc(t.title) + '</span>';
         html += '</div>';
         html += '<div class="prod-wl-mini-bottom">';
