@@ -1565,7 +1565,14 @@ window.TasksView = (function () {
       var html = '<div class="form-grid">';
       html += this._buildField('title', 'Title', 'text', task.title, { required: true, fullWidth: true });
       html += this._buildField('status', 'Status', 'select', task.status, { options: STATUS_VALUES, nullable: false });
-      html += this._buildField('priority', 'Priority', 'select', task.priority, { options: ['high', 'medium', 'low'] });
+      var priorityOptions = PRIORITY_VALUES.map(function (v) {
+        return { value: v, label: PRIORITY_LABELS[v] };
+      });
+      html += this._buildField('priority', 'Priority', 'select', task.priority, {
+        options: priorityOptions,
+        nullable: true,
+        nullLabel: '— (no priority)'
+      });
       html += this._buildField('assignee', 'Assignee', 'text', task.assignee);
       html += this._buildField('creator', 'Creator', 'text', task.creator);
       html += this._buildField('due_date', 'Due Date', 'date', task.due_date);
