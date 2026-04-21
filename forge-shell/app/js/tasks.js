@@ -235,7 +235,7 @@ window.TasksView = (function () {
 
     tasks.forEach(function (task) {
       if (filterPriority.length > 0) {
-        if (filterPriority.indexOf((task.priority || 'medium').toLowerCase()) === -1) return;
+        if (filterPriority.indexOf(String(task.priority)) === -1) return;
       }
       if (filterStatus.length > 0) {
         if (filterStatus.indexOf(task.status || DEFAULT_STATUS) === -1) return;
@@ -331,9 +331,9 @@ window.TasksView = (function () {
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Priority</span>' +
-              '<button class="prod-filter-chip prod-chip-high" data-filter="priority" data-value="high" aria-pressed="false">High</button>' +
-              '<button class="prod-filter-chip prod-chip-medium" data-filter="priority" data-value="medium" aria-pressed="false">Medium</button>' +
-              '<button class="prod-filter-chip prod-chip-low" data-filter="priority" data-value="low" aria-pressed="false">Low</button>' +
+              PRIORITY_VALUES.map(function (p) {
+                return '<button class="prod-filter-chip ' + PRIORITY_CHIP_CLASS[p] + '" data-filter="priority" data-value="' + p + '" aria-pressed="false">' + esc(PRIORITY_LABELS[p]) + '</button>';
+              }).join('') +
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Status</span>' +
@@ -1124,8 +1124,8 @@ window.TasksView = (function () {
     card.draggable = true;
     card.dataset.filename = task.filename;
 
-    var priorityClass = (task.priority || 'medium').toLowerCase();
-    var priorityLabel = priorityClass.charAt(0).toUpperCase() + priorityClass.slice(1);
+    var priorityChipClass = PRIORITY_CHIP_CLASS[task.priority] || '';
+    var priorityLabel = PRIORITY_LABELS[task.priority] || '';
 
     var html =
       '<div class="prod-card-actions">' +
@@ -1134,8 +1134,8 @@ window.TasksView = (function () {
       '</div>' +
       '<div class="prod-card-title" data-action="edit-title">' + esc(task.title) + '</div>';
 
-    if (fieldVisibility.priority) {
-      html += '<div class="prod-priority-pill ' + priorityClass + '" style="margin-top:8px;">' + priorityLabel + '</div>';
+    if (fieldVisibility.priority && priorityChipClass) {
+      html += '<div class="prod-priority-pill ' + priorityChipClass + '" style="margin-top:8px;">' + esc(priorityLabel) + '</div>';
     }
 
     if (fieldVisibility.assignee && task.assignee) {
@@ -2192,7 +2192,7 @@ window.TasksView = (function () {
     var done = 0;
     var nonDone = [];
     var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
-    var priorityCounts = { high: 0, medium: 0, low: 0 };
+    var priorityCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 'null': 0 };
     var tagCounts = {};
 
     sourceTasks.forEach(function (t) {
@@ -2201,7 +2201,7 @@ window.TasksView = (function () {
       if (s === 'done') done++;
       else nonDone.push(t);
 
-      var p = (t.priority || 'medium').toLowerCase();
+      var p = (t.priority === null || t.priority === undefined) ? 'null' : t.priority;
       if (priorityCounts[p] !== undefined) priorityCounts[p]++;
 
       if (t.due_date && t.due_date !== 'null' && t.due_date < today && s !== 'done') overdue++;
@@ -2320,8 +2320,13 @@ window.TasksView = (function () {
     html += '<div class="prod-summary-section-title">Priority Distribution</div>';
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
+    var prioCountsBanded = {
+      high: priorityCounts[1] + priorityCounts[2],
+      medium: priorityCounts[3],
+      low: priorityCounts[4] + priorityCounts[5]
+    };
     ['high', 'medium', 'low'].forEach(function (p) {
-      var count = priorityCounts[p];
+      var count = prioCountsBanded[p];
       var pct = total > 0 ? (count / total) * 100 : 0;
       html += '<div class="prod-summary-bar-row">';
       html += '<span class="prod-summary-bar-label">' + prioLabels[p] + '</span>';
