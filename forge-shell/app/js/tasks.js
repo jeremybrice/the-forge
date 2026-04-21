@@ -996,18 +996,6 @@ window.TasksView = (function () {
     var statuses = hideDone
       ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
       : STATUS_VALUES.slice();
-    var statusLabels = {
-      'active': 'Active',
-      'waiting': 'Waiting On',
-      'someday': 'Someday',
-      'done': 'Done'
-    };
-    var statusIcons = {
-      'active': 'fa-regular fa-square-caret-right',
-      'waiting': 'fa-regular fa-circle-pause',
-      'someday': 'fa-regular fa-calendar',
-      'done': 'fa-regular fa-square-check'
-    };
     var tasksByStatus = {};
     statuses.forEach(function (status) { tasksByStatus[status] = []; });
 
@@ -1019,7 +1007,7 @@ window.TasksView = (function () {
 
     statuses.forEach(function (status) {
       var statusTasks = tasksByStatus[status] || [];
-      board.appendChild(createColumn(status, statusLabels[status], statusIcons[status], statusTasks));
+      board.appendChild(createColumn(status, STATUS_LABELS[status], STATUS_ICONS[status], statusTasks));
     });
   }
 
@@ -2238,11 +2226,20 @@ window.TasksView = (function () {
     }
 
     // Status donut gradient
-    var statusColors = { active: 'var(--accent)', waiting: '#f39c12', someday: 'var(--text-muted)', done: '#27ae60' };
-    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+    var statusColors = {
+      'Open': 'var(--text-muted)',
+      'In Progress': 'var(--accent)',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
+    };
+    var statusLabels = STATUS_LABELS;
     var statusColorRaw = {
-      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
-      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+      'Open': '#868e96',
+      'In Progress': document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
     };
     var conicParts = [];
     var cumPct = 0;
@@ -2449,8 +2446,11 @@ window.TasksView = (function () {
 
     // Status bar segments
     var statusColors = {
-      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
-      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+      'Open': '#868e96',
+      'In Progress': document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
     };
 
     var html = '<div class="prod-workload-lane prod-wl-expanded">';
@@ -2485,7 +2485,7 @@ window.TasksView = (function () {
       html += '<div class="prod-wl-empty">No tasks</div>';
     } else {
       var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
-      var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+      var statusLabels = STATUS_LABELS;
       laneTasks.forEach(function (t) {
         var prio = (t.priority || 'medium').toLowerCase();
         var status = t.status || 'active';
@@ -2523,7 +2523,7 @@ window.TasksView = (function () {
     var statuses = hideDone
       ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
       : STATUS_VALUES.slice();
-    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+    var statusLabels = STATUS_LABELS;
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
 
