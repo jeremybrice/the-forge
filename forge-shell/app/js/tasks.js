@@ -2558,6 +2558,13 @@ window.TasksView = (function () {
       return;
     }
 
+    // Integer priority → legacy 3-band label for matrix bucketing.
+    var priorityBand = function (p) {
+      if (p === 1 || p === 2) return 'high';
+      if (p === 3) return 'medium';
+      if (p === 4 || p === 5) return 'low';
+      return 'medium';
+    };
     var priorities = ['high', 'medium', 'low'];
     var statuses = hideDone
       ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
@@ -2580,7 +2587,7 @@ window.TasksView = (function () {
 
     var matrixTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
     matrixTasks.forEach(function (t) {
-      var p = (t.priority || 'medium').toLowerCase();
+      var p = priorityBand(t.priority);
       var s = t.status || DEFAULT_STATUS;
       if (!matrix[p]) matrix[p] = {};
       if (!matrix[p][s]) matrix[p][s] = [];
@@ -2649,7 +2656,7 @@ window.TasksView = (function () {
           html += '<div class="prod-matrix-cards">';
           var showCount = Math.min(cellTasks.length, 4);
           cellTasks.slice(0, showCount).forEach(function (t) {
-            var tPrio = (t.priority || 'medium').toLowerCase();
+            var tPrio = priorityBand(t.priority);
             var mxDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
             html += '<div class="prod-matrix-mini' + mxDimmed + '" data-task-id="' + esc(t.filename) + '">';
             html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
@@ -2670,7 +2677,7 @@ window.TasksView = (function () {
           if (cellTasks.length > 4) {
             html += '<div class="prod-matrix-overflow">';
             cellTasks.slice(4).forEach(function (t) {
-              var tPrio = (t.priority || 'medium').toLowerCase();
+              var tPrio = priorityBand(t.priority);
               var mxDimmed2 = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
               html += '<div class="prod-matrix-mini' + mxDimmed2 + '" data-task-id="' + esc(t.filename) + '">';
               html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
