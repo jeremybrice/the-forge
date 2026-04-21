@@ -766,11 +766,17 @@ window.TasksView = (function () {
   }
 
   function serializeTaskFile(task) {
+    if (!STATUS_VALUES.includes(task.status)) {
+      throw new Error('Cannot save task: invalid status ' + JSON.stringify(task.status) + '. Must be one of: ' + STATUS_VALUES.join(', '));
+    }
+    if (task.priority !== null && task.priority !== undefined && !PRIORITY_VALUES.includes(task.priority)) {
+      throw new Error('Cannot save task: invalid priority ' + JSON.stringify(task.priority) + '. Must be integer 1-5 or null.');
+    }
     var yaml = '---\n';
     yaml += 'title: ' + task.title + '\n';
     yaml += 'type: ' + (task.type || 'task') + '\n';
     yaml += 'status: ' + task.status + '\n';
-    yaml += 'priority: ' + task.priority + '\n';
+    yaml += 'priority: ' + (task.priority === null || task.priority === undefined ? 'null' : task.priority) + '\n';
     yaml += 'assignee: ' + (task.assignee || 'null') + '\n';
     yaml += 'creator: ' + (task.creator || 'null') + '\n';
     yaml += 'created: ' + task.created + '\n';
@@ -810,11 +816,21 @@ window.TasksView = (function () {
     isSaving = true;
     suppressExternalToasts = true;
 
+    var content;
+    try {
+      content = serializeTaskFile(task);
+    } catch (e) {
+      ForgeUtils.Toast.show(e.message, 'error', 6000);
+      isSaving = false;
+      hasChanges = true;
+      suppressExternalToasts = false;
+      return;
+    }
+
     try {
       // Update the updated date
       task.updated = new Date().toISOString().split('T')[0];
 
-      var content = serializeTaskFile(task);
       await ForgeFS.writeFile(tasksDirHandle, task.filename, content);
 
       // Update signature to prevent external change detection
