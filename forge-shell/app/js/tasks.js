@@ -238,7 +238,7 @@ window.TasksView = (function () {
         if (filterPriority.indexOf((task.priority || 'medium').toLowerCase()) === -1) return;
       }
       if (filterStatus.length > 0) {
-        if (filterStatus.indexOf((task.status || 'active').toLowerCase()) === -1) return;
+        if (filterStatus.indexOf(task.status || 'active') === -1) return;
       }
       if (filterAssignee) {
         if ((task.assignee || '').toLowerCase() !== filterAssignee.toLowerCase()) return;
@@ -957,7 +957,7 @@ window.TasksView = (function () {
     if (doneChip) {
       doneChip.style.display = hideDone ? 'none' : '';
       if (hideDone) {
-        var idx = filterStatus.indexOf('done');
+        var idx = filterStatus.indexOf('Completed');
         if (idx !== -1) {
           filterStatus.splice(idx, 1);
           doneChip.classList.remove('active');
