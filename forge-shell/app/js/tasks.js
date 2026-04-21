@@ -994,8 +994,8 @@ window.TasksView = (function () {
 
     // Group tasks by status
     var statuses = hideDone
-      ? ['active', 'waiting', 'someday']
-      : ['active', 'waiting', 'someday', 'done'];
+      ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
+      : STATUS_VALUES.slice();
     var statusLabels = {
       'active': 'Active',
       'waiting': 'Waiting On',
@@ -2246,7 +2246,7 @@ window.TasksView = (function () {
     };
     var conicParts = [];
     var cumPct = 0;
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       var pct = total > 0 ? (statusCounts[s] / total) * 100 : 0;
       if (pct > 0) {
         conicParts.push(statusColorRaw[s] + ' ' + cumPct.toFixed(1) + '% ' + (cumPct + pct).toFixed(1) + '%');
@@ -2281,7 +2281,7 @@ window.TasksView = (function () {
     html += '<div class="prod-summary-donut-row">';
     html += '<div class="prod-donut" style="background:conic-gradient(' + conicGrad + ')"><div class="prod-donut-hole">' + total + '</div></div>';
     html += '<div class="prod-donut-legend">';
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       var count = statusCounts[s];
       html += '<div class="prod-donut-legend-item">';
       html += '<span class="prod-donut-swatch" style="background:' + statusColorRaw[s] + '"></span>';
@@ -2465,7 +2465,7 @@ window.TasksView = (function () {
     html += '<div class="prod-wl-header-info">';
     html += '<span class="prod-wl-name">' + esc(name) + '</span>';
     html += '<div class="prod-wl-status-bar">';
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       if (statusCounts[s] > 0) {
         var pct = statusTotal > 0 ? (statusCounts[s] / statusTotal) * 100 : 0;
         html += '<div class="prod-wl-status-seg" style="width:' + pct + '%;background:' + statusColors[s] + '" title="' + s + ': ' + statusCounts[s] + '"></div>';
@@ -2521,8 +2521,8 @@ window.TasksView = (function () {
 
     var priorities = ['high', 'medium', 'low'];
     var statuses = hideDone
-      ? ['active', 'waiting', 'someday']
-      : ['active', 'waiting', 'someday', 'done'];
+      ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
+      : STATUS_VALUES.slice();
     var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
