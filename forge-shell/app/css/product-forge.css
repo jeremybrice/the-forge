@@ -447,3 +447,66 @@
     padding: 16px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Recents section, NEW badges, flash, type chip
+   (added 2026-05-05 — recents + auto-reveal feature)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Section header emphasis: 2px accent left-border, no bg tint */
+.pfl-tree-section[data-pfl-section="recents"] > .pfl-tree-section-header {
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;          /* 12 - 2 to keep label aligned */
+}
+
+/* Type chip — small rounded square shown on Recents rows so the
+   user can tell at a glance which kind of card they're looking at
+   (Recents is type-mixed). */
+.pfl-type-chip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* "NEW" badge pill — appears on rows whose filename was added
+   to the store during this session. Cleared on selection or
+   after the recentsTracker prune horizon. */
+.pfl-new-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  flex-shrink: 0;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+
+/* Brief flash applied to a tree row when auto-reveal selects it.
+   1.5s, fades out — class removed by setTimeout in JS. */
+@keyframes pfl-flash-new-keyframes {
+  0%   { background: var(--accent-light); }
+  100% { background: transparent; }
+}
+.pfl-flash-new {
+  animation: pfl-flash-new-keyframes 1.5s ease-out;
+}
+
+/* Toolbar refresh-indicator suffix when one or more cards
+   arrived this session and have not been seen yet. */
+.pfl-refresh-new-count {
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: 6px;
+  cursor: pointer;
+  user-select: none;
+  animation: pfl-refresh-pulse 1.5s ease-in-out infinite;
+}
+@keyframes pfl-refresh-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
