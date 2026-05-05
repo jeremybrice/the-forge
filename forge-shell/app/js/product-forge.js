@@ -588,6 +588,52 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
+     RecentsTracker — session-scoped state for "what just arrived"
+     - sessionAddedAt: filename → ms timestamp when first observed
+       in changes.added during this session
+     - unseenAddedCount: number of additions not yet acknowledged
+       by the user (cleared on click of toolbar "N new" suffix)
+     - PRUNE_HORIZON_MS: NEW badges and tracker entries expire after
+       this duration without user interaction (spec A6)
+     ═══════════════════════════════════════════════════════════════ */
+  var PRUNE_HORIZON_MS = 10 * 60 * 1000;  /* 10 minutes */
+
+  var recentsTracker = {
+    sessionAddedAt: new Map(),
+    unseenAddedCount: 0,
+
+    reset: function () {
+      this.sessionAddedAt.clear();
+      this.unseenAddedCount = 0;
+    },
+
+    noteAdded: function (filename) {
+      /* Implemented in Task 5 */
+    },
+
+    markSeen: function (filename) {
+      /* Implemented in Task 5 */
+    },
+
+    forget: function (filename) {
+      /* Implemented in Task 5 */
+    },
+
+    pruneStale: function () {
+      /* Implemented in Task 5 */
+    },
+
+    isNew: function (filename) {
+      return this.sessionAddedAt.has(filename);
+    },
+
+    getRecents: function (store, n) {
+      /* Implemented in Task 4 */
+      return [];
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
      Edit Modal
      ═══════════════════════════════════════════════════════════════ */
   const editModal = {
