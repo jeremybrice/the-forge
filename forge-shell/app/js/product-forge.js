@@ -598,6 +598,23 @@
      ═══════════════════════════════════════════════════════════════ */
   var PRUNE_HORIZON_MS = 10 * 60 * 1000;  /* 10 minutes */
 
+  /* parseDate — accepts ISO date strings like "2026-05-05" or
+     full timestamps. Returns ms-since-epoch number, or null on
+     failure. Tolerant of null/undefined input.
+
+     Browser-console smoke test (paste into devtools after reload):
+       parseDate('2026-05-05')           → e.g. 1762128000000
+       parseDate('2026-05-05T14:32:00Z') → e.g. 1762178320000
+       parseDate('not a date')           → null
+       parseDate(null)                   → null
+       parseDate('')                     → null
+  */
+  function parseDate(s) {
+    if (!s || typeof s !== 'string') return null;
+    var t = Date.parse(s);
+    return isNaN(t) ? null : t;
+  }
+
   var recentsTracker = {
     sessionAddedAt: new Map(),
     unseenAddedCount: 0,
@@ -1482,6 +1499,9 @@
      Expose & Register
      ═══════════════════════════════════════════════════════════════ */
   window.ProductForgeLocalView = ctrl;
+  /* Debug-only — exposed for manual smoke testing of pure helpers.
+     Not part of the public surface; do not depend on this. */
+  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker };
   Shell.registerController('product-forge-local', window.ProductForgeLocalView);
 
 })();
