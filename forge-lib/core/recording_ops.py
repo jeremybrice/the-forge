@@ -486,3 +486,180 @@ def merge_tracks(
         ts = _format_timestamp(start)
         lines.append(f"{label} ({ts}): {text}")
     return "\n".join(lines)
+
+
+# ---------- Public API: transcribe ----------
+
+def transcribe_recording(
+    recording_id: str,
+    directory: str,
+    model: Optional[str] = None,
+    language: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run whisper on each audio track of a recording, merge segments, update markdown.
+
+    On success: transcript_status='complete', body contains merged transcript.
+    On failure: transcript_status='failed', transcript_error captures stderr.
+
+    Args:
+        recording_id: id field of the recording (YYYY-MM-DDTHHMMSS).
+        directory: Project root.
+        model: Whisper model override; defaults to FORGE_WHISPER_MODEL env or large-v3-turbo.
+        language: ISO 639-1 code; if None whisper auto-detects.
+
+    Returns:
+        {
+            "success": bool,
+            "recording": <updated frontmatter>,
+            "file_path": str,
+            "error_code": Optional[str],   # "WHISPER_MISSING", "WHISPER_FAILED", etc.
+        }
+    """
+    used_model = model or DEFAULT_WHISPER_MODEL
+    fp = _find_recording_by_id(recording_id, directory)
+
+    if not Path(DEFAULT_WHISPER_BIN).exists():
+        fm = _set_status_failed(fp, error=f"Whisper binary not found at {DEFAULT_WHISPER_BIN}")
+        return {
+            "success": False,
+            "recording": fm,
+            "file_path": str(fp),
+            "error_code": "WHISPER_MISSING",
+        }
+
+    # Read frontmatter to discover audio files
+    fm, _body = frontmatter.parse(fp.read_text(encoding="utf-8"))
+    fm = _normalize_frontmatter_types(fm)
+    audio_files = fm.get("audio_files", {})
+
+    # Mark transcribing
+    fm["transcript_status"] = "transcribing"
+    fm["model"] = used_model
+    if language:
+        fm["language"] = language
+    fp.write_text(_render_template({
+        **fm,
+        "duration_human": _format_duration_human(fm["duration_seconds"]),
+        "transcript_body": "",
+    }), encoding="utf-8")
+
+    project_root = Path(directory)
+    work_dir = project_root / "audio-forge" / ".whisper-work"
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    track_segments: Dict[str, List[Dict[str, Any]]] = {"system": [], "mic": []}
+    track_errors: List[str] = []
+
+    try:
+        for source_name, rel_path in audio_files.items():
+            audio_abs = project_root / rel_path
+            if not audio_abs.exists():
+                track_errors.append(f"{source_name}: audio file missing at {rel_path}")
+                continue
+
+            cmd = [
+                DEFAULT_WHISPER_BIN,
+                str(audio_abs),
+                "--model", used_model,
+                "--output_dir", str(work_dir),
+                "--output_format", "json",
+                "--verbose", "False",
+            ]
+            if language:
+                cmd += ["--language", language]
+
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                track_errors.append(f"{source_name}: {proc.stderr.strip() or 'whisper exited non-zero'}")
+                continue
+
+            json_out = work_dir / (audio_abs.stem + ".json")
+            try:
+                track_segments[source_name] = parse_whisper_json(str(json_out))
+            except RecordingError as e:
+                track_errors.append(f"{source_name}: {e}")
+    finally:
+        # Cleanup intermediate whisper outputs
+        for f in work_dir.glob("*"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+    if track_errors and not any(track_segments.values()):
+        # Both tracks failed — mark recording as failed
+        fm = _set_status_failed(fp, error="; ".join(track_errors))
+        return {
+            "success": False,
+            "recording": fm,
+            "file_path": str(fp),
+            "error_code": "WHISPER_FAILED",
+        }
+
+    body = merge_tracks(track_segments.get("system", []), track_segments.get("mic", []))
+
+    fm["transcript_status"] = "complete"
+    fm["transcript_error"] = "; ".join(track_errors) if track_errors else None
+    fm["updated"] = date.today().strftime("%Y-%m-%d")
+    if not fm.get("language"):
+        # Best-effort: pick up language from system track JSON if present
+        sys_rel = audio_files.get("system")
+        if sys_rel:
+            sys_json = work_dir / (Path(sys_rel).stem + ".json")
+            if sys_json.exists():
+                try:
+                    fm["language"] = json.loads(sys_json.read_text())["language"]
+                except (json.JSONDecodeError, KeyError, OSError):
+                    pass
+
+    rendered = _render_template({
+        **fm,
+        "duration_human": _format_duration_human(fm["duration_seconds"]),
+        "transcript_body": body,
+    })
+    fp.write_text(rendered, encoding="utf-8")
+
+    # Update index
+    try:
+        index_ops.update_index_entry(str(fp.parent), fp.name, {
+            "transcript_status": fm["transcript_status"],
+            "updated": fm["updated"],
+        })
+    except index_ops.IndexError:
+        pass
+
+    return {
+        "success": True,
+        "recording": fm,
+        "file_path": str(fp),
+        "error_code": None,
+    }
+
+
+def _find_recording_by_id(recording_id: str, directory: str) -> Path:
+    """Look up the .md file path for a given recording id via the index."""
+    rec_dir = _recordings_dir(directory)
+    try:
+        index = index_ops.read_index(str(rec_dir))
+    except index_ops.IndexError:
+        index = {"entries": []}
+
+    for entry in index.get("entries", []):
+        if entry.get("id") == recording_id:
+            return rec_dir / entry["file"]
+    raise RecordingError(f"Recording id not found: {recording_id}")
+
+
+def _set_status_failed(fp: Path, error: str) -> Dict[str, Any]:
+    """Mark a recording as failed and persist the error message."""
+    fm, _body = frontmatter.parse(fp.read_text(encoding="utf-8"))
+    fm = _normalize_frontmatter_types(fm)
+    fm["transcript_status"] = "failed"
+    fm["transcript_error"] = error
+    fm["updated"] = date.today().strftime("%Y-%m-%d")
+    fp.write_text(_render_template({
+        **fm,
+        "duration_human": _format_duration_human(fm["duration_seconds"]),
+        "transcript_body": "",
+    }), encoding="utf-8")
+    return fm

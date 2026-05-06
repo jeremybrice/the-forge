@@ -4,6 +4,7 @@ import json
 import pytest
 from datetime import date
 from pathlib import Path
+from typing import List
 
 from core import validator
 
@@ -566,3 +567,133 @@ def test_merge_tracks_stable_for_same_start():
     lines = merged.split("\n")
     assert lines[0].startswith("**System**")
     assert lines[1].startswith("**You**")
+
+
+# ---------- transcribe tests (Task 11) ----------
+
+from unittest.mock import patch, MagicMock
+
+
+def _seed_full_recording(tmp_path):
+    """Helper: seed a recording AND create stub WAV files at expected paths."""
+    from core.recording_ops import create_recording
+    payload = _create_minimal_payload()
+    create_recording(payload, directory=str(tmp_path))
+    # Touch stub WAVs so file existence checks pass
+    for rel in payload["audio_files"].values():
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"RIFF")
+    return payload["id"]
+
+
+def _fake_whisper_run(json_payload):
+    """Build a fake subprocess.run that writes whisper's JSON next to its WAV input."""
+    def runner(cmd, *args, **kwargs):
+        # cmd = [whisper_bin, audio_path, --model, ..., --output_dir, dir, --output_format, json]
+        audio_path = Path(cmd[1])
+        out_dir_idx = cmd.index("--output_dir") + 1
+        out_dir = Path(cmd[out_dir_idx])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / (audio_path.stem + ".json")
+        out_file.write_text(json.dumps(json_payload))
+        return MagicMock(returncode=0, stdout="", stderr="")
+    return runner
+
+
+def test_transcribe_recording_writes_merged_body(tmp_path):
+    from core.recording_ops import transcribe_recording, get_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+
+    sys_json = json.loads(
+        (FIXTURE_DIR / "whisper_system_sample.json").read_text()
+    )
+    mic_json = json.loads(
+        (FIXTURE_DIR / "whisper_mic_sample.json").read_text()
+    )
+
+    call_count = {"n": 0}
+
+    def fake_run(cmd, *args, **kwargs):
+        call_count["n"] += 1
+        # First call → system track; second → mic
+        payload = sys_json if call_count["n"] == 1 else mic_json
+        return _fake_whisper_run(payload)(cmd, *args, **kwargs)
+
+    with patch("core.recording_ops.subprocess.run", side_effect=fake_run):
+        result = transcribe_recording(rec_id, directory=str(tmp_path))
+
+    assert result["success"] is True
+    assert result["recording"]["transcript_status"] == "complete"
+    assert result["recording"]["model"] == "large-v3-turbo"
+
+    on_disk = Path(result["file_path"]).read_text(encoding="utf-8")
+    assert "**System** (00:00:00): Hello everyone welcome to the call." in on_disk
+    assert "**You**    (00:00:03): Hi, can you hear me okay?" in on_disk
+    assert "**System** (00:00:05): Loud and clear." in on_disk
+
+
+def test_transcribe_recording_marks_failed_on_subprocess_error(tmp_path):
+    from core.recording_ops import transcribe_recording, get_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+
+    def fail_run(cmd, *args, **kwargs):
+        return MagicMock(returncode=1, stdout="", stderr="model load failed")
+
+    with patch("core.recording_ops.subprocess.run", side_effect=fail_run):
+        result = transcribe_recording(rec_id, directory=str(tmp_path))
+
+    assert result["success"] is False
+    assert result["recording"]["transcript_status"] == "failed"
+    assert "model load failed" in (result["recording"]["transcript_error"] or "")
+
+
+def test_transcribe_recording_missing_whisper_binary(tmp_path, monkeypatch):
+    from core.recording_ops import transcribe_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+    monkeypatch.setenv("FORGE_WHISPER_BIN", "/nope/does/not/exist")
+    # The function reads DEFAULT_WHISPER_BIN at call time, so reload the module
+    import importlib
+    import core.recording_ops as ro
+    importlib.reload(ro)
+
+    result = ro.transcribe_recording(rec_id, directory=str(tmp_path))
+    assert result["success"] is False
+    assert result["error_code"] == "WHISPER_MISSING"
+    assert result["recording"]["transcript_status"] == "failed"
+
+    # Reload with the original env restored so subsequent tests see the real binary path.
+    monkeypatch.delenv("FORGE_WHISPER_BIN", raising=False)
+    importlib.reload(ro)
+
+
+def test_transcribe_recording_records_model_override(tmp_path):
+    from core.recording_ops import transcribe_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+
+    sys_json = json.loads(
+        (FIXTURE_DIR / "whisper_system_sample.json").read_text()
+    )
+    mic_json = json.loads(
+        (FIXTURE_DIR / "whisper_mic_sample.json").read_text()
+    )
+
+    seen_models: List[str] = []
+    call_count = {"n": 0}
+
+    def capture_run(cmd, *args, **kwargs):
+        call_count["n"] += 1
+        # Inspect --model flag
+        m_idx = cmd.index("--model") + 1
+        seen_models.append(cmd[m_idx])
+        payload = sys_json if call_count["n"] == 1 else mic_json
+        return _fake_whisper_run(payload)(cmd, *args, **kwargs)
+
+    with patch("core.recording_ops.subprocess.run", side_effect=capture_run):
+        transcribe_recording(rec_id, directory=str(tmp_path), model="medium")
+
+    assert seen_models == ["medium", "medium"]
