@@ -188,3 +188,63 @@ def create_recording(
         raise
     except Exception as e:
         raise RecordingError(f"Failed to create recording: {e}")
+
+
+# ---------- Public API: get + query ----------
+
+def get_recording(file_path: str) -> Dict[str, Any]:
+    """Read a single recording's frontmatter from disk.
+
+    Args:
+        file_path: Absolute path to the .md file.
+
+    Returns:
+        Frontmatter dict.
+
+    Raises:
+        RecordingError: If the file is missing or unreadable.
+    """
+    fp = Path(file_path)
+    if not fp.exists():
+        raise RecordingError(f"Recording not found: {file_path}")
+    try:
+        content = fp.read_text(encoding="utf-8")
+        fm, _body = frontmatter.parse(content)
+        return fm
+    except Exception as e:
+        raise RecordingError(f"Failed to read recording: {e}")
+
+
+def query_recordings(
+    filters: Optional[Dict[str, Any]],
+    directory: str,
+) -> List[Dict[str, Any]]:
+    """Query the recordings index with optional filters.
+
+    Supported filters:
+        transcript_status: pending|transcribing|complete|failed
+
+    Args:
+        filters: Optional dict of field→value.
+        directory: Project root.
+
+    Returns:
+        List of index entries (possibly empty).
+    """
+    rec_dir = _recordings_dir(directory)
+    try:
+        index = index_ops.read_index(str(rec_dir))
+    except index_ops.IndexError:
+        return []
+
+    entries = index.get("entries", [])
+    if not filters:
+        return entries
+
+    out = []
+    for entry in entries:
+        if "transcript_status" in filters and \
+                entry.get("transcript_status") != filters["transcript_status"]:
+            continue
+        out.append(entry)
+    return out

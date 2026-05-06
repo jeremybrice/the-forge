@@ -277,3 +277,62 @@ def test_create_recording_filename_is_date_slugged(tmp_path):
     from core.recording_ops import create_recording
     result = create_recording(_create_minimal_payload(), directory=str(tmp_path))
     assert result["file_path"].endswith("/audio-forge/recordings/2026-05-06-sprint-standup.md")
+
+
+# ---------- get + query tests (Task 6) ----------
+
+def _seed_recording(tmp_path, title="Untitled", id_="2026-05-06T143022", status="pending"):
+    """Helper: create a recording and return its file_path."""
+    from core.recording_ops import create_recording
+    payload = _create_minimal_payload()
+    payload["id"] = id_
+    payload["title"] = title
+    payload["transcript_status"] = status
+    result = create_recording(payload, directory=str(tmp_path))
+    return result["file_path"]
+
+
+def test_get_recording_returns_frontmatter(tmp_path):
+    from core.recording_ops import get_recording
+    fp = _seed_recording(tmp_path, title="Standup")
+    fm = get_recording(fp)
+    assert fm["title"] == "Standup"
+    assert fm["type"] == "recording"
+    assert fm["transcript_status"] == "pending"
+
+
+def test_get_recording_raises_when_missing(tmp_path):
+    from core.recording_ops import get_recording, RecordingError
+    with pytest.raises(RecordingError) as exc:
+        get_recording(str(tmp_path / "does-not-exist.md"))
+    assert "not found" in str(exc.value).lower()
+
+
+def test_query_recordings_no_filters_returns_all(tmp_path):
+    from core.recording_ops import query_recordings
+    _seed_recording(tmp_path, title="A", id_="2026-05-06T100000")
+    _seed_recording(tmp_path, title="B", id_="2026-05-06T110000")
+    _seed_recording(tmp_path, title="C", id_="2026-05-06T120000")
+    results = query_recordings(filters=None, directory=str(tmp_path))
+    assert len(results) == 3
+    titles = {r["title"] for r in results}
+    assert titles == {"A", "B", "C"}
+
+
+def test_query_recordings_filters_by_status(tmp_path):
+    from core.recording_ops import query_recordings
+    _seed_recording(tmp_path, title="Pending", id_="2026-05-06T100000", status="pending")
+    _seed_recording(tmp_path, title="Done", id_="2026-05-06T110000", status="complete")
+    _seed_recording(tmp_path, title="Failed", id_="2026-05-06T120000", status="failed")
+    results = query_recordings(
+        filters={"transcript_status": "complete"},
+        directory=str(tmp_path),
+    )
+    assert len(results) == 1
+    assert results[0]["title"] == "Done"
+
+
+def test_query_recordings_empty_when_no_index(tmp_path):
+    from core.recording_ops import query_recordings
+    results = query_recordings(filters=None, directory=str(tmp_path))
+    assert results == []
