@@ -360,3 +360,58 @@ def _extract_transcript_body(body: str) -> str:
     if next_h2 != -1:
         after = after[:next_h2]
     return after.rstrip()
+
+
+# ---------- Public API: delete ----------
+
+def delete_recording(
+    file_path: str,
+    directory: str,
+    keep_audio: bool = False,
+    keep_markdown: bool = False,
+) -> Dict[str, Any]:
+    """Remove a recording from disk.
+
+    Args:
+        file_path: Absolute path to the .md file.
+        directory: Project root (needed to resolve relative audio paths).
+        keep_audio: If True, leave the WAV files on disk.
+        keep_markdown: If True, leave the .md file on disk.
+
+    Returns:
+        {"success": True, "removed": [<paths>]}
+    """
+    fp = Path(file_path)
+    if not fp.exists():
+        raise RecordingError(f"Recording not found: {file_path}")
+
+    try:
+        content = fp.read_text(encoding="utf-8")
+        fm, _body = frontmatter.parse(content)
+
+        removed: List[str] = []
+
+        if not keep_audio:
+            for rel_path in fm.get("audio_files", {}).values():
+                if not rel_path:
+                    continue
+                audio_path = Path(directory) / rel_path
+                if audio_path.exists():
+                    audio_path.unlink()
+                    removed.append(str(audio_path))
+
+        if not keep_markdown:
+            fp.unlink()
+            removed.append(str(fp))
+
+            try:
+                index_ops.delete_index_entry(str(fp.parent), fp.name)
+            except index_ops.IndexError:
+                pass
+
+        return {"success": True, "removed": removed}
+
+    except RecordingError:
+        raise
+    except Exception as e:
+        raise RecordingError(f"Failed to delete recording: {e}")

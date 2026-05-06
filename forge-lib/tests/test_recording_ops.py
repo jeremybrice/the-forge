@@ -397,3 +397,69 @@ def test_update_recording_accepts_transcript_body_without_validation_error(tmp_p
     # status was bumped
     fm = get_recording(fp)
     assert fm["transcript_status"] == "complete"
+
+
+# ---------- delete tests (Task 8) ----------
+
+def _touch_audio_files(tmp_path, fm):
+    """Helper: create empty WAV files at the paths referenced in fm.audio_files."""
+    paths = []
+    for rel in fm["audio_files"].values():
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"RIFF")
+        paths.append(p)
+    return paths
+
+
+def test_delete_recording_removes_markdown_and_audio_by_default(tmp_path):
+    from core.recording_ops import delete_recording, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    audios = _touch_audio_files(tmp_path, fm)
+
+    delete_recording(fp, directory=str(tmp_path))
+
+    assert not Path(fp).exists()
+    for p in audios:
+        assert not p.exists()
+
+
+def test_delete_recording_keep_audio(tmp_path):
+    from core.recording_ops import delete_recording, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    audios = _touch_audio_files(tmp_path, fm)
+
+    delete_recording(fp, directory=str(tmp_path), keep_audio=True)
+
+    assert not Path(fp).exists()
+    for p in audios:
+        assert p.exists()
+
+
+def test_delete_recording_keep_markdown(tmp_path):
+    from core.recording_ops import delete_recording, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    audios = _touch_audio_files(tmp_path, fm)
+
+    delete_recording(fp, directory=str(tmp_path), keep_markdown=True)
+
+    assert Path(fp).exists()
+    for p in audios:
+        assert not p.exists()
+
+
+def test_delete_recording_removes_index_entry(tmp_path):
+    from core.recording_ops import delete_recording, query_recordings
+    fp = _seed_recording(tmp_path)
+    delete_recording(fp, directory=str(tmp_path))
+    entries = query_recordings(filters=None, directory=str(tmp_path))
+    assert entries == []
+
+
+def test_delete_recording_raises_when_missing(tmp_path):
+    from core.recording_ops import delete_recording, RecordingError
+    with pytest.raises(RecordingError):
+        delete_recording(str(tmp_path / "missing.md"), directory=str(tmp_path))
