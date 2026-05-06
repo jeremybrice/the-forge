@@ -1071,6 +1071,9 @@
       selectedCard = null;
       store.clear();
       cardsHandle = null;
+      recentsTracker.reset();
+      treeView.collapsedSections.clear();
+      treeView.collapsedNodes.clear();
     },
 
     async refresh() {
@@ -1083,6 +1086,15 @@
       var card = store.get(filename);
       detailPanel.renderCard(card);
       treeView.highlightSelected(filename);
+
+      /* Acknowledging a card via click clears its NEW badge.
+         Re-render so the badge disappears from Recents and from
+         any structural duplicate. Cheap — render is fast. */
+      if (recentsTracker.isNew(filename)) {
+        recentsTracker.markSeen(filename);
+        this._renderTree();
+        this._updateRefreshIndicator();
+      }
     },
 
     /* ─── Internal ─── */
