@@ -11,7 +11,7 @@ and configure Atlassian agents — all from your terminal.
 
 [![Version](https://img.shields.io/badge/version-2.3.0-orange)]()
 [![Python](https://img.shields.io/badge/python-3.8+-blue)]()
-[![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen)]()
 [![Plugins](https://img.shields.io/badge/plugins-9-blueviolet)]()
 
 </div>

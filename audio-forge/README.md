@@ -76,7 +76,7 @@ The body's `## Transcript` section contains lines like:
 
 **`WHISPER_MISSING`** — install whisper or set `FORGE_WHISPER_BIN`.
 
-**Transcription is hanging on long inputs** — Apple Silicon's MPS backend occasionally stalls on 1h+ recordings. Re-run with `--model medium` or `--device cpu`.
+**Transcription is hanging on long inputs** — Apple Silicon's MPS backend occasionally stalls on 1h+ recordings. Re-run with `--model medium`. To force CPU inference, point `FORGE_WHISPER_BIN` at a wrapper script that adds `--device cpu` to the whisper invocation, or run whisper directly: `whisper <path-to.wav> --device cpu`.
 
 **Disk usage** — WAVs are ~110 MB/hr/track. Use `forge recording prune --older-than-days 30` to clean up.
 

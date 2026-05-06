@@ -43,7 +43,7 @@ forge-lib/
     task.json, session.json, report.json
   templates/                  ← Jinja2 markdown templates
     initiative.md.j2, epic.md.j2, story.md.j2, etc.
-  tests/                      ← Unit tests (124 passing)
+  tests/                      ← Unit tests (411 passing)
   requirements.txt
 ```
 
@@ -249,7 +249,17 @@ forge agent update ticket-triage-agent --data '{"status": "published"}'
 ### `recording` — Audio recordings (audio-forge plugin)
 
 ```bash
-forge recording create --directory . --data '<JSON>'
+forge recording create --directory . --data '{
+  "id": "2026-05-06T143022",
+  "title": "Sprint Standup",
+  "created": "2026-05-06T14:30:22",
+  "duration_seconds": 125,
+  "sources": ["system", "mic"],
+  "audio_files": {
+    "system": "audio-forge/audio/2026-05-06T143022-system.wav",
+    "mic":    "audio-forge/audio/2026-05-06T143022-mic.wav"
+  }
+}'
 forge recording list --directory . [--status pending|transcribing|complete|failed]
 forge recording get <file_path>
 forge recording update <file_path> --data '<JSON updates>'
@@ -271,7 +281,7 @@ Run the full test suite:
 python -m pytest tests/ -v
 ```
 
-**124 tests** covering all core modules and operations.
+**411 tests** covering all core modules and operations.
 
 ## Integration with Plugins
 

@@ -59,6 +59,7 @@ python forge.py --help
 | Checkpoint | `checkpoint-YYYY-MM-DD-{slug}.md` | `checkpoint-2026-02-14-architecture-decisions.md` |
 | Rovo Agent | `{slug}/agent.md` | `ticket-triage-agent/agent.md` |
 | Harvest | `YYYY-MM-DD-{harvest_type}-NNN.md` | `2026-02-17-task-harvest-001.md` |
+| Recording | `YYYY-MM-DD-{slug}.md` | `2026-05-06-sprint-standup.md` |
 
 ## Forge Shell Desktop App
 
