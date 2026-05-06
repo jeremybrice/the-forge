@@ -2211,14 +2211,31 @@ def prune_recordings(
                 audio_removed.append(str(wav))
 
     if remove_markdown and rec_dir.exists():
+        # A recording's markdown is prunable when ALL of its referenced audio files
+        # are either absent on disk or older than cutoff. (The markdown's own mtime
+        # is misleading because user metadata edits would falsely keep stale recordings.)
         for md in rec_dir.glob("*.md"):
-            if md.stat().st_mtime <= cutoff:
-                md.unlink()
-                markdown_removed.append(str(md))
-                try:
-                    index_ops.delete_index_entry(str(rec_dir), md.name)
-                except index_ops.IndexError:
-                    pass
+            try:
+                fm, _body = frontmatter.parse(md.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            audio_files = fm.get("audio_files", {}) or {}
+            all_old = True
+            for rel_path in audio_files.values():
+                if not rel_path:
+                    continue
+                audio_abs = Path(directory) / rel_path
+                if audio_abs.exists() and audio_abs.stat().st_mtime > cutoff:
+                    all_old = False
+                    break
+            if not all_old:
+                continue
+            md.unlink()
+            markdown_removed.append(str(md))
+            try:
+                index_ops.delete_index_entry(str(rec_dir), md.name)
+            except index_ops.IndexError:
+                pass
 
     return {
         "success": True,
