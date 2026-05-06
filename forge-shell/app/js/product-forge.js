@@ -1705,8 +1705,19 @@
       if (sectionId) treeView.collapsedSections.delete(sectionId);
       treeView.collapsedSections.delete('recents');  /* always show recents on reveal */
 
-      /* 3. Select and re-render so the expanded state is visible. */
-      this.selectCard(filename);
+      /* 3. Select, mark seen if needed (clears NEW badge), and
+         render once. selectCard sets selection state; we own the
+         render here so the rAF below sees a deterministic DOM
+         regardless of selectCard's internal behavior. */
+      selectedCard = filename;
+      var card2 = store.get(filename);
+      detailPanel.renderCard(card2);
+      if (recentsTracker.isNew(filename)) {
+        recentsTracker.markSeen(filename);
+      }
+      this._renderTree();
+      treeView.highlightSelected(filename);
+      this._updateRefreshIndicator();
 
       /* 4. Scroll + flash on next animation frame so the new DOM
          is in place. There may be multiple rows (Recents + structural)
@@ -1738,7 +1749,7 @@
 
       var fn = addedFilenames[0];
       this._revealCard(fn);
-      recentsTracker.markSeen(fn);
+      /* markSeen handled inside _revealCard's render path */
     }
   };
 
