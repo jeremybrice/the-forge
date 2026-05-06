@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/recording.json",
+  "title": "Recording Card Schema",
+  "description": "JSON Schema for audio-forge recording entities (audio captures + transcripts)",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "title",
+    "created",
+    "updated",
+    "duration_seconds",
+    "sources",
+    "audio_files",
+    "transcript_status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique recording identifier in YYYY-MM-DDTHHMMSS format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{6}$"
+    },
+    "type": {
+      "type": "string",
+      "const": "recording",
+      "description": "Card type identifier"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable recording title",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "created": {
+      "type": "string",
+      "description": "Recording start time in YYYY-MM-DDTHH:MM:SS format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last metadata update date in YYYY-MM-DD format"
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Recording duration in seconds"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["system", "mic"]
+      },
+      "description": "Audio sources captured in this recording"
+    },
+    "audio_files": {
+      "type": "object",
+      "description": "Map of source name to relative WAV path",
+      "properties": {
+        "system": {"type": "string"},
+        "mic": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "transcript_status": {
+      "type": "string",
+      "enum": ["pending", "transcribing", "complete", "failed"]
+    },
+    "transcript_error": {
+      "type": ["string", "null"],
+      "description": "Error message when transcript_status is 'failed'"
+    },
+    "model": {
+      "type": ["string", "null"],
+      "description": "Whisper model used for transcription (e.g., large-v3-turbo)"
+    },
+    "language": {
+      "type": ["string", "null"],
+      "description": "ISO 639-1 language code or whisper auto-detect result"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}
