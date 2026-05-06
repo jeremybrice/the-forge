@@ -250,8 +250,7 @@
     highlightSelected(filename) {
       $qa('.pfl-tree-node-header.pfl-selected').forEach(el => el.classList.remove('pfl-selected'));
       if (filename) {
-        const el = $q('[data-pfl-select="' + filename + '"]');
-        if (el) el.classList.add('pfl-selected');
+        $qa('[data-pfl-select="' + filename + '"]').forEach(el => el.classList.add('pfl-selected'));
       }
     },
 
