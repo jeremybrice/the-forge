@@ -323,10 +323,11 @@ class TestSupportedSchemasList:
             "task",
             "session",
             "report",
-            "harvest"
+            "harvest",
+            "recording",
         ]
         assert set(validator.SUPPORTED_SCHEMAS) == set(expected)
-        assert len(validator.SUPPORTED_SCHEMAS) == 11
+        assert len(validator.SUPPORTED_SCHEMAS) == 12
 
 
 class TestErrorMessages:
@@ -347,3 +348,13 @@ class TestErrorMessages:
         }
         with pytest.raises(validator.ValidationError, match="tags"):
             validator.validate(data, "story")
+
+
+def test_recording_is_supported_schema():
+    """recording entity must be in the supported schemas list."""
+    from core.validator import is_supported_schema, SUPPORTED_SCHEMAS
+
+    assert is_supported_schema("recording"), \
+        "recording schema should be supported"
+    assert "recording" in SUPPORTED_SCHEMAS, \
+        f"'recording' missing from SUPPORTED_SCHEMAS={SUPPORTED_SCHEMAS}"
