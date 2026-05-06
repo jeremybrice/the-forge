@@ -1324,7 +1324,32 @@
       var count = store.cards.size;
       var now = new Date();
       var time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      el.textContent = count + ' cards \u00B7 ' + time;
+      var unseen = recentsTracker.unseenAddedCount;
+
+      /* Build via DOM rather than HTML so we can attach a click
+         handler to just the suffix without re-binding every refresh. */
+      el.textContent = '';
+      el.appendChild(document.createTextNode(count + ' cards \u00B7 ' + time));
+      if (unseen > 0) {
+        var sep = document.createTextNode(' \u00B7 ');
+        el.appendChild(sep);
+        var span = document.createElement('span');
+        span.className = 'pfl-refresh-new-count';
+        span.textContent = unseen + ' new';
+        span.title = 'Click to show recent additions';
+        span.addEventListener('click', function () {
+          treeView.collapsedSections.delete('recents');
+          var sidebar = $q('.pfl-sidebar');
+          if (sidebar) sidebar.scrollTop = 0;
+          /* Clearing all unseen acknowledges the batch but does
+             NOT remove individual NEW badges from rows \u2014 those
+             still expire by click or by pruneStale (10min). */
+          recentsTracker.unseenAddedCount = 0;
+          ctrl._renderTree();
+          ctrl._updateRefreshIndicator();
+        });
+        el.appendChild(span);
+      }
     },
 
     _renderFilterPanel() {
