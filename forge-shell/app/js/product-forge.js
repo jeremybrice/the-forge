@@ -97,6 +97,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
           (hasChildren ? '<span class="pfl-node-count">' + initNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -121,6 +122,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
           (hasChildren ? '<span class="pfl-node-count">' + epicNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -142,6 +144,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
         '</div>' +
       '</div>';
     },
@@ -154,6 +157,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
         '</div>' +
       '</div>';
     },
