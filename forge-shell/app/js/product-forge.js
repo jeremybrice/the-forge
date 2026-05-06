@@ -684,48 +684,51 @@
   }
 
   var recentsTracker = {
+    /* sessionAddedAt — filename → ms timestamp when first observed.
+       Drives the NEW badge in render methods (via isNew) and the
+       10-minute prune horizon. */
     sessionAddedAt: new Map(),
-    unseenAddedCount: 0,
+
+    /* unseenSet — subset of sessionAddedAt: cards that have not yet
+       been acknowledged via the toolbar "N new" click OR the row
+       click. Drives the toolbar suffix count. */
+    unseenSet: new Set(),
+
+    get unseenAddedCount() {
+      return this.unseenSet.size;
+    },
 
     reset: function () {
       this.sessionAddedAt.clear();
-      this.unseenAddedCount = 0;
+      this.unseenSet.clear();
     },
 
-    /* noteAdded — record that this filename arrived (via
-       changes.added in _doRefresh) at the current wall-clock time.
-       If already present, leave the original timestamp (do not
-       extend lifetime on subsequent modifications).
-       Increments unseenAddedCount only on first observation. */
     noteAdded: function (filename) {
       if (!filename) return;
       if (!this.sessionAddedAt.has(filename)) {
         this.sessionAddedAt.set(filename, Date.now());
-        this.unseenAddedCount += 1;
+        this.unseenSet.add(filename);
       }
     },
 
-    /* markSeen — user has acknowledged this card (clicked it).
-       Removes the NEW badge for this filename and decrements
-       the unseen counter (clamped at 0). */
     markSeen: function (filename) {
       if (!filename) return;
-      if (this.sessionAddedAt.has(filename)) {
-        this.sessionAddedAt.delete(filename);
-        this.unseenAddedCount = Math.max(0, this.unseenAddedCount - 1);
-      }
+      this.sessionAddedAt.delete(filename);
+      this.unseenSet.delete(filename);
     },
 
-    /* forget — used when a tracked filename is detected in
-       changes.deleted; same effect as markSeen but semantically
-       different (no user acknowledgement, the card is gone). */
     forget: function (filename) {
       this.markSeen(filename);
     },
 
-    /* pruneStale — drop tracker entries older than PRUNE_HORIZON_MS.
-       For each pruned entry, decrement the unseen counter (these
-       are NEW badges the user never clicked but are now expired). */
+    /* acknowledgeAllUnseen — called by the toolbar "N new" click.
+       Clears the unseen set (zeroing the counter) but leaves
+       sessionAddedAt intact so individual NEW badges stay until
+       click or prune. */
+    acknowledgeAllUnseen: function () {
+      this.unseenSet.clear();
+    },
+
     pruneStale: function () {
       var now = Date.now();
       var self = this;
@@ -735,7 +738,7 @@
       });
       toDelete.forEach(function (filename) {
         self.sessionAddedAt.delete(filename);
-        self.unseenAddedCount = Math.max(0, self.unseenAddedCount - 1);
+        self.unseenSet.delete(filename);
       });
     },
 
@@ -743,19 +746,6 @@
       return this.sessionAddedAt.has(filename);
     },
 
-    /* getRecents — returns up to n most-recently-created cards
-       from the store, sorted DESC by frontmatter.created (parsed
-       via parseDate). Falls back to store.timestamps (file mtime)
-       when frontmatter.created is missing or unparseable.
-       Tie-break: filename ASC for stability.
-
-       Browser-console smoke test (after a workspace is loaded):
-         _pflDebug.recentsTracker.getRecents(
-           _pflDebug.recentsTracker._fakeStore || null, 5
-         )
-       And manually: pick 5 cards in your workspace whose `created`
-       you know, then call this and confirm the order.
-    */
     getRecents: function (store, n) {
       if (!store || typeof store.all !== 'function') return [];
       var limit = (typeof n === 'number' && n > 0) ? n : 10;
@@ -772,7 +762,7 @@
         return a.filename < b.filename ? -1 : (a.filename > b.filename ? 1 : 0);
       });
       return entries.slice(0, limit).map(function (e) { return e.card; });
-    },
+    }
   };
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1363,7 +1353,7 @@
           /* Clearing all unseen acknowledges the batch but does
              NOT remove individual NEW badges from rows \u2014 those
              still expire by click or by pruneStale (10min). */
-          recentsTracker.unseenAddedCount = 0;
+          recentsTracker.acknowledgeAllUnseen();
           ctrl._renderTree();
           ctrl._updateRefreshIndicator();
         });
