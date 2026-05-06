@@ -199,7 +199,7 @@ def get_recording(file_path: str) -> Dict[str, Any]:
         file_path: Absolute path to the .md file.
 
     Returns:
-        Frontmatter dict.
+        Frontmatter dict with all datetime/date fields normalized to strings.
 
     Raises:
         RecordingError: If the file is missing or unreadable.
@@ -210,7 +210,7 @@ def get_recording(file_path: str) -> Dict[str, Any]:
     try:
         content = fp.read_text(encoding="utf-8")
         fm, _body = frontmatter.parse(content)
-        return fm
+        return _normalize_frontmatter_types(fm)
     except Exception as e:
         raise RecordingError(f"Failed to read recording: {e}")
 
@@ -248,3 +248,107 @@ def query_recordings(
             continue
         out.append(entry)
     return out
+
+
+# ---------- Public API: update ----------
+
+_IMMUTABLE_FIELDS = {"id", "type", "created"}
+
+
+def _normalize_frontmatter_types(fm: Dict[str, Any]) -> Dict[str, Any]:
+    """Coerce YAML-parsed datetime/date objects back to ISO-format strings.
+
+    yaml.safe_load silently parses bare datetime strings into Python objects.
+    The schema expects strings, so we normalize before validation.
+    """
+    for key, value in fm.items():
+        if isinstance(value, datetime):
+            fm[key] = value.strftime("%Y-%m-%dT%H:%M:%S")
+        elif isinstance(value, date):
+            fm[key] = value.strftime("%Y-%m-%d")
+    return fm
+
+
+def update_recording(
+    file_path: str,
+    updates: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update a recording's frontmatter (in place) and refresh the index.
+
+    Args:
+        file_path: Absolute path to the .md file.
+        updates: Field→value dict. id/type/created are silently ignored.
+
+    Returns:
+        {"success": True, "recording": <updated frontmatter>}
+    """
+    fp = Path(file_path)
+    if not fp.exists():
+        raise RecordingError(f"Recording not found: {file_path}")
+
+    try:
+        content = fp.read_text(encoding="utf-8")
+        fm, body = frontmatter.parse(content)
+
+        # Coerce YAML-parsed datetime objects back to strings before applying updates
+        fm = _normalize_frontmatter_types(fm)
+
+        for key, value in updates.items():
+            if key in _IMMUTABLE_FIELDS:
+                continue
+            fm[key] = value
+
+        fm["updated"] = date.today().strftime("%Y-%m-%d")
+
+        try:
+            validator.validate(fm, "recording")
+        except validator.ValidationError as e:
+            raise RecordingError(f"Validation failed: {e}")
+
+        # Re-render body so transcript-status-driven sections stay in sync
+        rendered = _render_template({
+            **fm,
+            "duration_human": _format_duration_human(fm["duration_seconds"]),
+            "transcript_body": fm.get("transcript_body", "") or _extract_transcript_body(body),
+        })
+        fp.write_text(rendered, encoding="utf-8")
+
+        # Update index
+        rec_dir = fp.parent
+        index_updates = {
+            "title": fm["title"],
+            "updated": fm["updated"],
+            "transcript_status": fm["transcript_status"],
+            "duration_seconds": fm["duration_seconds"],
+        }
+        try:
+            index_ops.update_index_entry(str(rec_dir), fp.name, index_updates)
+        except index_ops.IndexError:
+            pass  # Non-fatal: markdown is source of truth
+
+        return {"success": True, "recording": fm}
+
+    except RecordingError:
+        raise
+    except Exception as e:
+        raise RecordingError(f"Failed to update recording: {e}")
+
+
+def _extract_transcript_body(body: str) -> str:
+    """Extract the prose under '## Transcript' from a rendered body, if any.
+
+    Used during update_recording so we don't lose existing transcript text
+    when re-rendering the template.
+    """
+    if not body:
+        return ""
+    marker = "## Transcript"
+    idx = body.find(marker)
+    if idx == -1:
+        return ""
+    after = body[idx + len(marker):].lstrip("\n")
+    # Stop at the next H2 if present
+    next_h2 = after.find("\n## ")
+    if next_h2 != -1:
+        after = after[:next_h2]
+    return after.rstrip()

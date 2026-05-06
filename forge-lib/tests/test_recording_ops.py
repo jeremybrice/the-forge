@@ -2,6 +2,7 @@
 
 import json
 import pytest
+from datetime import date
 from pathlib import Path
 
 from core import validator
@@ -336,3 +337,44 @@ def test_query_recordings_empty_when_no_index(tmp_path):
     from core.recording_ops import query_recordings
     results = query_recordings(filters=None, directory=str(tmp_path))
     assert results == []
+
+
+# ---------- update tests (Task 7) ----------
+
+def test_update_recording_modifies_title_and_bumps_updated(tmp_path):
+    from core.recording_ops import update_recording, get_recording
+    fp = _seed_recording(tmp_path, title="Old Title")
+    result = update_recording(fp, {"title": "New Title", "tags": ["meeting", "design"]})
+    assert result["recording"]["title"] == "New Title"
+    assert result["recording"]["tags"] == ["meeting", "design"]
+
+    on_disk = get_recording(fp)
+    assert on_disk["title"] == "New Title"
+    assert on_disk["updated"] == date.today().strftime("%Y-%m-%d")
+
+
+def test_update_recording_blocks_immutable_fields(tmp_path):
+    """id, type, created cannot be changed via update."""
+    from core.recording_ops import update_recording, get_recording
+    from datetime import date
+    fp = _seed_recording(tmp_path)
+    update_recording(fp, {"id": "2099-01-01T000000", "type": "session", "created": "2099-01-01T00:00:00"})
+    on_disk = get_recording(fp)
+    assert on_disk["id"] == "2026-05-06T143022"
+    assert on_disk["type"] == "recording"
+    assert on_disk["created"] == "2026-05-06T14:30:22"
+
+
+def test_update_recording_updates_index_entry(tmp_path):
+    from core.recording_ops import update_recording, query_recordings
+    fp = _seed_recording(tmp_path, title="Before")
+    update_recording(fp, {"title": "After"})
+    entries = query_recordings(filters=None, directory=str(tmp_path))
+    assert len(entries) == 1
+    assert entries[0]["title"] == "After"
+
+
+def test_update_recording_raises_when_missing(tmp_path):
+    from core.recording_ops import update_recording, RecordingError
+    with pytest.raises(RecordingError):
+        update_recording(str(tmp_path / "missing.md"), {"title": "x"})
