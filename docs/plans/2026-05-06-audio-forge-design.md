@@ -145,61 +145,9 @@ On clean stop the file is deleted. On crash it persists; the next launch sees th
 
 **Modified:** `forge-lib/forge.py` — register the `recording` subcommand group.
 
-**Schema (`recording.json`):**
-```json
-{
-  "type": "object",
-  "required": ["id", "title", "created", "duration_seconds", "sources", "audio_files", "transcript_status"],
-  "properties": {
-    "id":               {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{6}$"},
-    "title":            {"type": "string", "minLength": 1, "maxLength": 200},
-    "created":          {"type": "string", "format": "date-time"},
-    "duration_seconds": {"type": "integer", "minimum": 0},
-    "sources":          {"type": "array", "items": {"enum": ["system", "mic"]}},
-    "audio_files":      {"type": "object",
-                         "properties": {"system": {"type": "string"}, "mic": {"type": "string"}}},
-    "transcript_status":{"enum": ["pending", "transcribing", "complete", "failed"]},
-    "transcript_error": {"type": ["string", "null"]},
-    "model":            {"type": ["string", "null"]},
-    "language":         {"type": ["string", "null"]},
-    "tags":             {"type": "array", "items": {"type": "string"}}
-  }
-}
-```
+**Schema (`recording.json`):** Required: `id`, `type` (const `"recording"`), `title`, `created` (date-time), `updated` (date), `duration_seconds`, `sources`, `audio_files`, `transcript_status`. Optional: `transcript_error`, `model`, `language`, `tags`. The `type` discriminator and `updated` field follow the conventions of `session.json` and `report.json`. Full schema in the implementation plan.
 
-**Template (`recording.md.j2`):**
-```
----
-id: {{ id }}
-title: {{ title }}
-created: {{ created }}
-duration_seconds: {{ duration_seconds }}
-sources: {{ sources | tojson }}
-audio_files: {{ audio_files | tojson }}
-transcript_status: {{ transcript_status }}
-{% if model %}model: {{ model }}{% endif %}
-{% if language %}language: {{ language }}{% endif %}
-tags: {{ tags | tojson }}
----
-
-# {{ title }}
-
-**Duration:** {{ duration_human }}
-**Recorded:** {{ created }}
-**Sources:** {{ sources | join(', ') }}
-
-## Transcript
-
-{% if transcript_status == 'pending' %}
-_Transcription has not been run yet. Run `/audio-forge:transcribe {{ id }}` to generate._
-{% elif transcript_status == 'transcribing' %}
-_Transcription in progress…_
-{% elif transcript_status == 'failed' %}
-_Transcription failed: {{ transcript_error }}_
-{% else %}
-{{ transcript_body }}
-{% endif %}
-```
+**Template (`recording.md.j2`):** YAML frontmatter (id, type, title, created, updated, duration_seconds, sources, audio_files, transcript_status, optional model/language/tags) followed by a body with title heading, a metadata block, and a `## Transcript` section that renders one of four status-specific bodies (pending / transcribing / complete / failed). Full template in the implementation plan.
 
 `transcript_body` is the merged dual-track output, e.g.:
 ```
