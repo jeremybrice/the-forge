@@ -41,6 +41,11 @@
       if (!container) return;
       let html = '';
 
+      /* Recents always renders first when provided */
+      if (Array.isArray(hierarchy.recents)) {
+        html += this._renderRecentsSection(hierarchy.recents);
+      }
+
       html += this._renderSection('Initiatives', 'initiatives', hierarchy.tree.length, () => {
         let inner = '';
         for (const initNode of hierarchy.tree) inner += this._renderInitiativeNode(initNode);
@@ -149,6 +154,44 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+        '</div>' +
+      '</div>';
+    },
+
+    /* _renderRecentsSection — renders the type-mixed Recents
+       section at the top of the tree. Each row is a leaf-style
+       node with: toggle stub, status dot, type chip, title,
+       optional NEW badge. */
+    _renderRecentsSection: function (cards) {
+      var self = this;
+      var collapsed = this.collapsedSections.has('recents');
+      var inner = cards.map(function (card) { return self._renderRecentsRow(card); }).join('');
+      return '<div class="pfl-tree-section" data-pfl-section="recents">' +
+        '<div class="pfl-tree-section-header" data-pfl-toggle-section="recents">' +
+          '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' +
+          '<span>Recents</span>' +
+          '<span class="pfl-count">' + cards.length + '</span>' +
+        '</div>' +
+        '<div class="pfl-tree-children' + (collapsed ? ' pfl-collapsed' : '') + '" data-pfl-section-body="recents">' + inner + '</div>' +
+      '</div>';
+    },
+
+    /* _renderRecentsRow — a leaf row with type chip + optional
+       NEW badge. Uses pfl-indent-1 to match other leaf sections. */
+    _renderRecentsRow: function (card) {
+      var fm = card.frontmatter;
+      var type = fm.type || 'unknown';
+      var newBadge = recentsTracker.isNew(card.filename)
+        ? '<span class="pfl-new-badge">NEW</span>'
+        : '';
+      return '<div class="pfl-tree-node pfl-indent-1" data-pfl-filename="' + ESC(card.filename) + '" data-pfl-type="' + ESC(type) + '">' +
+        '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
+          '<span class="pfl-toggle"></span>' +
+          '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          '<span class="pfl-type-chip" style="background:' + getTypeColor(type) + '" title="' + ESC(type) + '"></span>' +
+          (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
+          '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          newBadge +
         '</div>' +
       '</div>';
     },
