@@ -1702,7 +1702,11 @@
       else if (type === 'checkpoint') sectionId = 'checkpoints';
       else if (type === 'decision') sectionId = 'decisions';
       else if (type === 'release-note') sectionId = 'release-notes';
-      if (sectionId) treeView.collapsedSections.delete(sectionId);
+      if (sectionId) {
+        treeView.collapsedSections.delete(sectionId);
+      } else {
+        console.warn('_revealCard: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
+      }
       treeView.collapsedSections.delete('recents');  /* always show recents on reveal */
 
       /* 3. Select, mark seen if needed (clears NEW badge), and
