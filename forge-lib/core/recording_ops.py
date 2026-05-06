@@ -672,3 +672,66 @@ def _set_status_failed(fp: Path, error: str) -> Dict[str, Any]:
         "transcript_body": "",
     }), encoding="utf-8")
     return fm
+
+
+# ---------- Public API: prune ----------
+
+def prune_recordings(
+    directory: str,
+    older_than_days: int = 30,
+    remove_markdown: bool = False,
+) -> Dict[str, Any]:
+    """Delete WAV files (and optionally markdown) older than a threshold.
+
+    A WAV is considered prunable when its mtime is older than `older_than_days`.
+    Markdown files are only removed when `remove_markdown=True` and all of the
+    recording's audio files are older than the threshold (or missing).
+    """
+    cutoff = time.time() - (older_than_days * 86400)
+    audio_dir = _audio_dir(directory)
+    rec_dir = _recordings_dir(directory)
+    project_root = Path(directory)
+
+    audio_removed: List[str] = []
+    markdown_removed: List[str] = []
+
+    if audio_dir.exists():
+        for wav in audio_dir.iterdir():
+            if not wav.is_file():
+                continue
+            if wav.stat().st_mtime <= cutoff:
+                wav.unlink()
+                audio_removed.append(str(wav))
+
+    if remove_markdown and rec_dir.exists():
+        for md in rec_dir.glob("*.md"):
+            # Determine whether all audio files for this recording are old/gone.
+            try:
+                content = md.read_text(encoding="utf-8")
+                fm, _body = frontmatter.parse(content)
+                audio_files = fm.get("audio_files", {})
+            except Exception:
+                audio_files = {}
+
+            all_old = True
+            for rel_path in audio_files.values():
+                if not rel_path:
+                    continue
+                audio_path = project_root / rel_path
+                if audio_path.exists() and audio_path.stat().st_mtime > cutoff:
+                    all_old = False
+                    break
+
+            if all_old:
+                md.unlink()
+                markdown_removed.append(str(md))
+                try:
+                    index_ops.delete_index_entry(str(rec_dir), md.name)
+                except index_ops.IndexError:
+                    pass
+
+    return {
+        "success": True,
+        "audio_removed": audio_removed,
+        "markdown_removed": markdown_removed,
+    }

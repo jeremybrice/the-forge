@@ -1,6 +1,8 @@
 """Tests for recording_ops — schema, ops, transcription, prune."""
 
 import json
+import os
+import time
 import pytest
 from datetime import date
 from pathlib import Path
@@ -762,3 +764,60 @@ def test_transcribe_recording_partial_success_when_one_track_fails(tmp_path):
     assert "**System** (00:00:00): Hello everyone welcome to the call." in on_disk
     # No mic line because mic track failed
     assert "**You**" not in on_disk
+
+
+# ---------- prune tests (Task 12) ----------
+
+
+def _age_audio_files(tmp_path, fm, days_old: int):
+    """Helper: backdate the WAVs referenced by a recording."""
+    cutoff = time.time() - (days_old * 86400)
+    for rel in fm["audio_files"].values():
+        p = tmp_path / rel
+        if not p.exists():
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"RIFF")
+        os.utime(p, (cutoff, cutoff))
+
+
+def test_prune_recordings_removes_old_audio_default(tmp_path):
+    from core.recording_ops import prune_recordings, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    _age_audio_files(tmp_path, fm, days_old=31)
+
+    result = prune_recordings(directory=str(tmp_path), older_than_days=30)
+
+    assert result["success"] is True
+    assert len(result["audio_removed"]) == 2
+    # Markdown should still be present
+    assert Path(fp).exists()
+
+
+def test_prune_recordings_keeps_fresh_audio(tmp_path):
+    from core.recording_ops import prune_recordings, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    _age_audio_files(tmp_path, fm, days_old=10)
+
+    result = prune_recordings(directory=str(tmp_path), older_than_days=30)
+
+    assert result["audio_removed"] == []
+    for rel in fm["audio_files"].values():
+        assert (tmp_path / rel).exists()
+
+
+def test_prune_recordings_remove_all_drops_markdown(tmp_path):
+    from core.recording_ops import prune_recordings, get_recording
+    fp = _seed_recording(tmp_path)
+    fm = get_recording(fp)
+    _age_audio_files(tmp_path, fm, days_old=31)
+
+    result = prune_recordings(
+        directory=str(tmp_path),
+        older_than_days=30,
+        remove_markdown=True,
+    )
+
+    assert not Path(fp).exists()
+    assert len(result["markdown_removed"]) == 1
