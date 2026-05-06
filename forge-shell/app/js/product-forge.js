@@ -644,10 +644,36 @@
       return this.sessionAddedAt.has(filename);
     },
 
+    /* getRecents — returns up to n most-recently-created cards
+       from the store, sorted DESC by frontmatter.created (parsed
+       via parseDate). Falls back to store.timestamps (file mtime)
+       when frontmatter.created is missing or unparseable.
+       Tie-break: filename ASC for stability.
+
+       Browser-console smoke test (after a workspace is loaded):
+         _pflDebug.recentsTracker.getRecents(
+           _pflDebug.recentsTracker._fakeStore || null, 5
+         )
+       And manually: pick 5 cards in your workspace whose `created`
+       you know, then call this and confirm the order.
+    */
     getRecents: function (store, n) {
-      /* Implemented in Task 4 */
-      return [];
-    }
+      if (!store || typeof store.all !== 'function') return [];
+      var limit = (typeof n === 'number' && n > 0) ? n : 10;
+      var entries = store.all().map(function (card) {
+        var ts = parseDate(card.frontmatter && card.frontmatter.created);
+        if (ts === null) {
+          var fileTs = store.timestamps.get(card.filename);
+          ts = (typeof fileTs === 'number') ? fileTs : 0;
+        }
+        return { card: card, ts: ts, filename: card.filename };
+      });
+      entries.sort(function (a, b) {
+        if (b.ts !== a.ts) return b.ts - a.ts;
+        return a.filename < b.filename ? -1 : (a.filename > b.filename ? 1 : 0);
+      });
+      return entries.slice(0, limit).map(function (e) { return e.card; });
+    },
   };
 
   /* ═══════════════════════════════════════════════════════════════
