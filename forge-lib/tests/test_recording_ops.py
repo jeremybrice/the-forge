@@ -166,3 +166,46 @@ def test_template_renders_failed_recording_with_error():
         tags=[],
     )
     assert "Transcription failed: whisper: out of memory" in rendered
+
+
+# ---------- recording_ops module tests (Task 4) ----------
+
+def test_recording_error_is_exception():
+    """RecordingError is the public error class for the module."""
+    from core.recording_ops import RecordingError
+    assert issubclass(RecordingError, Exception)
+
+
+def test_generate_recording_filename_basic(tmp_path):
+    """Filename is YYYY-MM-DD-{slug}.md based on title and created date."""
+    from datetime import date
+    from core.recording_ops import _generate_recording_filename
+    name = _generate_recording_filename(
+        title="Sprint Standup",
+        created_date=date(2026, 5, 6),
+        directory=tmp_path,
+    )
+    assert name == "2026-05-06-sprint-standup.md"
+
+
+def test_generate_recording_filename_uniqueness_counter(tmp_path):
+    """If a file already exists, append -2, -3, … until unique."""
+    from datetime import date
+    from core.recording_ops import _generate_recording_filename
+    (tmp_path / "2026-05-06-sprint-standup.md").write_text("x")
+    (tmp_path / "2026-05-06-sprint-standup-2.md").write_text("x")
+    name = _generate_recording_filename(
+        title="Sprint Standup",
+        created_date=date(2026, 5, 6),
+        directory=tmp_path,
+    )
+    assert name == "2026-05-06-sprint-standup-3.md"
+
+
+def test_format_duration_human():
+    """Duration helper produces compact strings."""
+    from core.recording_ops import _format_duration_human
+    assert _format_duration_human(0) == "0s"
+    assert _format_duration_human(45) == "45s"
+    assert _format_duration_human(125) == "2m 5s"
+    assert _format_duration_human(3725) == "1h 2m 5s"
