@@ -1,0 +1,55 @@
+---
+id: {{ id }}
+type: recording
+title: "{{ title }}"
+created: {{ created }}
+updated: {{ updated }}
+duration_seconds: {{ duration_seconds }}
+sources:
+{%- for src in sources %}
+  - {{ src }}
+{%- endfor %}
+audio_files:
+{%- for key, path in audio_files.items() %}
+  {{ key }}: {{ path }}
+{%- endfor %}
+transcript_status: {{ transcript_status }}
+{%- if transcript_error %}
+transcript_error: "{{ transcript_error }}"
+{%- endif %}
+{%- if model %}
+model: {{ model }}
+{%- endif %}
+{%- if language %}
+language: {{ language }}
+{%- endif %}
+tags:
+{%- if tags and tags|length > 0 %}
+{%- for tag in tags %}
+  - {{ tag }}
+{%- endfor %}
+{%- else %}
+  []
+{%- endif %}
+---
+
+# {{ title }}
+
+**Duration:** {{ duration_human }}
+**Recorded:** {{ created }}
+**Sources:** {{ sources | join(', ') }}
+{%- if model %}
+**Model:** {{ model }}
+{%- endif %}
+
+## Transcript
+
+{% if transcript_status == 'pending' -%}
+_Transcription has not been run yet. Run `forge recording transcribe {{ id }}` to generate._
+{%- elif transcript_status == 'transcribing' -%}
+_Transcription in progress…_
+{%- elif transcript_status == 'failed' -%}
+_Transcription failed: {{ transcript_error }}_
+{%- else -%}
+{{ transcript_body }}
+{%- endif %}
