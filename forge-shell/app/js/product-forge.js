@@ -1434,8 +1434,16 @@
           if (!files.has(fn)) {
             changes.deleted.push(fn);
             store.delete(fn);
+            recentsTracker.forget(fn);
           }
         }
+
+        /* Feed the tracker with new arrivals BEFORE re-rendering so
+           NEW badges appear in the same render pass. */
+        for (var addedIdx = 0; addedIdx < changes.added.length; addedIdx++) {
+          recentsTracker.noteAdded(changes.added[addedIdx]);
+        }
+        recentsTracker.pruneStale();
 
         var hasChanges = changes.added.length + changes.modified.length + changes.deleted.length > 0;
         if (hasChanges) {
@@ -1450,6 +1458,9 @@
               detailPanel.renderCard(null);
             }
           }
+        }
+        if (changes.added.length > 0 && typeof this._maybeAutoReveal === 'function') {
+          this._maybeAutoReveal(changes.added);
         }
         this._updateRefreshIndicator();
       } catch (e) {
