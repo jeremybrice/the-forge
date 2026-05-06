@@ -209,3 +209,71 @@ def test_format_duration_human():
     assert _format_duration_human(45) == "45s"
     assert _format_duration_human(125) == "2m 5s"
     assert _format_duration_human(3725) == "1h 2m 5s"
+
+
+# ---------- create_recording tests (Task 5) ----------
+
+def _create_minimal_payload():
+    return {
+        "id": "2026-05-06T143022",
+        "title": "Sprint Standup",
+        "created": "2026-05-06T14:30:22",
+        "duration_seconds": 125,
+        "sources": ["system", "mic"],
+        "audio_files": {
+            "system": "audio-forge/audio/2026-05-06T143022-system.wav",
+            "mic": "audio-forge/audio/2026-05-06T143022-mic.wav",
+        },
+    }
+
+
+def test_create_recording_writes_markdown_and_index(tmp_path):
+    """Happy path: markdown file is written under audio-forge/recordings/, index entry added."""
+    from core.recording_ops import create_recording
+    result = create_recording(_create_minimal_payload(), directory=str(tmp_path))
+
+    assert result["success"] is True
+    fp = Path(result["file_path"])
+    assert fp.exists()
+    contents = fp.read_text(encoding="utf-8")
+    assert "title: \"Sprint Standup\"" in contents
+    assert "type: recording" in contents
+    assert "transcript_status: pending" in contents
+
+    index_path = tmp_path / "audio-forge" / "recordings" / "index.json"
+    assert index_path.exists()
+    index_data = json.loads(index_path.read_text(encoding="utf-8"))
+    assert index_data["entries"][0]["title"] == "Sprint Standup"
+    assert index_data["entries"][0]["transcript_status"] == "pending"
+
+
+def test_create_recording_defaults_status_to_pending(tmp_path):
+    """transcript_status defaults to 'pending' when not provided."""
+    from core.recording_ops import create_recording
+    result = create_recording(_create_minimal_payload(), directory=str(tmp_path))
+    assert result["recording"]["transcript_status"] == "pending"
+
+
+def test_create_recording_rejects_invalid_id_format(tmp_path):
+    """An id that doesn't match YYYY-MM-DDTHHMMSS must raise RecordingError."""
+    from core.recording_ops import create_recording, RecordingError
+    payload = _create_minimal_payload()
+    payload["id"] = "bad-id"
+    with pytest.raises(RecordingError) as exc:
+        create_recording(payload, directory=str(tmp_path))
+    assert "id" in str(exc.value).lower() or "validation" in str(exc.value).lower()
+
+
+def test_create_recording_rejects_unknown_source(tmp_path):
+    from core.recording_ops import create_recording, RecordingError
+    payload = _create_minimal_payload()
+    payload["sources"] = ["system", "speaker"]
+    with pytest.raises(RecordingError):
+        create_recording(payload, directory=str(tmp_path))
+
+
+def test_create_recording_filename_is_date_slugged(tmp_path):
+    """File name follows YYYY-MM-DD-{slug}.md."""
+    from core.recording_ops import create_recording
+    result = create_recording(_create_minimal_payload(), directory=str(tmp_path))
+    assert result["file_path"].endswith("/audio-forge/recordings/2026-05-06-sprint-standup.md")

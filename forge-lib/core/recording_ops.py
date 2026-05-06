@@ -69,3 +69,122 @@ def _format_duration_human(seconds: int) -> str:
         return f"{minutes}m {secs}s"
     hours, mins = divmod(minutes, 60)
     return f"{hours}h {mins}m {secs}s"
+
+
+# ---------- Directory + path helpers ----------
+
+def _recordings_dir(project_root: str) -> Path:
+    return Path(project_root) / "audio-forge" / "recordings"
+
+
+def _audio_dir(project_root: str) -> Path:
+    return Path(project_root) / "audio-forge" / "audio"
+
+
+def _ensure_layout(project_root: str) -> None:
+    """Make sure the audio-forge directory tree exists."""
+    _recordings_dir(project_root).mkdir(parents=True, exist_ok=True)
+    _audio_dir(project_root).mkdir(parents=True, exist_ok=True)
+
+
+def _render_template(context: Dict[str, Any]) -> str:
+    """Render recording.md.j2 with the supplied context."""
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(Path(__file__).parent.parent / "templates")),
+        keep_trailing_newline=True,
+    )
+    tmpl = env.get_template("recording.md.j2")
+    return tmpl.render(**context)
+
+
+# ---------- Public API: create ----------
+
+def create_recording(
+    data: Dict[str, Any],
+    directory: str,
+) -> Dict[str, Any]:
+    """Create a new recording markdown file + index entry.
+
+    Args:
+        data: Recording fields. Must include id, title, created, duration_seconds,
+              sources, audio_files. transcript_status defaults to 'pending'.
+        directory: Project root.
+
+    Returns:
+        {"success": True, "recording": <frontmatter>, "file_path": <abs path>}
+    """
+    try:
+        _ensure_layout(directory)
+
+        # Build full frontmatter dict with defaults applied
+        fm: Dict[str, Any] = {
+            "id": data.get("id"),
+            "type": "recording",
+            "title": data.get("title"),
+            "created": data.get("created"),
+            "updated": date.today().strftime("%Y-%m-%d"),
+            "duration_seconds": data.get("duration_seconds"),
+            "sources": data.get("sources", []),
+            "audio_files": data.get("audio_files", {}),
+            "transcript_status": data.get("transcript_status", "pending"),
+            "transcript_error": data.get("transcript_error"),
+            "model": data.get("model"),
+            "language": data.get("language"),
+            "tags": data.get("tags", []),
+        }
+
+        # Validate
+        try:
+            validator.validate(fm, "recording")
+        except validator.ValidationError as e:
+            raise RecordingError(f"Validation failed: {e}")
+
+        # Filename
+        rec_dir = _recordings_dir(directory)
+        # Parse the date portion of `created` for the filename prefix
+        try:
+            created_dt = datetime.strptime(fm["created"], "%Y-%m-%dT%H:%M:%S")
+        except (ValueError, TypeError) as e:
+            raise RecordingError(f"created must be YYYY-MM-DDTHH:MM:SS: {e}")
+        filename = _generate_recording_filename(
+            title=fm["title"],
+            created_date=created_dt.date(),
+            directory=rec_dir,
+        )
+        filepath = rec_dir / filename
+
+        # Render + write
+        body_context = {
+            **fm,
+            "duration_human": _format_duration_human(fm["duration_seconds"]),
+            "transcript_body": "",
+        }
+        filepath.write_text(_render_template(body_context), encoding="utf-8")
+
+        # Index entry
+        entry = {
+            "file": filename,
+            "type": "recording",
+            "title": fm["title"],
+            "id": fm["id"],
+            "created": fm["created"],
+            "updated": fm["updated"],
+            "duration_seconds": fm["duration_seconds"],
+            "transcript_status": fm["transcript_status"],
+        }
+        try:
+            index_ops.create_index_entry(str(rec_dir), entry, plugin="audio-forge")
+        except index_ops.IndexError:
+            # Index update is non-fatal: the markdown is the source of truth.
+            pass
+
+        return {
+            "success": True,
+            "recording": fm,
+            "file_path": str(filepath),
+        }
+
+    except RecordingError:
+        raise
+    except Exception as e:
+        raise RecordingError(f"Failed to create recording: {e}")
