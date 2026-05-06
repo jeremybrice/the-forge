@@ -463,3 +463,46 @@ def test_delete_recording_raises_when_missing(tmp_path):
     from core.recording_ops import delete_recording, RecordingError
     with pytest.raises(RecordingError):
         delete_recording(str(tmp_path / "missing.md"), directory=str(tmp_path))
+
+
+# ---------- Whisper parser tests (Task 9) ----------
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+def test_parse_whisper_json_extracts_segments():
+    from core.recording_ops import parse_whisper_json
+    segments = parse_whisper_json(str(FIXTURE_DIR / "whisper_system_sample.json"))
+    assert len(segments) == 2
+    assert segments[0] == {"start": 0.0, "end": 2.5, "text": "Hello everyone welcome to the call."}
+    assert segments[1] == {"start": 5.2, "end": 6.8, "text": "Loud and clear."}
+
+
+def test_parse_whisper_json_handles_empty_segments(tmp_path):
+    from core.recording_ops import parse_whisper_json
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"text": "", "segments": [], "language": "en"}))
+    assert parse_whisper_json(str(empty)) == []
+
+
+def test_parse_whisper_json_skips_segments_missing_fields(tmp_path):
+    from core.recording_ops import parse_whisper_json
+    odd = tmp_path / "odd.json"
+    odd.write_text(json.dumps({
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": " Good."},
+            {"start": 1.0, "text": " Missing end — skip me."},
+            {"end": 3.0, "text": " Missing start — skip me."},
+            {"start": 3.0, "end": 4.0},
+            {"start": 4.0, "end": 5.0, "text": " Keeper."},
+        ],
+        "language": "en",
+    }))
+    segments = parse_whisper_json(str(odd))
+    assert [s["text"] for s in segments] == ["Good.", "Keeper."]
+
+
+def test_parse_whisper_json_raises_on_missing_file(tmp_path):
+    from core.recording_ops import parse_whisper_json, RecordingError
+    with pytest.raises(RecordingError):
+        parse_whisper_json(str(tmp_path / "nope.json"))

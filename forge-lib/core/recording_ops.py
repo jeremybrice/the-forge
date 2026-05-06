@@ -415,3 +415,35 @@ def delete_recording(
         raise
     except Exception as e:
         raise RecordingError(f"Failed to delete recording: {e}")
+
+
+# ---------- Whisper segment parsing ----------
+
+def parse_whisper_json(json_path: str) -> List[Dict[str, Any]]:
+    """Parse whisper's --output_format json output into a list of segments.
+
+    Each segment dict contains: {start: float, end: float, text: str}.
+    Whitespace around text is stripped. Segments missing start, end, or text
+    are skipped silently (they would corrupt the merged transcript).
+    """
+    fp = Path(json_path)
+    if not fp.exists():
+        raise RecordingError(f"Whisper output file not found: {json_path}")
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise RecordingError(f"Whisper output is not valid JSON: {e}")
+
+    out: List[Dict[str, Any]] = []
+    for seg in data.get("segments", []):
+        if "start" not in seg or "end" not in seg or "text" not in seg:
+            continue
+        text = (seg["text"] or "").strip()
+        if not text:
+            continue
+        out.append({
+            "start": float(seg["start"]),
+            "end": float(seg["end"]),
+            "text": text,
+        })
+    return out

@@ -1,0 +1,18 @@
+{
+  "text": " Hi can you hear me okay?",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 3.1,
+      "end": 4.9,
+      "text": " Hi, can you hear me okay?",
+      "tokens": [50364, 2421, 11, 393, 291, 1568, 385, 1392, 30, 50450],
+      "temperature": 0.0,
+      "avg_logprob": -0.22,
+      "compression_ratio": 0.81,
+      "no_speech_prob": 0.03
+    }
+  ],
+  "language": "en"
+}

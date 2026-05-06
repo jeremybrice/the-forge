@@ -1,0 +1,30 @@
+{
+  "text": " Hello everyone welcome to the call. Loud and clear.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 2.5,
+      "text": " Hello everyone welcome to the call.",
+      "tokens": [50364, 2425, 1543, 5126, 281, 264, 818, 13, 50489],
+      "temperature": 0.0,
+      "avg_logprob": -0.21,
+      "compression_ratio": 1.05,
+      "no_speech_prob": 0.01
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 5.2,
+      "end": 6.8,
+      "text": " Loud and clear.",
+      "tokens": [50489, 24705, 293, 1850, 13, 50569],
+      "temperature": 0.0,
+      "avg_logprob": -0.18,
+      "compression_ratio": 0.92,
+      "no_speech_prob": 0.02
+    }
+  ],
+  "language": "en"
+}
