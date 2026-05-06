@@ -49,7 +49,7 @@ forge-lib/
 
 ## CLI Command Groups
 
-The `forge.py` CLI has 8 command groups:
+The `forge.py` CLI has 9 command groups:
 
 1. **card** — Product card operations (7 types)
 2. **task** — Task management
@@ -59,6 +59,7 @@ The `forge.py` CLI has 8 command groups:
 6. **index** — Index management
 7. **relationship** — Parent-child linking
 8. **agent** — Rovo agent configuration management
+9. **recording** — Audio recordings (audio-forge plugin)
 
 ## Output Format
 
@@ -243,6 +244,25 @@ forge agent query --status published
 forge agent update ticket-triage-agent --data '{"status": "published"}'
 ```
 
+## Recording Commands
+
+### `recording` — Audio recordings (audio-forge plugin)
+
+```bash
+forge recording create --directory . --data '<JSON>'
+forge recording list --directory . [--status pending|transcribing|complete|failed]
+forge recording get <file_path>
+forge recording update <file_path> --data '<JSON updates>'
+forge recording delete <file_path> --directory . [--keep-audio] [--keep-markdown]
+forge recording transcribe <recording_id> --directory . [--model X] [--language en]
+forge recording prune --directory . [--older-than-days N] [--remove-markdown]
+```
+
+Whisper invocation honours these env vars:
+
+- `FORGE_WHISPER_BIN` — path to the whisper binary (default: `/opt/homebrew/bin/whisper`)
+- `FORGE_WHISPER_MODEL` — default model name (default: `large-v3-turbo`)
+
 ## Testing
 
 Run the full test suite:
@@ -278,7 +298,7 @@ if response['success']:
 
 ## Version
 
-**v2.2.1** — Epic jira_card schema, cross-cutting documentation.
+**v2.3.0** — Audio-forge plugin (Phase 1): `recording` subcommand group added.
 
 ## Author
 

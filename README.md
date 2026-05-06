@@ -9,10 +9,10 @@
 Manage products, track tasks, capture knowledge, debate decisions, generate reports,
 and configure Atlassian agents — all from your terminal.
 
-[![Version](https://img.shields.io/badge/version-2.2.1-orange)]()
+[![Version](https://img.shields.io/badge/version-2.3.0-orange)]()
 [![Python](https://img.shields.io/badge/python-3.8+-blue)]()
 [![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)]()
-[![Plugins](https://img.shields.io/badge/plugins-8-blueviolet)]()
+[![Plugins](https://img.shields.io/badge/plugins-9-blueviolet)]()
 
 </div>
 
@@ -20,7 +20,7 @@ and configure Atlassian agents — all from your terminal.
 
 ## What is The Forge?
 
-The Forge is a suite of **8 Claude Code plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
+The Forge is a suite of **9 Claude Code plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
 
 Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib`) handles all file operations, validation, and indexing. Forge Shell gives you a desktop GUI to browse everything the plugins create.
 
@@ -40,6 +40,7 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/robot-solid-white.svg"><img src="docs/images/robot-solid.svg" width="20" /></picture> | **[Rovo Forge](rovo-forge/README.md)** | Interactive builders for Atlassian Rovo Jira & Confluence agents |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/slack-brands-solid-white.svg"><img src="docs/images/slack-brands-solid.svg" width="20" /></picture> | **[Slack Forge](slack-forge/README.md)** | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/envelope-regular-white.svg"><img src="docs/images/envelope-regular.svg" width="20" /></picture> | **[Outlook Forge](outlook-forge/README.md)** | Outlook intelligence harvester — surfaces tasks, knowledge, and meeting context |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/microphone-solid-white.svg"><img src="docs/images/microphone-solid.svg" width="20" /></picture> | **[Audio Forge](audio-forge/README.md)** | Record system audio + microphone on macOS and transcribe with local Whisper. Phase 1 ships the CLI; the Forge Shell record button arrives in Phase 2. |
 
 ---
 
@@ -131,6 +132,7 @@ See individual plugin READMEs for detailed workflows and command references.
 | [Rovo Forge](rovo-forge/README.md) | Atlassian Rovo agent builders |
 | [Slack Forge](slack-forge/README.md) | Slack channel intelligence harvester |
 | [Outlook Forge](outlook-forge/README.md) | Outlook intelligence harvester |
+| [Audio Forge](audio-forge/README.md) | macOS audio recording and Whisper transcription |
 | [Forge Shell](forge-shell/README.md) | Desktop app build and usage |
 
 ---

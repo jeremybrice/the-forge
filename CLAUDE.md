@@ -29,6 +29,7 @@ python forge.py --help
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
 | **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/harvests/` + `slack-forge/harvests/index.json` + `slack-forge/config.json` |
 | **outlook-forge** | `/outlook-forge:init`, `/outlook-forge:scan`, `/outlook-forge:capture`, `/outlook-forge:review`, `/outlook-forge:promote` | `outlook-forge/harvests/` + `outlook-forge/harvests/index.json` |
+| **audio-forge** | `/audio-forge:list`, `/audio-forge:transcribe` | `audio-forge/recordings/` + `audio-forge/recordings/index.json` |
 
 ## Architecture
 
@@ -100,4 +101,4 @@ See `forge-shell/README.md` for details.
 
 ## Version
 
-**v2.2.1** — Cross-cutting documentation, epic jira_card attribute, and status filter panel.
+**v2.3.0** — Audio-forge plugin (Phase 1: CLI for transcribing system+mic WAVs via local Whisper). Phase 2 adds Forge Shell recording UI.
