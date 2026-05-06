@@ -1639,6 +1639,54 @@
         document.removeEventListener('keydown', keydownHandler);
         keydownHandler = null;
       }
+    },
+
+    /* _revealCard — given a filename known to be in the store,
+       expand all ancestors + the section containing it (and the
+       Recents section), select it, scroll into view, and apply a
+       brief flash class to the row that auto-removes after 1.5s.
+       Idempotent and safe to call multiple times. */
+    _revealCard: function (filename) {
+      var card = store.get(filename);
+      if (!card) return;
+
+      /* 1. Walk parent chain and uncollapse each ancestor. */
+      var cursor = card;
+      var safety = 16;  /* defensive against cyclic parent chains */
+      while (cursor && cursor.frontmatter && cursor.frontmatter.parent && safety-- > 0) {
+        treeView.collapsedNodes.delete(cursor.frontmatter.parent);
+        cursor = store.get(cursor.frontmatter.parent);
+      }
+
+      /* 2. Uncollapse the section that owns this card. */
+      var type = card.frontmatter.type;
+      var sectionId = null;
+      if (type === 'initiative') sectionId = 'initiatives';
+      else if (type === 'epic') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-epics';
+      else if (type === 'story') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-stories';
+      else if (type === 'intake') sectionId = 'intakes';
+      else if (type === 'checkpoint') sectionId = 'checkpoints';
+      else if (type === 'decision') sectionId = 'decisions';
+      else if (type === 'release-note') sectionId = 'release-notes';
+      if (sectionId) treeView.collapsedSections.delete(sectionId);
+      treeView.collapsedSections.delete('recents');  /* always show recents on reveal */
+
+      /* 3. Select and re-render so the expanded state is visible. */
+      this.selectCard(filename);
+
+      /* 4. Scroll + flash on next animation frame so the new DOM
+         is in place. There may be multiple rows (Recents + structural)
+         — flash both. */
+      requestAnimationFrame(function () {
+        var rows = $qa('[data-pfl-select="' + filename + '"]');
+        if (rows && rows.length > 0) {
+          rows[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        rows.forEach(function (row) {
+          row.classList.add('pfl-flash-new');
+          setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
+        });
+      });
     }
   };
 
