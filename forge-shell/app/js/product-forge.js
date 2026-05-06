@@ -624,20 +624,51 @@
       this.unseenAddedCount = 0;
     },
 
+    /* noteAdded — record that this filename arrived (via
+       changes.added in _doRefresh) at the current wall-clock time.
+       If already present, leave the original timestamp (do not
+       extend lifetime on subsequent modifications).
+       Increments unseenAddedCount only on first observation. */
     noteAdded: function (filename) {
-      /* Implemented in Task 5 */
+      if (!filename) return;
+      if (!this.sessionAddedAt.has(filename)) {
+        this.sessionAddedAt.set(filename, Date.now());
+        this.unseenAddedCount += 1;
+      }
     },
 
+    /* markSeen — user has acknowledged this card (clicked it).
+       Removes the NEW badge for this filename and decrements
+       the unseen counter (clamped at 0). */
     markSeen: function (filename) {
-      /* Implemented in Task 5 */
+      if (!filename) return;
+      if (this.sessionAddedAt.has(filename)) {
+        this.sessionAddedAt.delete(filename);
+        this.unseenAddedCount = Math.max(0, this.unseenAddedCount - 1);
+      }
     },
 
+    /* forget — used when a tracked filename is detected in
+       changes.deleted; same effect as markSeen but semantically
+       different (no user acknowledgement, the card is gone). */
     forget: function (filename) {
-      /* Implemented in Task 5 */
+      this.markSeen(filename);
     },
 
+    /* pruneStale — drop tracker entries older than PRUNE_HORIZON_MS.
+       For each pruned entry, decrement the unseen counter (these
+       are NEW badges the user never clicked but are now expired). */
     pruneStale: function () {
-      /* Implemented in Task 5 */
+      var now = Date.now();
+      var self = this;
+      var toDelete = [];
+      this.sessionAddedAt.forEach(function (ts, filename) {
+        if (now - ts > PRUNE_HORIZON_MS) toDelete.push(filename);
+      });
+      toDelete.forEach(function (filename) {
+        self.sessionAddedAt.delete(filename);
+        self.unseenAddedCount = Math.max(0, self.unseenAddedCount - 1);
+      });
     },
 
     isNew: function (filename) {
