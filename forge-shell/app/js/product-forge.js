@@ -587,6 +587,24 @@
       };
     },
 
+    /* filterRecents — apply per-type status filters to a flat
+       recents array. Cards whose type is not initiative/epic/story
+       are unaffected by the panel's status filters. */
+    filterRecents: function (recents) {
+      if (this.getActiveCount() === 0) return recents;
+      var self = this;
+      return recents.filter(function (card) {
+        var fm = card.frontmatter || {};
+        var type = fm.type;
+        var key = type === 'initiative' ? 'initiative_status'
+                : type === 'epic'       ? 'epic_status'
+                : type === 'story'      ? 'story_status'
+                : null;
+        if (!key) return true;
+        return self._cardMatchesTypeStatus(card, key, self.filters[key]);
+      });
+    },
+
     render(container) {
       let html = '<div class="pfl-filter-header">';
       html += '<span>Status Filters</span>';
@@ -1268,8 +1286,26 @@
         treeView.collapsedSections.clear();
       }
 
+      /* Build Recents (after structural search filter so titles
+         that don't match are not in the recents either). The
+         recents themselves are then filtered by search query
+         and per-type status filters. */
+      var allRecents = recentsTracker.getRecents(store, 10);
+      if (searching) {
+        var matchCardLocal = function (card) {
+          var title = (card.frontmatter.title || '').toLowerCase();
+          var fname = (card.filename || '').toLowerCase();
+          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
+        };
+        allRecents = allRecents.filter(matchCardLocal);
+      }
+      var filteredRecents = FilterPanel.filterRecents(allRecents);
+
       // Apply status filters
       hierarchy = FilterPanel.filterHierarchy(hierarchy);
+      /* Re-attach recents after filterHierarchy (which returns a new
+         object that doesn't carry recents through). */
+      hierarchy.recents = filteredRecents;
 
       treeView.render(hierarchy);
 
