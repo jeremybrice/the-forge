@@ -21,7 +21,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 # Import core modules
-from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, agent_ops, harvest_ops, frontmatter
+from core import card_ops, index_ops, relationship_ops, memory_ops, task_ops, session_ops, report_ops, agent_ops, harvest_ops, recording_ops, frontmatter
 from core.validator import ValidationError
 from core.card_ops import CardError
 from core.index_ops import IndexError
@@ -32,9 +32,10 @@ from core.session_ops import SessionError
 from core.report_ops import ReportError
 from core.agent_ops import AgentError
 from core.harvest_ops import HarvestError
+from core.recording_ops import RecordingError
 
 # Version info
-__version__ = "2.2.1"
+__version__ = "2.3.0"
 
 # Exit codes
 EXIT_SUCCESS = 0
@@ -967,6 +968,116 @@ def handle_agent_update(args):
         sys.exit(EXIT_ERROR)
 
 
+# ---------- Recording handlers ----------
+
+def handle_recording_create(args):
+    """Create a new recording entity from a JSON payload."""
+    try:
+        if not args.data:
+            output_json(None, success=False, error="--data is required for recording create")
+            sys.exit(EXIT_ERROR)
+        data = json.loads(args.data)
+        result = recording_ops.create_recording(data, directory=args.directory)
+        output_json(result)
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+    except Exception as e:
+        output_json(None, success=False, error=f"Unexpected error: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_recording_list(args):
+    """List recordings, optionally filtered by transcript_status."""
+    try:
+        filters = {}
+        if getattr(args, "status", None):
+            filters["transcript_status"] = args.status
+        results = recording_ops.query_recordings(filters or None, directory=args.directory)
+        output_json({"recordings": results, "count": len(results)})
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_recording_get(args):
+    """Get a single recording by file path."""
+    try:
+        result = recording_ops.get_recording(args.file_path)
+        output_json({"recording": result})
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_NOT_FOUND)
+
+
+def handle_recording_update(args):
+    """Update a recording's metadata."""
+    try:
+        if not args.data:
+            output_json(None, success=False, error="--data is required for recording update")
+            sys.exit(EXIT_ERROR)
+        updates = json.loads(args.data)
+        result = recording_ops.update_recording(args.file_path, updates)
+        output_json(result)
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+    except json.JSONDecodeError as e:
+        output_json(None, success=False, error=f"Invalid JSON in --data: {e}")
+        sys.exit(EXIT_ERROR)
+
+
+def handle_recording_delete(args):
+    """Delete a recording (markdown + audio by default)."""
+    try:
+        result = recording_ops.delete_recording(
+            args.file_path,
+            directory=args.directory,
+            keep_audio=args.keep_audio,
+            keep_markdown=args.keep_markdown,
+        )
+        output_json(result)
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_recording_transcribe(args):
+    """Run whisper on a recording's audio tracks."""
+    try:
+        result = recording_ops.transcribe_recording(
+            args.recording_id,
+            directory=args.directory,
+            model=args.model,
+            language=args.language,
+        )
+        if result["success"]:
+            output_json(result)
+        else:
+            output_json(result, success=False, error=result["recording"].get("transcript_error"))
+            sys.exit(EXIT_ERROR)
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
+def handle_recording_prune(args):
+    """Prune old WAV files (and optionally markdown)."""
+    try:
+        result = recording_ops.prune_recordings(
+            directory=args.directory,
+            older_than_days=args.older_than_days,
+            remove_markdown=args.remove_markdown,
+        )
+        output_json(result)
+    except RecordingError as e:
+        output_json(None, success=False, error=str(e))
+        sys.exit(EXIT_ERROR)
+
+
 def create_parser():
     """Create the argument parser with all subcommands"""
     parser = argparse.ArgumentParser(
@@ -1200,6 +1311,56 @@ def create_parser():
     session_update.add_argument("--agents", help="Comma-separated list of agents")
     session_update.add_argument("--data", help="JSON update data")
     session_update.set_defaults(func=handle_session_update)
+
+    # ---------- recording ----------
+    rec_parser = subparsers.add_parser("recording", help="Recording operations (audio-forge)")
+    rec_subparsers = rec_parser.add_subparsers(dest="recording_command", required=True)
+
+    # recording create
+    rc_create = rec_subparsers.add_parser("create", help="Create a recording entity")
+    rc_create.add_argument("--directory", default=".", help="Project root")
+    rc_create.add_argument("--data", required=True, help="JSON payload")
+    rc_create.set_defaults(func=handle_recording_create)
+
+    # recording list
+    rc_list = rec_subparsers.add_parser("list", help="List recordings")
+    rc_list.add_argument("--directory", default=".", help="Project root")
+    rc_list.add_argument("--status", choices=["pending", "transcribing", "complete", "failed"])
+    rc_list.set_defaults(func=handle_recording_list)
+
+    # recording get
+    rc_get = rec_subparsers.add_parser("get", help="Get a recording by file path")
+    rc_get.add_argument("file_path")
+    rc_get.set_defaults(func=handle_recording_get)
+
+    # recording update
+    rc_update = rec_subparsers.add_parser("update", help="Update a recording's metadata")
+    rc_update.add_argument("file_path")
+    rc_update.add_argument("--data", required=True, help="JSON of fields to update")
+    rc_update.set_defaults(func=handle_recording_update)
+
+    # recording delete
+    rc_delete = rec_subparsers.add_parser("delete", help="Delete a recording")
+    rc_delete.add_argument("file_path")
+    rc_delete.add_argument("--directory", default=".", help="Project root")
+    rc_delete.add_argument("--keep-audio", action="store_true", help="Keep WAV files")
+    rc_delete.add_argument("--keep-markdown", action="store_true", help="Keep markdown file")
+    rc_delete.set_defaults(func=handle_recording_delete)
+
+    # recording transcribe
+    rc_trans = rec_subparsers.add_parser("transcribe", help="Run whisper on a recording")
+    rc_trans.add_argument("recording_id", help="Recording id (YYYY-MM-DDTHHMMSS)")
+    rc_trans.add_argument("--directory", default=".", help="Project root")
+    rc_trans.add_argument("--model", help="Whisper model name (default: large-v3-turbo)")
+    rc_trans.add_argument("--language", help="ISO 639-1 language code (default: auto-detect)")
+    rc_trans.set_defaults(func=handle_recording_transcribe)
+
+    # recording prune
+    rc_prune = rec_subparsers.add_parser("prune", help="Delete old WAV files (and optionally markdown)")
+    rc_prune.add_argument("--directory", default=".", help="Project root")
+    rc_prune.add_argument("--older-than-days", type=int, default=30)
+    rc_prune.add_argument("--remove-markdown", action="store_true", help="Also delete markdown files")
+    rc_prune.set_defaults(func=handle_recording_prune)
 
     # ==================== REPORT COMMANDS ====================
     report_parser = subparsers.add_parser("report", help="Report operations")

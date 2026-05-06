@@ -821,3 +821,58 @@ def test_prune_recordings_remove_all_drops_markdown(tmp_path):
 
     assert not Path(fp).exists()
     assert len(result["markdown_removed"]) == 1
+
+
+# ---------- CLI integration tests (Task 13) ----------
+
+import subprocess as sp
+import sys as _sys
+
+
+CLI = [
+    _sys.executable,
+    str(Path(__file__).parent.parent / "forge.py"),
+]
+
+
+def _run_cli(*args, cwd=None):
+    proc = sp.run(CLI + list(args), capture_output=True, text=True, cwd=cwd)
+    return proc
+
+
+def test_cli_recording_help():
+    proc = _run_cli("recording", "--help")
+    assert proc.returncode == 0
+    out = proc.stdout
+    assert "create" in out
+    assert "list" in out
+    assert "transcribe" in out
+    assert "prune" in out
+
+
+def test_cli_recording_list_empty(tmp_path):
+    proc = _run_cli("recording", "list", "--directory", str(tmp_path))
+    assert proc.returncode == 0
+    payload = json.loads(proc.stdout)
+    assert payload["success"] is True
+    assert payload["data"]["recordings"] == []
+
+
+def test_cli_recording_create_writes_file(tmp_path):
+    payload_arg = json.dumps({
+        "id": "2026-05-06T143022",
+        "title": "CLI Test",
+        "created": "2026-05-06T14:30:22",
+        "duration_seconds": 10,
+        "sources": ["mic"],
+        "audio_files": {"mic": "audio-forge/audio/2026-05-06T143022-mic.wav"},
+    })
+    proc = _run_cli(
+        "recording", "create",
+        "--directory", str(tmp_path),
+        "--data", payload_arg,
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["success"] is True
+    assert Path(payload["data"]["file_path"]).exists()
