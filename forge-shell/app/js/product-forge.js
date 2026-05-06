@@ -1459,7 +1459,7 @@
             }
           }
         }
-        if (changes.added.length > 0 && typeof this._maybeAutoReveal === 'function') {
+        if (changes.added.length > 0) {
           this._maybeAutoReveal(changes.added);
         }
         this._updateRefreshIndicator();
@@ -1687,6 +1687,24 @@
           setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
         });
       });
+    },
+
+    /* _maybeAutoReveal — decides whether a batch of newly-added
+       filenames is safe to auto-select and scroll to (single-add,
+       no current selection, no search, no active filters). Otherwise
+       leaves the unseen counter to be shown in the toolbar. */
+    _maybeAutoReveal: function (addedFilenames) {
+      var searchEl = $q('[data-pfl-search]');
+      var hasSearch = !!(searchEl && searchEl.value && searchEl.value.trim().length > 0);
+      var hasFilters = FilterPanel.getActiveCount() > 0;
+
+      if (hasSearch || hasFilters) return;       /* user is filtering — don't steal */
+      if (addedFilenames.length !== 1) return;   /* batch — surface via counter only */
+      if (selectedCard) return;                  /* user is on something — preserve */
+
+      var fn = addedFilenames[0];
+      this._revealCard(fn);
+      recentsTracker.markSeen(fn);
     }
   };
 
