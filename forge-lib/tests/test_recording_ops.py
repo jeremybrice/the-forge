@@ -506,3 +506,63 @@ def test_parse_whisper_json_raises_on_missing_file(tmp_path):
     from core.recording_ops import parse_whisper_json, RecordingError
     with pytest.raises(RecordingError):
         parse_whisper_json(str(tmp_path / "nope.json"))
+
+
+# ---------- Track merger tests (Task 10) ----------
+
+def test_format_timestamp():
+    from core.recording_ops import _format_timestamp
+    assert _format_timestamp(0) == "00:00:00"
+    assert _format_timestamp(7) == "00:00:07"
+    assert _format_timestamp(67) == "00:01:07"
+    assert _format_timestamp(3725) == "01:02:05"
+    # Sub-second floats round down
+    assert _format_timestamp(7.9) == "00:00:07"
+
+
+def test_merge_tracks_interleaves_by_start():
+    from core.recording_ops import merge_tracks
+    system_segs = [
+        {"start": 0.0, "end": 2.5, "text": "Hello everyone welcome to the call."},
+        {"start": 5.2, "end": 6.8, "text": "Loud and clear."},
+    ]
+    mic_segs = [
+        {"start": 3.1, "end": 4.9, "text": "Hi, can you hear me okay?"},
+    ]
+    merged = merge_tracks(system_segs, mic_segs)
+    expected = (
+        "**System** (00:00:00): Hello everyone welcome to the call.\n"
+        "**You**    (00:00:03): Hi, can you hear me okay?\n"
+        "**System** (00:00:05): Loud and clear."
+    )
+    assert merged == expected
+
+
+def test_merge_tracks_only_system():
+    from core.recording_ops import merge_tracks
+    system_segs = [{"start": 0.0, "end": 2.0, "text": "Solo."}]
+    merged = merge_tracks(system_segs, [])
+    assert merged == "**System** (00:00:00): Solo."
+
+
+def test_merge_tracks_only_mic():
+    from core.recording_ops import merge_tracks
+    mic_segs = [{"start": 0.0, "end": 2.0, "text": "Solo mic."}]
+    merged = merge_tracks([], mic_segs)
+    assert merged == "**You**    (00:00:00): Solo mic."
+
+
+def test_merge_tracks_empty():
+    from core.recording_ops import merge_tracks
+    assert merge_tracks([], []) == ""
+
+
+def test_merge_tracks_stable_for_same_start():
+    """When two segments share a start time, system wins (deterministic order)."""
+    from core.recording_ops import merge_tracks
+    system_segs = [{"start": 1.0, "end": 2.0, "text": "S"}]
+    mic_segs = [{"start": 1.0, "end": 2.0, "text": "M"}]
+    merged = merge_tracks(system_segs, mic_segs)
+    lines = merged.split("\n")
+    assert lines[0].startswith("**System**")
+    assert lines[1].startswith("**You**")

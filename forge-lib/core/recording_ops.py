@@ -447,3 +447,42 @@ def parse_whisper_json(json_path: str) -> List[Dict[str, Any]]:
             "text": text,
         })
     return out
+
+
+# ---------- Track merging ----------
+
+def _format_timestamp(seconds: float) -> str:
+    """Render a float-second offset as HH:MM:SS (rounded down to whole seconds)."""
+    total = int(seconds)
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def merge_tracks(
+    system_segments: List[Dict[str, Any]],
+    mic_segments: List[Dict[str, Any]],
+) -> str:
+    """Interleave two segment lists by start time and emit a labelled transcript.
+
+    Format per line:
+        **System** (HH:MM:SS): <text>
+        **You**    (HH:MM:SS): <text>
+
+    System wins ties (stable, deterministic ordering).
+    """
+    tagged: List[Tuple[float, int, str, str]] = []
+    # priority: 0 = system (wins ties), 1 = mic
+    for seg in system_segments:
+        tagged.append((seg["start"], 0, "**System**", seg["text"]))
+    for seg in mic_segments:
+        tagged.append((seg["start"], 1, "**You**   ", seg["text"]))
+
+    # Stable sort on (start, priority)
+    tagged.sort(key=lambda t: (t[0], t[1]))
+
+    lines = []
+    for start, _prio, label, text in tagged:
+        ts = _format_timestamp(start)
+        lines.append(f"{label} ({ts}): {text}")
+    return "\n".join(lines)
