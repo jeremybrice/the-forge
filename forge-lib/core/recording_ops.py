@@ -300,16 +300,24 @@ def update_recording(
 
         fm["updated"] = date.today().strftime("%Y-%m-%d")
 
+        # transcript_body is a body field, not a frontmatter field. Pop it out
+        # before validation so additionalProperties:false doesn't reject it.
+        new_transcript_body = fm.pop("transcript_body", None)
+
         try:
             validator.validate(fm, "recording")
         except validator.ValidationError as e:
             raise RecordingError(f"Validation failed: {e}")
 
-        # Re-render body so transcript-status-driven sections stay in sync
+        # Choose the transcript body to render: caller-supplied wins,
+        # otherwise extract whatever was in the existing body.
+        transcript_body = new_transcript_body if new_transcript_body is not None \
+            else _extract_transcript_body(body)
+
         rendered = _render_template({
             **fm,
             "duration_human": _format_duration_human(fm["duration_seconds"]),
-            "transcript_body": fm.get("transcript_body", "") or _extract_transcript_body(body),
+            "transcript_body": transcript_body,
         })
         fp.write_text(rendered, encoding="utf-8")
 

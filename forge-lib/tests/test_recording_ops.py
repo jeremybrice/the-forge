@@ -356,7 +356,6 @@ def test_update_recording_modifies_title_and_bumps_updated(tmp_path):
 def test_update_recording_blocks_immutable_fields(tmp_path):
     """id, type, created cannot be changed via update."""
     from core.recording_ops import update_recording, get_recording
-    from datetime import date
     fp = _seed_recording(tmp_path)
     update_recording(fp, {"id": "2099-01-01T000000", "type": "session", "created": "2099-01-01T00:00:00"})
     on_disk = get_recording(fp)
@@ -378,3 +377,23 @@ def test_update_recording_raises_when_missing(tmp_path):
     from core.recording_ops import update_recording, RecordingError
     with pytest.raises(RecordingError):
         update_recording(str(tmp_path / "missing.md"), {"title": "x"})
+
+
+def test_update_recording_accepts_transcript_body_without_validation_error(tmp_path):
+    """transcript_body is a body field, not frontmatter — passing it must not break validation."""
+    from core.recording_ops import update_recording, get_recording
+    fp = _seed_recording(tmp_path, title="Standup")
+    result = update_recording(fp, {
+        "transcript_status": "complete",
+        "transcript_body": "**System** (00:00:01): hello.\n**You**    (00:00:02): hi.",
+    })
+    assert result["success"] is True
+    # frontmatter should NOT contain transcript_body
+    assert "transcript_body" not in result["recording"]
+    # but the body on disk should
+    on_disk = Path(fp).read_text(encoding="utf-8")
+    assert "**System** (00:00:01): hello." in on_disk
+    assert "**You**    (00:00:02): hi." in on_disk
+    # status was bumped
+    fm = get_recording(fp)
+    assert fm["transcript_status"] == "complete"
