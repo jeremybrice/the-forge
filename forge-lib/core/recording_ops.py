@@ -419,6 +419,23 @@ def delete_recording(
 
 # ---------- Whisper segment parsing ----------
 
+def _segments_from_whisper_payload(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract clean segment dicts from a whisper-output payload (already parsed)."""
+    out: List[Dict[str, Any]] = []
+    for seg in payload.get("segments", []):
+        if "start" not in seg or "end" not in seg or "text" not in seg:
+            continue
+        text = (seg["text"] or "").strip()
+        if not text:
+            continue
+        out.append({
+            "start": float(seg["start"]),
+            "end": float(seg["end"]),
+            "text": text,
+        })
+    return out
+
+
 def parse_whisper_json(json_path: str) -> List[Dict[str, Any]]:
     """Parse whisper's --output_format json output into a list of segments.
 
@@ -433,20 +450,7 @@ def parse_whisper_json(json_path: str) -> List[Dict[str, Any]]:
         data = json.loads(fp.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         raise RecordingError(f"Whisper output is not valid JSON: {e}")
-
-    out: List[Dict[str, Any]] = []
-    for seg in data.get("segments", []):
-        if "start" not in seg or "end" not in seg or "text" not in seg:
-            continue
-        text = (seg["text"] or "").strip()
-        if not text:
-            continue
-        out.append({
-            "start": float(seg["start"]),
-            "end": float(seg["end"]),
-            "text": text,
-        })
-    return out
+    return _segments_from_whisper_payload(data)
 
 
 # ---------- Track merging ----------
@@ -575,18 +579,18 @@ def transcribe_recording(
                 continue
 
             json_out = work_dir / (audio_abs.stem + ".json")
-            try:
-                track_segments[source_name] = parse_whisper_json(str(json_out))
-            except RecordingError as e:
-                track_errors.append(f"{source_name}: {e}")
-
-            # Capture detected language before the finally block deletes the JSON.
+            if not json_out.exists():
+                track_errors.append(f"{source_name}: whisper produced no output")
+                continue
             try:
                 payload = json.loads(json_out.read_text(encoding="utf-8"))
-                if isinstance(payload.get("language"), str):
-                    detected_languages[source_name] = payload["language"]
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                track_errors.append(f"{source_name}: invalid whisper output: {e}")
+                continue
+
+            track_segments[source_name] = _segments_from_whisper_payload(payload)
+            if isinstance(payload.get("language"), str):
+                detected_languages[source_name] = payload["language"]
     finally:
         # Cleanup intermediate whisper outputs
         for f in work_dir.glob("*"):

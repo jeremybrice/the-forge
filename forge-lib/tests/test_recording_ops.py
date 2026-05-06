@@ -725,3 +725,40 @@ def test_transcribe_recording_records_detected_language(tmp_path):
 
     assert result["success"] is True
     assert result["recording"]["language"] == "en"
+
+
+def test_transcribe_recording_partial_success_when_one_track_fails(tmp_path):
+    """If one track succeeds and the other fails, status=complete with
+    transcript_error populated, and the body contains only the surviving track."""
+    from core.recording_ops import transcribe_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+
+    sys_json = json.loads(
+        (FIXTURE_DIR / "whisper_system_sample.json").read_text()
+    )
+
+    call_count = {"n": 0}
+
+    def mixed_run(cmd, *args, **kwargs):
+        call_count["n"] += 1
+        # First call (system) succeeds, second (mic) fails.
+        if call_count["n"] == 1:
+            return _fake_whisper_run(sys_json)(cmd, *args, **kwargs)
+        return MagicMock(returncode=1, stdout="", stderr="mic backend exploded")
+
+    with patch("core.recording_ops.subprocess.run", side_effect=mixed_run):
+        result = transcribe_recording(rec_id, directory=str(tmp_path))
+
+    assert result["success"] is True
+    assert result["recording"]["transcript_status"] == "complete"
+    # Failing-track error captured non-fatally
+    err = result["recording"]["transcript_error"] or ""
+    assert "mic" in err
+    assert "exploded" in err
+
+    on_disk = Path(result["file_path"]).read_text(encoding="utf-8")
+    # System segments present
+    assert "**System** (00:00:00): Hello everyone welcome to the call." in on_disk
+    # No mic line because mic track failed
+    assert "**You**" not in on_disk
