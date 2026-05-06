@@ -549,6 +549,7 @@ def transcribe_recording(
 
     track_segments: Dict[str, List[Dict[str, Any]]] = {"system": [], "mic": []}
     track_errors: List[str] = []
+    detected_languages: Dict[str, str] = {}
 
     try:
         for source_name, rel_path in audio_files.items():
@@ -578,6 +579,14 @@ def transcribe_recording(
                 track_segments[source_name] = parse_whisper_json(str(json_out))
             except RecordingError as e:
                 track_errors.append(f"{source_name}: {e}")
+
+            # Capture detected language before the finally block deletes the JSON.
+            try:
+                payload = json.loads(json_out.read_text(encoding="utf-8"))
+                if isinstance(payload.get("language"), str):
+                    detected_languages[source_name] = payload["language"]
+            except (json.JSONDecodeError, OSError):
+                pass
     finally:
         # Cleanup intermediate whisper outputs
         for f in work_dir.glob("*"):
@@ -602,15 +611,11 @@ def transcribe_recording(
     fm["transcript_error"] = "; ".join(track_errors) if track_errors else None
     fm["updated"] = date.today().strftime("%Y-%m-%d")
     if not fm.get("language"):
-        # Best-effort: pick up language from system track JSON if present
-        sys_rel = audio_files.get("system")
-        if sys_rel:
-            sys_json = work_dir / (Path(sys_rel).stem + ".json")
-            if sys_json.exists():
-                try:
-                    fm["language"] = json.loads(sys_json.read_text())["language"]
-                except (json.JSONDecodeError, KeyError, OSError):
-                    pass
+        # Best-effort: prefer system-track detected language, fall back to mic.
+        fm["language"] = (
+            detected_languages.get("system")
+            or detected_languages.get("mic")
+        )
 
     rendered = _render_template({
         **fm,

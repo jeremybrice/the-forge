@@ -697,3 +697,31 @@ def test_transcribe_recording_records_model_override(tmp_path):
         transcribe_recording(rec_id, directory=str(tmp_path), model="medium")
 
     assert seen_models == ["medium", "medium"]
+
+
+def test_transcribe_recording_records_detected_language(tmp_path):
+    """When --language is not passed, the function should pick up the auto-detected
+    language from the system track's whisper JSON before the finally cleanup runs."""
+    from core.recording_ops import transcribe_recording
+
+    rec_id = _seed_full_recording(tmp_path)
+
+    sys_json = json.loads(
+        (FIXTURE_DIR / "whisper_system_sample.json").read_text()
+    )
+    mic_json = json.loads(
+        (FIXTURE_DIR / "whisper_mic_sample.json").read_text()
+    )
+
+    call_count = {"n": 0}
+
+    def fake_run(cmd, *args, **kwargs):
+        call_count["n"] += 1
+        payload = sys_json if call_count["n"] == 1 else mic_json
+        return _fake_whisper_run(payload)(cmd, *args, **kwargs)
+
+    with patch("core.recording_ops.subprocess.run", side_effect=fake_run):
+        result = transcribe_recording(rec_id, directory=str(tmp_path))
+
+    assert result["success"] is True
+    assert result["recording"]["language"] == "en"
