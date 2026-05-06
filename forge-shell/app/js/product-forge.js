@@ -97,7 +97,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
-          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
+          this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + initNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -122,7 +122,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
-          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
+          this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + epicNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -144,7 +144,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
-          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
+          this._newBadgeHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -157,7 +157,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
-          (recentsTracker.isNew(card.filename) ? '<span class="pfl-new-badge">NEW</span>' : '') +
+          this._newBadgeHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -180,14 +180,18 @@
       '</div>';
     },
 
+    /* _newBadgeHtml — single source of truth for the NEW pill so
+       the markup, class, and condition stay synchronized across
+       all render methods. */
+    _newBadgeHtml: function (filename) {
+      return recentsTracker.isNew(filename) ? '<span class="pfl-new-badge">NEW</span>' : '';
+    },
+
     /* _renderRecentsRow — a leaf row with type chip + optional
        NEW badge. Uses pfl-indent-1 to match other leaf sections. */
     _renderRecentsRow: function (card) {
       var fm = card.frontmatter;
       var type = fm.type || 'unknown';
-      var newBadge = recentsTracker.isNew(card.filename)
-        ? '<span class="pfl-new-badge">NEW</span>'
-        : '';
       return '<div class="pfl-tree-node pfl-indent-1" data-pfl-filename="' + ESC(card.filename) + '" data-pfl-type="' + ESC(type) + '">' +
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
           '<span class="pfl-toggle"></span>' +
@@ -195,7 +199,7 @@
           '<span class="pfl-type-chip" style="background:' + getTypeColor(type) + '" title="' + ESC(type) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
-          newBadge +
+          this._newBadgeHtml(card.filename) +
         '</div>' +
       '</div>';
     },
