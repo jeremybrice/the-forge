@@ -369,25 +369,147 @@ fn pid_is_alive(_pid: u32) -> bool {
 
 #[tauri::command]
 pub async fn run_recording_create(
-    _app: AppHandle,
-    _project_root: String,
-    _id: String,
-    _title: String,
-    _duration_seconds: u32,
-    _sources: Vec<String>,
-    _files: AudioFiles,
+    app: AppHandle,
+    project_root: String,
+    id: String,
+    title: String,
+    duration_seconds: u32,
+    sources: Vec<String>,
+    files: AudioFiles,
 ) -> Result<String, String> {
-    Err("run_recording_create not implemented yet (Task 14)".to_string())
+    // Compose the JSON payload
+    let now = chrono::Utc::now();
+    let created = now.format("%Y-%m-%dT%H:%M:%S").to_string();
+
+    let mut audio_files_json = serde_json::Map::new();
+    if let Some(p) = files.system.as_ref() {
+        // Convert absolute path to project-relative
+        let rel = relativize_audio(&project_root, p);
+        audio_files_json.insert("system".to_string(), serde_json::Value::String(rel));
+    }
+    if let Some(p) = files.mic.as_ref() {
+        let rel = relativize_audio(&project_root, p);
+        audio_files_json.insert("mic".to_string(), serde_json::Value::String(rel));
+    }
+
+    let payload = serde_json::json!({
+        "id": id,
+        "title": title,
+        "created": created,
+        "duration_seconds": duration_seconds,
+        "sources": sources,
+        "audio_files": audio_files_json,
+    });
+
+    let payload_arg = payload.to_string();
+
+    let shell = app.shell();
+    let output = shell
+        .command("python3")
+        .args([
+            "forge-lib/forge.py",
+            "recording",
+            "create",
+            "--directory",
+            &project_root,
+            "--data",
+            &payload_arg,
+        ])
+        .current_dir(workspace_root_for(&project_root))
+        .output()
+        .await
+        .map_err(|e| format!("forge recording create exec: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "forge recording create failed (exit {:?}): stdout={} stderr={}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let envelope: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("parse forge envelope: {e}: {stdout}"))?;
+    let file_path = envelope
+        .get("data")
+        .and_then(|d| d.get("file_path"))
+        .and_then(|s| s.as_str())
+        .ok_or_else(|| "envelope missing data.file_path".to_string())?
+        .to_string();
+    Ok(file_path)
 }
 
 #[tauri::command]
 pub async fn run_recording_transcribe(
-    _app: AppHandle,
-    _project_root: String,
-    _id: String,
-    _model: Option<String>,
+    app: AppHandle,
+    project_root: String,
+    id: String,
+    model: Option<String>,
 ) -> Result<String, String> {
-    Err("run_recording_transcribe not implemented yet (Task 14)".to_string())
+    let shell = app.shell();
+
+    let mut args: Vec<String> = vec![
+        "forge-lib/forge.py".into(),
+        "recording".into(),
+        "transcribe".into(),
+        id.clone(),
+        "--directory".into(),
+        project_root.clone(),
+    ];
+    if let Some(m) = model {
+        args.push("--model".into());
+        args.push(m);
+    }
+
+    let output = shell
+        .command("python3")
+        .args(args.iter().map(|s| s.as_str()))
+        .current_dir(workspace_root_for(&project_root))
+        .output()
+        .await
+        .map_err(|e| format!("forge recording transcribe exec: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let envelope: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("parse transcribe envelope: {e}: {stdout}"))?;
+
+    let success = envelope
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !success {
+        let err = envelope
+            .get("error")
+            .and_then(|s| s.as_str())
+            .unwrap_or("transcribe failed");
+        return Err(err.to_string());
+    }
+
+    let file_path = envelope
+        .get("data")
+        .and_then(|d| d.get("file_path"))
+        .and_then(|s| s.as_str())
+        .ok_or_else(|| "envelope missing data.file_path".to_string())?
+        .to_string();
+    Ok(file_path)
+}
+
+fn relativize_audio(project_root: &str, abs_path: &str) -> String {
+    let pr = std::path::Path::new(project_root);
+    let p = std::path::Path::new(abs_path);
+    if let Ok(rel) = p.strip_prefix(pr) {
+        rel.to_string_lossy().to_string()
+    } else {
+        abs_path.to_string()
+    }
+}
+
+fn workspace_root_for(project_root: &str) -> std::path::PathBuf {
+    // Run forge.py from the directory that contains forge-lib/. For The Forge
+    // Marketplace v2 dev tree, the project_root *is* the workspace root.
+    std::path::PathBuf::from(project_root)
 }
 
 // ----------------- Helpers -----------------

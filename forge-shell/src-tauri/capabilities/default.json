@@ -17,6 +17,11 @@
           "name": "binaries/forge-recorder",
           "sidecar": true,
           "args": []
+        },
+        {
+          "name": "python3",
+          "cmd": "python3",
+          "args": true
         }
       ]
     }
