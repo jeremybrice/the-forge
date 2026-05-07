@@ -329,6 +329,8 @@ final class Recorder {
     var sources: Set<String> = []
     var activeMic: MicCapture?
     var activeSystem: SystemCapture?
+    private var meterTimer: DispatchSourceTimer?
+    private var elapsedTimer: DispatchSourceTimer?
 
     func handle(_ payload: [String: Any]) {
         guard let cmd = payload["cmd"] as? String else {
@@ -422,6 +424,8 @@ final class Recorder {
             "files": startedFiles,
             "sources": startedFiles.keys.sorted(),
         ])
+        startMeterTicks()
+        startElapsedTicks()
     }
 
     private func stopCapture() {
@@ -439,6 +443,8 @@ final class Recorder {
             files["mic"] = cap.outputURL.path
         }
 
+        meterTimer?.cancel(); meterTimer = nil
+        elapsedTimer?.cancel(); elapsedTimer = nil
         let duration = startedAt.map { Date().timeIntervalSince($0) } ?? 0
         emit([
             "event": "stopped",
@@ -454,6 +460,34 @@ final class Recorder {
         sources.removeAll()
         activeMic = nil
         activeSystem = nil
+    }
+
+    private func startMeterTicks() {
+        let q = DispatchQueue(label: "com.forge.recorder.meter")
+        let timer = DispatchSource.makeTimerSource(queue: q)
+        timer.schedule(deadline: .now() + .milliseconds(200), repeating: .milliseconds(200))
+        timer.setEventHandler { [weak self] in
+            guard let self = self, self.isRecording else { return }
+            var sources: [String: Float] = [:]
+            if let cap = self.activeSystem { sources["system"] = cap.lastRMS }
+            if let cap = self.activeMic { sources["mic"] = cap.lastRMS }
+            emit(["event": "meter", "sources": sources])
+        }
+        timer.resume()
+        self.meterTimer = timer
+    }
+
+    private func startElapsedTicks() {
+        let q = DispatchQueue(label: "com.forge.recorder.elapsed")
+        let timer = DispatchSource.makeTimerSource(queue: q)
+        timer.schedule(deadline: .now() + .seconds(1), repeating: .seconds(1))
+        timer.setEventHandler { [weak self] in
+            guard let self = self, self.isRecording, let started = self.startedAt else { return }
+            let elapsed = Int(Date().timeIntervalSince(started))
+            emit(["event": "elapsed", "seconds": elapsed])
+        }
+        timer.resume()
+        self.elapsedTimer = timer
     }
 }
 
