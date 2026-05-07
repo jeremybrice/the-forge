@@ -2,6 +2,7 @@
 mod fs_commands;
 mod config;
 mod watcher;
+mod audio_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -9,6 +10,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
     .manage(watcher::WatcherState::new())
+    .manage(audio_commands::RecorderState::new())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -37,6 +39,13 @@ pub fn run() {
       // Watcher commands
       watcher::watch_directory,
       watcher::unwatch_directory,
+      // Audio commands
+      audio_commands::start_recording,
+      audio_commands::stop_recording,
+      audio_commands::get_recording_status,
+      audio_commands::recover_orphaned_recording,
+      audio_commands::run_recording_create,
+      audio_commands::run_recording_transcribe,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
