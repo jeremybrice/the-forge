@@ -370,6 +370,12 @@ final class Recorder {
             return
         }
 
+        if let free = self.freeBytes(at: outDir) {
+            if free < 5_000_000_000 {
+                emit(["event": "warning", "code": "DISK_LOW", "message": "free disk below 5 GB at start"])
+            }
+        }
+
         self.id = id
         self.outDir = outDir
         self.sources = Set(sourcesArr)
@@ -485,9 +491,41 @@ final class Recorder {
             guard let self = self, self.isRecording, let started = self.startedAt else { return }
             let elapsed = Int(Date().timeIntervalSince(started))
             emit(["event": "elapsed", "seconds": elapsed])
+
+            if elapsed >= 4 * 60 * 60 {
+                self.autoStop(reason: "MAX_DURATION", message: "4-hour cap reached")
+                return
+            }
+
+            if let outDir = self.outDir, let free = self.freeBytes(at: outDir) {
+                if free < 1_000_000_000 {
+                    self.autoStop(reason: "DISK_LOW", message: "free disk below 1 GB")
+                    return
+                }
+            }
         }
         timer.resume()
         self.elapsedTimer = timer
+    }
+
+    private func autoStop(reason: String, message: String) {
+        emit(["event": "auto_stop", "reason": reason, "message": message])
+        DispatchQueue.main.async {
+            self.stopCapture()
+        }
+    }
+
+    private func freeBytes(at path: String) -> UInt64? {
+        let url = URL(fileURLWithPath: path)
+        do {
+            let values = try url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+            if let bytes = values.volumeAvailableCapacityForImportantUsage {
+                return UInt64(bytes)
+            }
+        } catch {
+            return nil
+        }
+        return nil
     }
 }
 
