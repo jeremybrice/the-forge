@@ -325,7 +325,10 @@ final class Recorder {
     var isRecording: Bool = false
     var startedAt: Date?
     var id: String?
+    var outDir: String?
+    var sources: Set<String> = []
     var activeMic: MicCapture?
+    var activeSystem: SystemCapture?
 
     func handle(_ payload: [String: Any]) {
         guard let cmd = payload["cmd"] as? String else {
@@ -343,54 +346,114 @@ final class Recorder {
             ])
 
         case "start":
-            if isRecording {
-                emitError(code: "ALREADY_RECORDING", message: "a recording is already in progress")
-                return
-            }
-            guard let outDir = payload["outDir"] as? String,
-                  let id = payload["id"] as? String else {
-                emitError(code: "BAD_PAYLOAD", message: "start needs outDir and id")
-                return
-            }
-            let micURL = URL(fileURLWithPath: outDir).appendingPathComponent("\(id)-mic.wav")
-            do {
-                let cap = MicCapture(outputURL: micURL)
-                try cap.start()
-                self.activeMic = cap
-                self.id = id
-                self.startedAt = Date()
-                self.isRecording = true
-                emit([
-                    "event": "started",
-                    "id": id,
-                    "files": ["mic": micURL.path],
-                ])
-            } catch {
-                emitError(code: "MIC_START_FAILED", message: "\(error.localizedDescription)")
-            }
+            startCapture(payload)
 
         case "stop":
-            guard isRecording, let cap = activeMic else {
-                emitError(code: "NOT_RECORDING", message: "no recording in progress")
-                return
-            }
-            cap.stop()
-            let duration = startedAt.map { Date().timeIntervalSince($0) } ?? 0
-            isRecording = false
-            self.activeMic = nil
-            emit([
-                "event": "stopped",
-                "id": id ?? NSNull(),
-                "duration_seconds": Int(duration),
-                "sample_seconds": cap.durationSeconds,
-                "files": ["mic": cap.outputURL.path],
-            ])
-            self.id = nil
-            self.startedAt = nil
+            stopCapture()
 
         default:
             emitError(code: "UNKNOWN_COMMAND", message: "unknown cmd: \(cmd)")
         }
+    }
+
+    private func startCapture(_ payload: [String: Any]) {
+        if isRecording {
+            emitError(code: "ALREADY_RECORDING", message: "a recording is already in progress")
+            return
+        }
+        guard let outDir = payload["outDir"] as? String,
+              let id = payload["id"] as? String,
+              let sourcesArr = payload["sources"] as? [String] else {
+            emitError(code: "BAD_PAYLOAD", message: "start needs outDir, id, sources")
+            return
+        }
+
+        self.id = id
+        self.outDir = outDir
+        self.sources = Set(sourcesArr)
+
+        var startedFiles: [String: String] = [:]
+        var startedAny = false
+
+        // System first (user is likely to deny screen-recording perm; fail fast)
+        if self.sources.contains("system") {
+            let url = URL(fileURLWithPath: outDir).appendingPathComponent("\(id)-system.wav")
+            do {
+                let cap = SystemCapture(outputURL: url)
+                try cap.start()
+                self.activeSystem = cap
+                startedFiles["system"] = url.path
+                startedAny = true
+            } catch {
+                emitError(code: "PERMISSION_SCREEN_RECORDING",
+                          message: "system audio capture failed: \(error.localizedDescription)")
+                // Fall through; if mic also fails we'll bail.
+            }
+        }
+
+        if self.sources.contains("mic") {
+            let url = URL(fileURLWithPath: outDir).appendingPathComponent("\(id)-mic.wav")
+            do {
+                let cap = MicCapture(outputURL: url)
+                try cap.start()
+                self.activeMic = cap
+                startedFiles["mic"] = url.path
+                startedAny = true
+            } catch {
+                emitError(code: "PERMISSION_MIC",
+                          message: "mic capture failed: \(error.localizedDescription)")
+                // Fall through.
+            }
+        }
+
+        guard startedAny else {
+            emitError(code: "PERMISSION_ALL", message: "all requested sources failed to start")
+            self.id = nil
+            self.outDir = nil
+            self.sources.removeAll()
+            return
+        }
+
+        self.startedAt = Date()
+        self.isRecording = true
+        emit([
+            "event": "started",
+            "id": id,
+            "files": startedFiles,
+            "sources": startedFiles.keys.sorted(),
+        ])
+    }
+
+    private func stopCapture() {
+        guard isRecording else {
+            emitError(code: "NOT_RECORDING", message: "no recording in progress")
+            return
+        }
+        var files: [String: String] = [:]
+        if let cap = activeSystem {
+            cap.stop()
+            files["system"] = cap.outputURL.path
+        }
+        if let cap = activeMic {
+            cap.stop()
+            files["mic"] = cap.outputURL.path
+        }
+
+        let duration = startedAt.map { Date().timeIntervalSince($0) } ?? 0
+        emit([
+            "event": "stopped",
+            "id": id ?? NSNull(),
+            "duration_seconds": Int(duration),
+            "files": files,
+        ])
+
+        isRecording = false
+        startedAt = nil
+        id = nil
+        outDir = nil
+        sources.removeAll()
+        activeMic = nil
+        activeSystem = nil
     }
 }
 
