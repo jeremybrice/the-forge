@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Forge Shell records system audio for transcription via the audio-forge plugin.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Forge Shell records your microphone for transcription via the audio-forge plugin.</string>
+</dict>
+</plist>
