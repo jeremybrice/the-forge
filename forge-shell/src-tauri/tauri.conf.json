@@ -37,6 +37,12 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "Unified dashboard for Forge plugins",
-    "longDescription": "Forge Shell is a desktop application that provides a unified visual interface for all your Forge plugins, including Product Forge, Cognitive Forge, Rovo Agent Forge, and more."
+    "longDescription": "Forge Shell is a desktop application that provides a unified visual interface for all your Forge plugins, including Product Forge, Cognitive Forge, Rovo Agent Forge, and more.",
+    "externalBin": [
+      "binaries/forge-recorder"
+    ],
+    "macOS": {
+      "infoPlist": "Info.plist"
+    }
   }
 }
