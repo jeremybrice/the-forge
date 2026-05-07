@@ -307,10 +307,16 @@ pub async fn stop_recording(
 pub fn get_recording_status(state: State<'_, RecorderState>) -> RecordingStatus {
     let guard = state.inner.lock().unwrap();
     if let Some(handle) = guard.as_ref() {
+        let elapsed = chrono::DateTime::parse_from_rfc3339(&handle.started_at)
+            .ok()
+            .map(|dt| {
+                let elapsed = chrono::Utc::now() - dt.with_timezone(&chrono::Utc);
+                elapsed.num_seconds().max(0) as u64
+            });
         RecordingStatus {
             is_recording: true,
             id: Some(handle.id.clone()),
-            elapsed_seconds: None,
+            elapsed_seconds: elapsed,
         }
     } else {
         RecordingStatus {
