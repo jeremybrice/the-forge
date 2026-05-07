@@ -522,6 +522,26 @@ final class Recorder {
 
 let recorder = Recorder()
 
+// Graceful shutdown on SIGINT / SIGTERM. Stops the active capture(s)
+// synchronously so AVAudioFile's deinit patches the WAV header's data-size
+// field before the process exits. Without this, ^C leaves a header that
+// reports 0 audio bytes even though samples are on disk.
+var signalSources: [DispatchSourceSignal] = []
+let signalQueue = DispatchQueue(label: "com.forge.recorder.signal")
+for sig in [SIGINT, SIGTERM] {
+    signal(sig, SIG_IGN)
+    let src = DispatchSource.makeSignalSource(signal: sig, queue: signalQueue)
+    src.setEventHandler {
+        recorder.activeMic?.stop()
+        recorder.activeSystem?.stop()
+        // Give AVAudioFile deinit a moment to flush.
+        usleep(200_000)
+        exit(0)
+    }
+    src.resume()
+    signalSources.append(src)
+}
+
 while let line = readLine() {
     let trimmed = line.trimmingCharacters(in: .whitespaces)
     if trimmed.isEmpty { continue }
