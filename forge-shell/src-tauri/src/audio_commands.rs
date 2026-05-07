@@ -269,9 +269,38 @@ fn delete_active_state(project_root: &str) {
 #[tauri::command]
 pub async fn stop_recording(
     _app: AppHandle,
-    _state: State<'_, RecorderState>,
+    state: State<'_, RecorderState>,
 ) -> Result<StoppedRecording, String> {
-    Err("stop_recording not implemented yet (Task 12)".to_string())
+    // Take ownership of the handle so we don't hold the lock across await
+    let mut handle = {
+        let mut guard = state.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
+        guard.take().ok_or_else(|| "no recording in progress".to_string())?
+    };
+
+    // Send the stop command
+    handle.stdin.send_line("{\"cmd\":\"stop\"}")?;
+
+    // The forwarding task spawned in start_recording will see the `stopped`
+    // event on stdout and emit it. We don't have direct access to that channel
+    // here, so we wait briefly for the sidecar to write the WAVs and exit.
+    // 5 s is generous for closing files; ScreenCaptureKit teardown can take ~2 s.
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    // Compute duration from the recorded started_at
+    let started_at: chrono::DateTime<chrono::Utc> = chrono::DateTime::parse_from_rfc3339(&handle.started_at)
+        .map_err(|e| format!("parse started_at: {e}"))?
+        .with_timezone(&chrono::Utc);
+    let elapsed = chrono::Utc::now() - started_at;
+    let duration_seconds = elapsed.num_seconds().max(0) as u64;
+
+    // Clean up active.json
+    delete_active_state(&handle.project_root);
+
+    Ok(StoppedRecording {
+        id: handle.id,
+        duration_seconds,
+        files: handle.files,
+    })
 }
 
 #[tauri::command]
