@@ -144,10 +144,8 @@ pub async fn start_recording(
     let start_instant = std::time::Instant::now();
 
     while start_instant.elapsed() < timeout {
-        // Check timeout before awaiting next event
-        if start_instant.elapsed() >= timeout { break; }
-        match rx.recv().await {
-            Some(CommandEvent::Stdout(bytes)) => {
+        match tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv()).await {
+            Ok(Some(CommandEvent::Stdout(bytes))) => {
                 let line = String::from_utf8_lossy(&bytes).to_string();
                 for raw in line.lines() {
                     let trimmed = raw.trim();
@@ -168,16 +166,17 @@ pub async fn start_recording(
                 if got_started { break; }
                 if start_err.is_some() { break; }
             }
-            Some(CommandEvent::Stderr(bytes)) => {
+            Ok(Some(CommandEvent::Stderr(bytes))) => {
                 let line = String::from_utf8_lossy(&bytes).to_string();
                 log::warn!("forge-recorder stderr: {}", line.trim());
             }
-            Some(CommandEvent::Terminated(_)) => {
+            Ok(Some(CommandEvent::Terminated(_))) => {
                 start_err = Some("sidecar terminated before started event".to_string());
                 break;
             }
-            Some(_) => {}
-            None => break,
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(_) => continue,
         }
     }
 
