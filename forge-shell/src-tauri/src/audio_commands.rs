@@ -324,10 +324,47 @@ pub fn get_recording_status(state: State<'_, RecorderState>) -> RecordingStatus 
 #[tauri::command]
 pub async fn recover_orphaned_recording(
     _app: AppHandle,
-    _state: State<'_, RecorderState>,
-    _project_root: String,
+    state: State<'_, RecorderState>,
+    project_root: String,
 ) -> Result<Option<ActiveRecording>, String> {
-    Err("recover_orphaned_recording not implemented yet (Task 13)".to_string())
+    let path = active_state_path(&project_root);
+    if !path.exists() {
+        return Ok(None);
+    }
+    // If we already have an in-flight recording in this process, the file isn't
+    // an orphan — somebody just hasn't called stop yet.
+    {
+        let guard = state.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
+        if guard.is_some() {
+            return Ok(None);
+        }
+    }
+
+    let raw = std::fs::read_to_string(&path).map_err(|e| format!("read active.json: {e}"))?;
+    let active: ActiveRecording = serde_json::from_str(&raw)
+        .map_err(|e| format!("parse active.json: {e}"))?;
+
+    // Optional: check whether the PID is still alive. If it is, it's not an
+    // orphan; the previous Forge Shell is still running. Don't return it as
+    // recoverable — that user can use that other window.
+    if pid_is_alive(active.pid) {
+        return Ok(None);
+    }
+
+    Ok(Some(active))
+}
+
+#[cfg(unix)]
+fn pid_is_alive(pid: u32) -> bool {
+    // kill(pid, 0) returns 0 if the process exists.
+    unsafe {
+        libc::kill(pid as libc::pid_t, 0) == 0
+    }
+}
+
+#[cfg(not(unix))]
+fn pid_is_alive(_pid: u32) -> bool {
+    false
 }
 
 #[tauri::command]
