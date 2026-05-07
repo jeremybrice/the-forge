@@ -10,6 +10,7 @@ final class MicCapture {
     private var file: AVAudioFile?
     private(set) var lastRMS: Float = 0
     private(set) var sampleCount: Int64 = 0
+    private var inputSampleRate: Double = 48000
 
     init(outputURL: URL) {
         self.outputURL = outputURL
@@ -18,18 +19,12 @@ final class MicCapture {
     func start() throws {
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        self.inputSampleRate = inputFormat.sampleRate
 
-        // Output: 48 kHz, mono, 16-bit PCM
-        guard let outputFormat = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: 48000,
-            channels: 1,
-            interleaved: true
-        ) else {
-            throw NSError(domain: "ForgeRecorder", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "could not build mic output format"])
-        }
-
+        // On-disk WAV: 48 kHz, mono, 16-bit PCM. AVAudioFile (via ExtAudioFile)
+        // converts the input buffer's format to these settings on write — no
+        // explicit AVAudioConverter needed in the real-time tap callback,
+        // which avoids SIGTRAPs from running the converter off the audio thread.
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: 48000.0,
@@ -40,56 +35,50 @@ final class MicCapture {
             AVLinearPCMIsNonInterleaved: false,
         ]
 
-        // Create the parent dir for the output file if needed
         try FileManager.default.createDirectory(
             at: outputURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        self.file = try AVAudioFile(forWriting: outputURL, settings: settings)
 
-        // Optional converter from input format to output format (input may be 44.1k stereo or hardware-native)
-        let converter = AVAudioConverter(from: inputFormat, to: outputFormat)
+        // Initialize AVAudioFile with the input's processing format so the tap
+        // callback can write its buffer directly. AVAudioFile handles the
+        // conversion to the on-disk settings internally.
+        self.file = try AVAudioFile(
+            forWriting: outputURL,
+            settings: settings,
+            commonFormat: inputFormat.commonFormat,
+            interleaved: inputFormat.isInterleaved
+        )
 
         inputNode.installTap(onBus: 0, bufferSize: 4800, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self, let file = self.file else { return }
 
-            // Convert
-            guard let outBuffer = AVAudioPCMBuffer(
-                pcmFormat: outputFormat,
-                frameCapacity: AVAudioFrameCount(outputFormat.sampleRate)
-            ) else { return }
-
-            var error: NSError?
-            var produced = false
-            converter?.convert(to: outBuffer, error: &error) { _, statusPointer in
-                if produced {
-                    statusPointer.pointee = .noDataNow
-                    return nil
-                }
-                produced = true
-                statusPointer.pointee = .haveData
-                return buffer
-            }
-            if error != nil { return }
-
-            // Compute RMS of the converted Int16 mono buffer
-            if let int16 = outBuffer.int16ChannelData?[0] {
-                let count = Int(outBuffer.frameLength)
-                if count > 0 {
+            // RMS from the input buffer's first channel (typically Float32)
+            let frames = Int(buffer.frameLength)
+            if frames > 0 {
+                if let floatChannels = buffer.floatChannelData {
+                    let ch0 = floatChannels[0]
                     var sumSq: Double = 0
-                    for i in 0..<count {
-                        let s = Double(int16[i]) / 32768.0
+                    for i in 0..<frames {
+                        let s = Double(ch0[i])
                         sumSq += s * s
                     }
-                    self.lastRMS = Float(sqrt(sumSq / Double(count)))
+                    self.lastRMS = Float(sqrt(sumSq / Double(frames)))
+                } else if let int16Channels = buffer.int16ChannelData {
+                    let ch0 = int16Channels[0]
+                    var sumSq: Double = 0
+                    for i in 0..<frames {
+                        let s = Double(ch0[i]) / 32768.0
+                        sumSq += s * s
+                    }
+                    self.lastRMS = Float(sqrt(sumSq / Double(frames)))
                 }
             }
 
             do {
-                try file.write(from: outBuffer)
-                self.sampleCount += Int64(outBuffer.frameLength)
+                try file.write(from: buffer)
+                self.sampleCount += Int64(buffer.frameLength)
             } catch {
-                // Surface to stderr but don't crash; the recording will still be partially written.
                 FileHandle.standardError.write(Data("mic write error: \(error)\n".utf8))
             }
         }
@@ -105,7 +94,7 @@ final class MicCapture {
     }
 
     var durationSeconds: Double {
-        sampleCount > 0 ? Double(sampleCount) / 48000.0 : 0
+        sampleCount > 0 ? Double(sampleCount) / inputSampleRate : 0
     }
 }
 
