@@ -107,6 +107,8 @@ final class SystemCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     private(set) var lastRMS: Float = 0
     private(set) var sampleCount: Int64 = 0
     private let outputQueue = DispatchQueue(label: "com.forge.recorder.system-output")
+    private var inputSampleRate: Double = 48000
+    private var bufferCount: Int64 = 0
 
     init(outputURL: URL) {
         self.outputURL = outputURL
@@ -157,21 +159,13 @@ final class SystemCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         config.height = 2
         config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
-        // Output WAV settings (mono-down-mix from stereo, 48 kHz, 16-bit)
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 48000.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false,
-        ]
+        // Ensure parent directory; the AVAudioFile is created lazily on the
+        // first audio buffer so we can match its commonFormat / interleaved
+        // layout to the stream's actual format.
         try FileManager.default.createDirectory(
             at: outputURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        self.file = try AVAudioFile(forWriting: outputURL, settings: settings)
 
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: outputQueue)
@@ -194,7 +188,7 @@ final class SystemCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     var durationSeconds: Double {
-        sampleCount > 0 ? Double(sampleCount) / 48000.0 : 0
+        sampleCount > 0 ? Double(sampleCount) / inputSampleRate : 0
     }
 
     // MARK: SCStreamOutput
@@ -202,86 +196,144 @@ final class SystemCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .audio, sampleBuffer.isValid else { return }
 
-        // Extract the AudioBufferList
+        bufferCount += 1
+
+        // Read the format from the sample buffer so we can build a matching
+        // AVAudioPCMBuffer. ScreenCaptureKit emits Float32 interleaved stereo
+        // at 48 kHz by default (matching SCStreamConfiguration sampleRate +
+        // channelCount).
+        guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer),
+              let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)?.pointee else {
+            FileHandle.standardError.write(Data("[system] no format description\n".utf8))
+            return
+        }
+        let inFormat = withUnsafePointer(to: asbd) { AVAudioFormat(streamDescription: $0) }
+        guard let inFormat = inFormat else {
+            FileHandle.standardError.write(Data("[system] could not build AVAudioFormat\n".utf8))
+            return
+        }
+
+        // Lazy-init AVAudioFile on first buffer. We always feed it a MONO
+        // float32 buffer (downmixed from the input stream's channels below).
+        // ExtAudioFile then only has to do a sample-format conversion
+        // (float32 → int16 mono 48k on disk), which is RT-safe and well-
+        // supported. We avoid asking ExtAudioFile to do channel mixing,
+        // because it returns -50 (kAudio_ParamError) on non-interleaved
+        // stereo input — that was the bug behind silent empty WAVs.
+        if self.file == nil {
+            self.inputSampleRate = inFormat.sampleRate
+            let settings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: 48000.0,
+                AVNumberOfChannelsKey: 1,
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false,
+                AVLinearPCMIsNonInterleaved: false,
+            ]
+            do {
+                // Client format: mono float32 at the input's sample rate.
+                self.file = try AVAudioFile(
+                    forWriting: outputURL,
+                    settings: settings,
+                    commonFormat: .pcmFormatFloat32,
+                    interleaved: false
+                )
+                FileHandle.standardError.write(
+                    Data("[system] AVAudioFile opened (input sr=\(inFormat.sampleRate), ch=\(inFormat.channelCount), interleaved=\(inFormat.isInterleaved); client=mono float32)\n".utf8)
+                )
+            } catch {
+                FileHandle.standardError.write(Data("[system] AVAudioFile init failed: \(error)\n".utf8))
+                return
+            }
+        }
+        guard let file = self.file else { return }
+
+        // Extract the AudioBufferList. Allocate enough room for non-interleaved
+        // multi-channel layouts; for interleaved formats only the first AudioBuffer
+        // entry is used.
+        let channelCount = Int(inFormat.channelCount)
+        let bufListByteSize = MemoryLayout<AudioBufferList>.size
+            + MemoryLayout<AudioBuffer>.size * max(0, channelCount - 1)
+
         var blockBuffer: CMBlockBuffer?
-        var audioBufferList = AudioBufferList()
+        let bufListPtr = UnsafeMutableRawPointer.allocate(byteCount: bufListByteSize, alignment: 16)
+        defer { bufListPtr.deallocate() }
+        let abl = bufListPtr.assumingMemoryBound(to: AudioBufferList.self)
+
         let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sampleBuffer,
             bufferListSizeNeededOut: nil,
-            bufferListOut: &audioBufferList,
-            bufferListSize: MemoryLayout<AudioBufferList>.size,
+            bufferListOut: abl,
+            bufferListSize: bufListByteSize,
             blockBufferAllocator: nil,
             blockBufferMemoryAllocator: nil,
             flags: kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
             blockBufferOut: &blockBuffer
         )
-        guard status == noErr, let blockBuf = blockBuffer else { return }
-        _ = blockBuf  // keep the block buffer alive
-
-        // ScreenCaptureKit emits float32 stereo interleaved at 48 kHz by default.
-        // Build an AVAudioPCMBuffer from the raw bytes.
-        guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer),
-              let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)?.pointee else {
+        guard status == noErr, blockBuffer != nil else {
+            FileHandle.standardError.write(Data("[system] CMSampleBufferGetAudioBufferList failed: \(status)\n".utf8))
             return
         }
-        let inFormat = withUnsafePointer(to: asbd) { AVAudioFormat(streamDescription: $0) }
-        guard let inFormat = inFormat else { return }
 
         let frameCount = AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))
+        guard frameCount > 0 else { return }
         guard let inBuf = AVAudioPCMBuffer(pcmFormat: inFormat, frameCapacity: frameCount) else { return }
         inBuf.frameLength = frameCount
 
-        // Copy samples from AudioBufferList to inBuf
-        let mBuffers = audioBufferList.mBuffers
-        if let src = mBuffers.mData,
-           let dst = inBuf.audioBufferList.pointee.mBuffers.mData {
-            memcpy(dst, src, Int(mBuffers.mDataByteSize))
+        // Copy each plane (1 buffer for interleaved, N for non-interleaved).
+        let srcList = UnsafeMutableAudioBufferListPointer(abl)
+        let dstList = UnsafeMutableAudioBufferListPointer(inBuf.mutableAudioBufferList)
+        for i in 0..<min(srcList.count, dstList.count) {
+            if let src = srcList[i].mData, let dst = dstList[i].mData {
+                let bytes = min(srcList[i].mDataByteSize, dstList[i].mDataByteSize)
+                memcpy(dst, src, Int(bytes))
+                dstList[i].mDataByteSize = bytes
+            }
         }
 
-        // Convert to mono Int16 48k
-        guard let outFormat = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: 48000,
+        // Downmix to a mono float32 buffer. For stereo we average L+R; for
+        // mono we copy through. Channel 0 also feeds the RMS metering.
+        guard let monoFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: inFormat.sampleRate,
             channels: 1,
-            interleaved: true
-        ) else { return }
+            interleaved: false
+        ), let monoBuf = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else { return }
+        monoBuf.frameLength = frameCount
 
-        let converter = AVAudioConverter(from: inFormat, to: outFormat)
-        guard let outBuf = AVAudioPCMBuffer(
-            pcmFormat: outFormat,
-            frameCapacity: AVAudioFrameCount(outFormat.sampleRate)
-        ) else { return }
-
-        var convError: NSError?
-        var produced = false
-        converter?.convert(to: outBuf, error: &convError) { _, statusPointer in
-            if produced {
-                statusPointer.pointee = AVAudioConverterInputStatus.noDataNow
-                return nil
+        guard let srcChannels = inBuf.floatChannelData,
+              let dstChannel = monoBuf.floatChannelData?[0] else { return }
+        let frames = Int(frameCount)
+        let srcCh0 = srcChannels[0]
+        if inFormat.channelCount >= 2 {
+            let srcCh1 = srcChannels[1]
+            for i in 0..<frames {
+                dstChannel[i] = (srcCh0[i] + srcCh1[i]) * 0.5
             }
-            produced = true
-            statusPointer.pointee = AVAudioConverterInputStatus.haveData
-            return inBuf
-        }
-        if convError != nil { return }
-
-        if let int16 = outBuf.int16ChannelData?[0] {
-            let count = Int(outBuf.frameLength)
-            if count > 0 {
-                var sumSq: Double = 0
-                for i in 0..<count {
-                    let s = Double(int16[i]) / 32768.0
-                    sumSq += s * s
-                }
-                self.lastRMS = Float(sqrt(sumSq / Double(count)))
+        } else {
+            for i in 0..<frames {
+                dstChannel[i] = srcCh0[i]
             }
         }
 
+        // RMS from the mono mix
+        if frames > 0 {
+            var sumSq: Double = 0
+            for i in 0..<frames {
+                let s = Double(dstChannel[i])
+                sumSq += s * s
+            }
+            self.lastRMS = Float(sqrt(sumSq / Double(frames)))
+        }
+
+        // Write the mono buffer; AVAudioFile converts mono float32 → mono
+        // int16 48k on disk via ExtAudioFile.
         do {
-            try file?.write(from: outBuf)
-            self.sampleCount += Int64(outBuf.frameLength)
+            try file.write(from: monoBuf)
+            self.sampleCount += Int64(monoBuf.frameLength)
         } catch {
-            FileHandle.standardError.write(Data("system write error: \(error)\n".utf8))
+            FileHandle.standardError.write(Data("[system] write error: \(error)\n".utf8))
         }
     }
 
