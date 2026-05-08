@@ -17,6 +17,7 @@ const PLUGINS = [
   { id: 'report-forge',        label: 'Report Forge',     icon: 'fa-solid fa-file-lines',     requiredDir: 'reports' },
   { id: 'slack-forge',         label: 'Slack Forge',      icon: 'fa-brands fa-slack',         requiredDir: 'slack-forge' },
   { id: 'outlook-forge',       label: 'Outlook Forge',    icon: 'fa-solid fa-envelope',       requiredDir: 'outlook-forge' },
+  { id: 'audio-forge',         label: 'Audio Forge',      icon: 'fa-solid fa-microphone',     requiredDir: 'audio-forge' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
