@@ -103,7 +103,9 @@ window.AudioForgeView = (function () {
     // Wire toolbar actions (interactivity in later tasks).
     $('[data-af-action="refresh"]').addEventListener('click', () => refresh());
     wireSearch();
-    // Record button is no-op here; Task 7 wires it.
+    $('[data-af-action="toggle-record"]').addEventListener('click', () => {
+      onToggleRecord();
+    });
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -271,6 +273,154 @@ window.AudioForgeView = (function () {
   }
 
   /* ═══════════════════════════════════════════════════════════
+     State machine + UI sync
+     ═══════════════════════════════════════════════════════════ */
+  function dispatch(event) {
+    machineState = reduce(machineState, event);
+    renderToolbar();
+    renderList(); // status badge can change for active recording
+  }
+
+  function renderToolbar() {
+    const btn = $('[data-af-action="toggle-record"]');
+    const label = ref('record-label');
+    const meter = ref('meter');
+    const elapsed = ref('elapsed');
+    if (!btn) return;
+    const s = machineState.status;
+    const recording = s === 'recording';
+    const busy = s === 'starting' || s === 'stopping' || s === 'creating' || s === 'transcribing';
+
+    btn.classList.toggle('recording', recording);
+    btn.disabled = busy;
+    label.textContent = recording ? 'Stop' :
+                        s === 'starting'    ? 'Starting…' :
+                        s === 'stopping'    ? 'Stopping…' :
+                        s === 'creating'    ? 'Saving…'   :
+                        s === 'transcribing'? 'Transcribing…' : 'Record';
+    meter.style.display = recording ? '' : 'none';
+    elapsed.textContent = helpers.formatDuration(machineState.elapsed);
+
+    // Disable source checkboxes while not idle
+    $('[data-af-source="system"]').disabled = (s !== 'idle');
+    $('[data-af-source="mic"]').disabled    = (s !== 'idle');
+  }
+
+  function checkedSources() {
+    const out = [];
+    if ($('[data-af-source="system"]').checked) out.push('system');
+    if ($('[data-af-source="mic"]').checked)    out.push('mic');
+    return out;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     Tauri command wrappers
+     ═══════════════════════════════════════════════════════════ */
+  async function invokeStart(sources) {
+    const core = tauriCore();
+    if (!core) throw new Error('Tauri runtime not available');
+    return core.invoke('start_recording', { projectRoot, sources });
+  }
+  async function invokeStop() {
+    const core = tauriCore();
+    if (!core) throw new Error('Tauri runtime not available');
+    return core.invoke('stop_recording');
+  }
+  async function invokeStatus() {
+    const core = tauriCore();
+    if (!core) throw new Error('Tauri runtime not available');
+    return core.invoke('get_recording_status');
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     Record / Stop click
+     ═══════════════════════════════════════════════════════════ */
+  async function onToggleRecord() {
+    const s = machineState.status;
+    if (s === 'idle') {
+      const sources = checkedSources();
+      if (sources.length === 0) {
+        toast('Select at least one source (system or mic).', 'warn');
+        return;
+      }
+      dispatch({ type: 'RECORD_CLICK', sources });
+      try {
+        const started = await invokeStart(sources);
+        const startedAt = new Date().toISOString();
+        dispatch({
+          type: 'START_OK',
+          id: started.id,
+          startedAt,
+          files: started.files || {},
+        });
+      } catch (e) {
+        dispatch({ type: 'START_ERR', message: friendlyError(e) });
+        toast(friendlyError(e), 'error');
+      }
+      return;
+    }
+    if (s === 'recording') {
+      dispatch({ type: 'STOP_CLICK' });
+      try {
+        const stopped = await invokeStop();
+        // Stop just transitions to 'creating' here; Task 9 wires the pipeline.
+        dispatch({
+          type: 'STOP_OK',
+          durationSeconds: stopped.duration_seconds,
+          files: stopped.files || {},
+        });
+        // Task 9 replaces this stub with the create+transcribe call:
+        dispatch({ type: 'CREATE_OK' });
+        dispatch({ type: 'TRANSCRIBE_OK' });
+        await refresh();
+      } catch (e) {
+        dispatch({ type: 'STOP_ERR', message: friendlyError(e) });
+        toast(friendlyError(e), 'error');
+      }
+      return;
+    }
+  }
+
+  function friendlyError(e) {
+    if (!e) return 'Unknown error';
+    if (typeof e === 'string') return e;
+    if (e.message) return e.message;
+    try { return JSON.stringify(e); } catch { return String(e); }
+  }
+
+  function toast(msg, level) {
+    if (window.ForgeUtils && ForgeUtils.Toast) {
+      ForgeUtils.Toast.show(msg, level || 'info', 4000);
+    } else {
+      console.log(`[AudioForge ${level || 'info'}] ${msg}`);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     Status reconciliation on activation
+     (handles the case where this controller mounted while a recording
+      is already in progress in the same Tauri process — uncommon but
+      possible if the user changed views mid-recording.)
+     ═══════════════════════════════════════════════════════════ */
+  async function reconcileStatus() {
+    try {
+      const s = await invokeStatus();
+      if (s && s.is_recording) {
+        machineState = Object.assign({}, initialState, {
+          status: 'recording',
+          id: s.id || null,
+          startedAt: new Date(Date.now() - (s.elapsed_seconds || 0) * 1000).toISOString(),
+          elapsed: s.elapsed_seconds || 0,
+          sources: checkedSources(),
+        });
+        renderToolbar();
+      }
+    } catch (e) {
+      console.warn('[AudioForge] reconcileStatus failed', e);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      refresh
      ═══════════════════════════════════════════════════════════ */
   async function refresh() {
@@ -299,7 +449,9 @@ window.AudioForgeView = (function () {
         scaffold();
         initialized = true;
       }
+      renderToolbar();
       refresh();
+      reconcileStatus();
     },
     refresh,
   };
