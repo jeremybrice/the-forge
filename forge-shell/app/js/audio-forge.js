@@ -10,6 +10,26 @@ window.AudioForgeView = (function () {
   const { reduce, initialState } = window.AudioForgeReducer;
   const esc = (window.ForgeUtils && ForgeUtils.escapeHTML) || ((s) => String(s));
 
+  function tauriCore() { return (window.__TAURI__ && window.__TAURI__.core) || null; }
+  function tauriEvent() { return (window.__TAURI__ && window.__TAURI__.event) || null; }
+
+  /**
+   * Resolve a project-relative WAV path into a webview-loadable src.
+   * Uses Tauri's convertFileSrc (asset:// scheme) so the audio element
+   * can play files outside the bundled app.
+   */
+  function audioSrc(relPath) {
+    if (!relPath) return '';
+    if (!projectRoot) return '';
+    const abs = `${projectRoot}/${relPath}`.replace(/\\/g, '/');
+    const core = tauriCore();
+    if (core && typeof core.convertFileSrc === 'function') {
+      return core.convertFileSrc(abs);
+    }
+    // Browser-mode fallback (read-only): not supported, leave blank.
+    return '';
+  }
+
   /* ── State ── */
   let initialized = false;
   let rootHandle = null;
@@ -188,7 +208,6 @@ window.AudioForgeView = (function () {
   }
 
   function renderDetail() {
-    // Stub — Task 6 implements detail rendering.
     const detail = ref('detail');
     if (!detail) return;
     if (!selectedId) {
@@ -201,7 +220,54 @@ window.AudioForgeView = (function () {
     }
     const r = recordings.find((x) => x.frontmatter.id === selectedId);
     if (!r) { detail.innerHTML = ''; return; }
-    detail.innerHTML = `<div class="af-detail-title">${esc(r.frontmatter.title || '')}</div>`;
+    const fm = r.frontmatter;
+    const dur = helpers.formatDuration(fm.duration_seconds || 0);
+    const created = helpers.formatTimestamp(fm.created || '');
+    const liveStatus = (machineState.id === fm.id && machineState.status === 'transcribing')
+      ? helpers.statusBadge('transcribing')
+      : helpers.statusBadge(fm.transcript_status);
+
+    const audioBlocks = [];
+    if (fm.audio_files && fm.audio_files.system) {
+      audioBlocks.push(`
+        <div class="af-audio-player">
+          <span class="af-audio-label">System</span>
+          <audio controls preload="metadata" src="${esc(audioSrc(fm.audio_files.system))}"></audio>
+        </div>`);
+    }
+    if (fm.audio_files && fm.audio_files.mic) {
+      audioBlocks.push(`
+        <div class="af-audio-player">
+          <span class="af-audio-label">Mic</span>
+          <audio controls preload="metadata" src="${esc(audioSrc(fm.audio_files.mic))}"></audio>
+        </div>`);
+    }
+
+    const transcriptBlock = (fm.transcript_status === 'transcribed' && r.body && r.body.trim())
+      ? `<div class="af-transcript">${esc(r.body.trim())}</div>`
+      : (fm.transcript_status === 'failed'
+          ? `<p>Transcription failed. <button class="af-retry-btn" data-af-action="retry-transcribe" data-af-id="${esc(fm.id)}">Retry</button></p>`
+          : `<p style="color:var(--text-muted)">Transcript pending…</p>`);
+
+    detail.innerHTML = `
+      <div class="af-detail-header">
+        <div class="af-detail-title">${esc(fm.title || '(untitled)')}</div>
+        <div class="af-detail-meta">
+          ${esc(created)} · ${esc(dur)} ·
+          <span class="${liveStatus.cls}"><i class="fa-solid ${liveStatus.icon}"></i> ${esc(liveStatus.label)}</span>
+        </div>
+      </div>
+      <div class="af-detail-section">${audioBlocks.join('')}</div>
+      <div class="af-detail-section">
+        <h3 style="font-size:14px;color:var(--text-secondary);margin:0 0 8px 0;">Transcript</h3>
+        ${transcriptBlock}
+      </div>
+    `;
+    // Wire the retry button — Task 10 implements retryTranscribe.
+    const retryBtn = detail.querySelector('[data-af-action="retry-transcribe"]');
+    if (retryBtn && typeof retryTranscribe === 'function') {
+      retryBtn.addEventListener('click', () => retryTranscribe(retryBtn.dataset.afId));
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
