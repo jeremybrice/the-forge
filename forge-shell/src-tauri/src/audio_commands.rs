@@ -516,24 +516,32 @@ fn relativize_audio(project_root: &str, abs_path: &str) -> String {
 
 /// Returns the working directory python3 should run from so that
 /// `forge-lib/forge.py …` is the correct relative invocation. Prefers the
-/// user's project-local forge-lib (so per-project schema customization
-/// keeps working); falls back to the bundled forge-lib in the Tauri
+/// user's project-local forge-lib WHEN IT SUPPORTS the recording subcommand
+/// (so per-project schema customization keeps working for new-enough
+/// forge-libs); otherwise falls back to the bundled forge-lib in the Tauri
 /// resource directory.
+///
+/// We detect "supports recording" by probing for `core/recording_ops.py` —
+/// that file only exists in Phase 1+ forge-libs. Older copies fail loudly
+/// at runtime with `forge: error: argument command: invalid choice:
+/// 'recording'`, so this guard avoids a confusing user-facing toast.
 fn resolve_forge_lib_workdir(app: &AppHandle, project_root: &str) -> Result<PathBuf, String> {
-    let project_forge = Path::new(project_root).join("forge-lib").join("forge.py");
-    if project_forge.is_file() {
+    let project_forge_lib = Path::new(project_root).join("forge-lib");
+    let project_forge_py = project_forge_lib.join("forge.py");
+    let project_recording_ops = project_forge_lib.join("core").join("recording_ops.py");
+    if project_forge_py.is_file() && project_recording_ops.is_file() {
         return Ok(PathBuf::from(project_root));
     }
     let resource_dir = app.path()
         .resource_dir()
         .map_err(|e| format!("resource_dir lookup failed: {e}"))?;
-    let bundled = resource_dir.join("forge-lib").join("forge.py");
-    if bundled.is_file() {
+    let bundled_forge_py = resource_dir.join("forge-lib").join("forge.py");
+    if bundled_forge_py.is_file() {
         return Ok(resource_dir);
     }
     Err(format!(
-        "forge-lib/forge.py not found in project ({}/forge-lib/forge.py) or in app bundle ({:?})",
-        project_root, resource_dir.join("forge-lib/forge.py")
+        "forge-lib with recording support not found in project ({}/forge-lib) or in app bundle ({:?})",
+        project_root, resource_dir.join("forge-lib")
     ))
 }
 
