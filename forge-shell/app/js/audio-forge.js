@@ -113,10 +113,11 @@ window.AudioForgeView = (function () {
      ═══════════════════════════════════════════════════════════ */
   function setProjectRoot(handle) {
     rootHandle = handle;
-    // In Tauri mode, Shell.rootHandle is a path string. In browser mode,
-    // it's a FileSystemDirectoryHandle (no usable absolute path).
+    // In Tauri mode the handle IS the project-root path string (Shell.boot
+    // passes its rootHandle into ctrl.init). In browser mode handle is a
+    // FileSystemDirectoryHandle and there's no usable absolute path.
     if (window.ForgeFS && window.ForgeFS.isTauri && window.ForgeFS.isTauri()) {
-      projectRoot = window.Shell ? window.Shell.rootHandle : null;
+      projectRoot = (typeof handle === 'string') ? handle : null;
     } else {
       projectRoot = null;
     }
