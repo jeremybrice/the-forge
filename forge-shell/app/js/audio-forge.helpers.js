@@ -120,7 +120,10 @@
   }
 
   function statusBadge(status) {
+    // forge-lib writes 'complete' on success; 'transcribed' is treated as a
+    // synonym for backwards compatibility.
     switch (status) {
+      case 'complete':
       case 'transcribed':
         return { label: 'transcribed', icon: 'fa-circle-check', cls: 'af-status-ok' };
       case 'failed':

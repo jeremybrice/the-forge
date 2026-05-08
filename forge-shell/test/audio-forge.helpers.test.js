@@ -64,7 +64,7 @@ test('parseFrontmatter: typical recording', () => {
     'title: Sprint standup',
     'created: 2026-05-08T14:32:00',
     'duration_seconds: 258',
-    'transcript_status: transcribed',
+    'transcript_status: complete',
     'sources:',
     '  - system',
     '  - mic',
@@ -83,7 +83,7 @@ test('parseFrontmatter: typical recording', () => {
   assert.equal(frontmatter.id, '2026-05-08T143200');
   assert.equal(frontmatter.title, 'Sprint standup');
   assert.equal(frontmatter.duration_seconds, 258);
-  assert.equal(frontmatter.transcript_status, 'transcribed');
+  assert.equal(frontmatter.transcript_status, 'complete');
   assert.deepEqual(frontmatter.sources, ['system', 'mic']);
   assert.deepEqual(frontmatter.audio_files, {
     system: 'audio-forge/audio/2026-05-08T143200.system.wav',
@@ -106,6 +106,12 @@ test('parseFrontmatter: integer-looking strings stay strings if quoted', () => {
 });
 
 test('statusBadge: maps each status to label + class', () => {
+  // forge-lib writes 'complete' on success; the badge label normalizes to
+  // 'transcribed' for user-facing display. 'transcribed' is also accepted as
+  // a synonym in case a future schema migration lands.
+  assert.deepEqual(helpers.statusBadge('complete'), {
+    label: 'transcribed', icon: 'fa-circle-check', cls: 'af-status-ok',
+  });
   assert.deepEqual(helpers.statusBadge('transcribed'), {
     label: 'transcribed', icon: 'fa-circle-check', cls: 'af-status-ok',
   });

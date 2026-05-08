@@ -130,23 +130,27 @@ window.AudioForgeView = (function () {
     if (!rootHandle) return [];
     const indicator = ref('refresh-indicator');
     if (indicator) indicator.textContent = 'Scanning…';
+    const SUBDIR = 'audio-forge/recordings';
     try {
-      const files = await ForgeFS.listMarkdownFiles(rootHandle, 'audio-forge/recordings');
+      const files = await ForgeFS.listMarkdownFiles(rootHandle, SUBDIR);
       const out = [];
       for (const f of files) {
+        // list_md_files returns paths relative to the listed subdir. To
+        // readFile via root, prefix the subdir.
+        const rel = `${SUBDIR}/${f.path}`;
         try {
-          const text = await ForgeFS.readFile(rootHandle, f.path);
+          const text = await ForgeFS.readFile(rootHandle, rel);
           const { frontmatter, body } = helpers.parseFrontmatter(text);
           if (frontmatter && frontmatter.id && frontmatter.type === 'recording') {
             out.push({
-              path: f.path,
+              path: rel,
               filename: f.name,
               frontmatter,
               body,
             });
           }
         } catch (e) {
-          console.warn('[AudioForge] failed to read', f.path, e);
+          console.warn('[AudioForge] failed to read', rel, e);
         }
       }
       out.sort((a, b) => {
@@ -246,7 +250,8 @@ window.AudioForgeView = (function () {
         </div>`);
     }
 
-    const transcriptBlock = (fm.transcript_status === 'transcribed' && r.body && r.body.trim())
+    const isComplete = fm.transcript_status === 'complete' || fm.transcript_status === 'transcribed';
+    const transcriptBlock = (isComplete && r.body && r.body.trim())
       ? `<div class="af-transcript">${esc(r.body.trim())}</div>`
       : (fm.transcript_status === 'failed'
           ? `<p>Transcription failed. <button class="af-retry-btn" data-af-action="retry-transcribe" data-af-id="${esc(fm.id)}">Retry</button></p>`
