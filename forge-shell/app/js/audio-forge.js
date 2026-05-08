@@ -578,8 +578,10 @@ window.AudioForgeView = (function () {
       toast(msg, 'error');
     }));
     unlisteners.push(await evt.listen('audio-forge://terminated', () => {
-      // Only act if we believe we're still recording.
-      if (machineState.status !== 'idle') {
+      // The sidecar exits cleanly after a normal stop (state is 'stopping' or
+      // beyond by then). Only treat termination as unexpected when we still
+      // believe a capture is in progress (starting/recording).
+      if (machineState.status === 'starting' || machineState.status === 'recording') {
         dispatch({ type: 'TERMINATED_EVENT' });
         toast('Recorder exited unexpectedly. Captured audio (if any) will appear after refresh.', 'warn');
       }
