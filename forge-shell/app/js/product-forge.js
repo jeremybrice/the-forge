@@ -204,6 +204,38 @@
       '</div>';
     },
 
+    /* expandAncestors — uncollapse every parent in the chain so the
+       structural row for `filename` is visible, and uncollapse the
+       section that owns the card. Used by the user-click path (so a
+       click in Recents reveals the structural location) and by the
+       auto-reveal path. Pure collapse-state mutation; does not render. */
+    expandAncestors: function (filename) {
+      var card = store.get(filename);
+      if (!card) return;
+
+      var cursor = card;
+      var safety = 16;  /* defensive against cyclic parent chains */
+      while (cursor && cursor.frontmatter && cursor.frontmatter.parent && safety-- > 0) {
+        this.collapsedNodes.delete(cursor.frontmatter.parent);
+        cursor = store.get(cursor.frontmatter.parent);
+      }
+
+      var type = card.frontmatter.type;
+      var sectionId = null;
+      if (type === 'initiative') sectionId = 'initiatives';
+      else if (type === 'epic') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-epics';
+      else if (type === 'story') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-stories';
+      else if (type === 'intake') sectionId = 'intakes';
+      else if (type === 'checkpoint') sectionId = 'checkpoints';
+      else if (type === 'decision') sectionId = 'decisions';
+      else if (type === 'release-note') sectionId = 'release-notes';
+      if (sectionId) {
+        this.collapsedSections.delete(sectionId);
+      } else {
+        console.warn('expandAncestors: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
+      }
+    },
+
     _bindEvents(container) {
       /* Section toggle */
       container.querySelectorAll('[data-pfl-toggle-section]').forEach(el => {
@@ -246,7 +278,15 @@
             return;
           }
 
+          /* Reveal: expand ancestors first so the structural row is
+             visible, then select. _renderTree picks up the new
+             collapse state. (Keyboard nav and detail-panel nav-links
+             still call selectCard directly — those rows are already
+             visible and shouldn't force expansion.) */
+          this.expandAncestors(filename);
           ctrl.selectCard(filename);
+          ctrl._renderTree();
+          this.highlightSelected(filename);
         });
       });
     },
@@ -1056,6 +1096,20 @@
         return;
       }
 
+      /* Read the "last shell open" watermark and advance it for the
+         next session. _loadCards uses _previousOpenedAt to badge
+         every card with frontmatter.created >= watermark. First-ever
+         launch defaults to 24h ago so the user sees something. */
+      try {
+        var raw = window.localStorage.getItem('pfl-last-shell-opened-at');
+        var prev = raw ? parseInt(raw, 10) : NaN;
+        this._previousOpenedAt = isNaN(prev) ? (Date.now() - 24 * 60 * 60 * 1000) : prev;
+        window.localStorage.setItem('pfl-last-shell-opened-at', String(Date.now()));
+      } catch (e) {
+        /* localStorage unavailable — fall back to 24h-ago watermark. */
+        this._previousOpenedAt = Date.now() - 24 * 60 * 60 * 1000;
+      }
+
       this._renderLayout(view, rootHandle);
       await this._loadCards();
       this._startAutoRefresh();
@@ -1217,6 +1271,23 @@
       }
 
       taxonomy = discoverTaxonomy(store.all());
+
+      /* Pre-populate NEW badges from the "last shell open" watermark.
+         Any card whose frontmatter.created >= watermark is treated
+         the same as a card that arrived via _doRefresh.changes.added —
+         shows up in unseenSet (toolbar count) and gets a NEW badge
+         until the user clicks it. Done before first render so badges
+         appear on first paint. */
+      var prev = this._previousOpenedAt;
+      if (typeof prev === 'number') {
+        store.all().forEach(function (card) {
+          var created = parseDate(card.frontmatter && card.frontmatter.created);
+          if (created !== null && created >= prev) {
+            recentsTracker.noteAdded(card.filename);
+          }
+        });
+      }
+
       this._renderTree();
       this._updateRefreshIndicator();
     },
@@ -1684,29 +1755,9 @@
       var card = store.get(filename);
       if (!card) return;
 
-      /* 1. Walk parent chain and uncollapse each ancestor. */
-      var cursor = card;
-      var safety = 16;  /* defensive against cyclic parent chains */
-      while (cursor && cursor.frontmatter && cursor.frontmatter.parent && safety-- > 0) {
-        treeView.collapsedNodes.delete(cursor.frontmatter.parent);
-        cursor = store.get(cursor.frontmatter.parent);
-      }
-
-      /* 2. Uncollapse the section that owns this card. */
-      var type = card.frontmatter.type;
-      var sectionId = null;
-      if (type === 'initiative') sectionId = 'initiatives';
-      else if (type === 'epic') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-epics';
-      else if (type === 'story') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-stories';
-      else if (type === 'intake') sectionId = 'intakes';
-      else if (type === 'checkpoint') sectionId = 'checkpoints';
-      else if (type === 'decision') sectionId = 'decisions';
-      else if (type === 'release-note') sectionId = 'release-notes';
-      if (sectionId) {
-        treeView.collapsedSections.delete(sectionId);
-      } else {
-        console.warn('_revealCard: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
-      }
+      /* 1+2. Expand ancestors and the owning section (shared with
+         the user-click path). */
+      treeView.expandAncestors(filename);
       treeView.collapsedSections.delete('recents');  /* always show recents on reveal */
 
       /* 3. Select, mark seen if needed (clears NEW badge), and
