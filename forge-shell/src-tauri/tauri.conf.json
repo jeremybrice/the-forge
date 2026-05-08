@@ -47,6 +47,13 @@
     ],
     "macOS": {
       "infoPlist": "Info.plist"
+    },
+    "resources": {
+      "../../forge-lib/forge.py": "forge-lib/forge.py",
+      "../../forge-lib/__init__.py": "forge-lib/__init__.py",
+      "../../forge-lib/core": "forge-lib/core",
+      "../../forge-lib/schemas": "forge-lib/schemas",
+      "../../forge-lib/templates": "forge-lib/templates"
     }
   }
 }
