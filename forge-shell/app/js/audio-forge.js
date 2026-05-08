@@ -397,6 +397,54 @@ window.AudioForgeView = (function () {
   }
 
   /* ═══════════════════════════════════════════════════════════
+     Tauri event subscriptions
+     ═══════════════════════════════════════════════════════════ */
+  async function ensureListeners() {
+    if (listenersAttached) return;
+    const evt = tauriEvent();
+    if (!evt || typeof evt.listen !== 'function') {
+      console.warn('[AudioForge] Tauri event API unavailable');
+      return;
+    }
+    unlisteners.push(await evt.listen('audio-forge://meter', (e) => {
+      const p = e.payload || {};
+      // Sidecar emits meter events with shape { event: 'meter', system: 0..1, mic: 0..1 }
+      // Some payloads may only have one channel — coerce missing to 0.
+      dispatch({ type: 'METER', system: Number(p.system) || 0, mic: Number(p.mic) || 0 });
+      renderMeterBars();
+    }));
+    unlisteners.push(await evt.listen('audio-forge://elapsed', (e) => {
+      const p = e.payload || {};
+      dispatch({ type: 'ELAPSED', seconds: Number(p.seconds) || 0 });
+    }));
+    unlisteners.push(await evt.listen('audio-forge://error', (e) => {
+      const p = e.payload || {};
+      const msg = p.message || 'Recorder error';
+      dispatch({ type: 'ERROR_EVENT', message: msg });
+      toast(msg, 'error');
+    }));
+    unlisteners.push(await evt.listen('audio-forge://terminated', () => {
+      // Only act if we believe we're still recording.
+      if (machineState.status !== 'idle') {
+        dispatch({ type: 'TERMINATED_EVENT' });
+        toast('Recorder exited unexpectedly. Captured audio (if any) will appear after refresh.', 'warn');
+      }
+    }));
+    // 'started' and 'stopped' events are handled inside the invoke awaits
+    // (start_recording/stop_recording resolve when those events are seen).
+    // We deliberately do NOT subscribe to them here to avoid double-handling.
+    listenersAttached = true;
+  }
+
+  function renderMeterBars() {
+    const sys = view().querySelector('[data-af-meter-bar="system"]');
+    const mic = view().querySelector('[data-af-meter-bar="mic"]');
+    if (!sys || !mic) return;
+    sys.style.width = `${Math.round((machineState.meter.system || 0) * 100)}%`;
+    mic.style.width = `${Math.round((machineState.meter.mic || 0) * 100)}%`;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      Status reconciliation on activation
      (handles the case where this controller mounted while a recording
       is already in progress in the same Tauri process — uncommon but
@@ -449,6 +497,7 @@ window.AudioForgeView = (function () {
         scaffold();
         initialized = true;
       }
+      ensureListeners();
       renderToolbar();
       refresh();
       reconcileStatus();
