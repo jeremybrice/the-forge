@@ -340,6 +340,82 @@ window.AudioForgeView = (function () {
     return core.invoke('run_recording_transcribe', { projectRoot, id, model: model || 'large-v3-turbo' });
   }
 
+  async function invokeRecover() {
+    const core = tauriCore();
+    if (!core) return null;
+    try {
+      return await core.invoke('recover_orphaned_recording', { projectRoot });
+    } catch (e) {
+      console.warn('[AudioForge] recover_orphaned_recording failed', e);
+      return null;
+    }
+  }
+
+  function clearRecoveryBanner() {
+    const banner = ref('recovery-banner');
+    if (banner) banner.innerHTML = '';
+  }
+
+  function renderRecoveryBanner(active) {
+    const banner = ref('recovery-banner');
+    if (!banner) return;
+    const startedFmt = helpers.formatTimestamp(active.started_at || '');
+    banner.innerHTML = `
+      <div class="af-recovery-banner">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Previous recording <code>${esc(active.id)}</code> (${esc(startedFmt)}) was interrupted. Save the captured audio?</span>
+        <button data-af-action="recover-save">Save</button>
+        <button data-af-action="recover-discard">Discard</button>
+      </div>
+    `;
+    banner.querySelector('[data-af-action="recover-save"]').addEventListener('click', () => recoverSave(active));
+    banner.querySelector('[data-af-action="recover-discard"]').addEventListener('click', () => recoverDiscard(active));
+  }
+
+  async function recoverSave(active) {
+    try {
+      await invokeCreate({
+        projectRoot,
+        id: active.id,
+        title: `Recovered recording ${active.id}`,
+        durationSeconds: 0,
+        sources: active.sources || [],
+        files: active.files || {},
+      });
+      toast('Recovered recording saved.', 'info');
+    } catch (e) {
+      toast(`Failed to save recovered recording: ${friendlyError(e)}`, 'error');
+    } finally {
+      // Clean up active.json regardless.
+      try {
+        await ForgeFS.deleteFile(rootHandle, 'audio-forge/recordings/active.json');
+      } catch (e) { /* not fatal */ }
+      clearRecoveryBanner();
+      await refresh();
+    }
+  }
+
+  async function recoverDiscard(active) {
+    // Delete the orphaned WAVs and active.json.
+    const files = active.files || {};
+    for (const k of Object.keys(files)) {
+      const rel = relPath(projectRoot, files[k]);
+      try { await ForgeFS.deleteFile(rootHandle, rel); }
+      catch (e) { console.warn('[AudioForge] discard: failed to delete', rel, e); }
+    }
+    try { await ForgeFS.deleteFile(rootHandle, 'audio-forge/recordings/active.json'); }
+    catch (e) { /* not fatal */ }
+    clearRecoveryBanner();
+    toast('Discarded.', 'info');
+  }
+
+  function relPath(root, abs) {
+    if (!abs) return '';
+    const r = String(root).replace(/\\/g, '/').replace(/\/$/, '');
+    const a = String(abs).replace(/\\/g, '/');
+    return a.startsWith(r + '/') ? a.slice(r.length + 1) : a;
+  }
+
   /**
    * The auto-transcribe pipeline. Called from onToggleRecord after STOP_OK.
    * Sequences: run_recording_create → refresh list → run_recording_transcribe → refresh.
@@ -578,6 +654,10 @@ window.AudioForgeView = (function () {
       renderToolbar();
       refresh();
       reconcileStatus();
+      // Orphan recovery
+      invokeRecover().then((active) => {
+        if (active) renderRecoveryBanner(active);
+      });
     },
     refresh,
   };
