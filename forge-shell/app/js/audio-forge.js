@@ -385,6 +385,30 @@ window.AudioForgeView = (function () {
     renderDetail();
   }
 
+  async function retryTranscribe(id) {
+    if (!id) return;
+    // Drop into a transcribing-like UI for this id while the call runs.
+    // We don't update machineState (it's idle) — instead, briefly mark the entity in the list.
+    const list = ref('list');
+    const itemEl = list && list.querySelector(`[data-af-id="${cssEscape(id)}"]`);
+    if (itemEl) itemEl.style.opacity = '0.6';
+    try {
+      await invokeTranscribe(id);
+      toast('Transcription complete.', 'info');
+    } catch (e) {
+      toast(`Retry failed: ${friendlyError(e)}`, 'error');
+    } finally {
+      await refresh();
+      selectedId = id;
+      renderList();
+      renderDetail();
+    }
+  }
+
+  function cssEscape(s) {
+    return String(s).replace(/["\\\n]/g, '\\$&');
+  }
+
   /* ═══════════════════════════════════════════════════════════
      Record / Stop click
      ═══════════════════════════════════════════════════════════ */
