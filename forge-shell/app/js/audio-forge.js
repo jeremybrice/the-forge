@@ -331,6 +331,59 @@ window.AudioForgeView = (function () {
     if (!core) throw new Error('Tauri runtime not available');
     return core.invoke('get_recording_status');
   }
+  async function invokeCreate(payload) {
+    const core = tauriCore();
+    return core.invoke('run_recording_create', payload);
+  }
+  async function invokeTranscribe(id, model) {
+    const core = tauriCore();
+    return core.invoke('run_recording_transcribe', { projectRoot, id, model: model || 'large-v3-turbo' });
+  }
+
+  /**
+   * The auto-transcribe pipeline. Called from onToggleRecord after STOP_OK.
+   * Sequences: run_recording_create → refresh list → run_recording_transcribe → refresh.
+   */
+  async function runStopPipeline(stopped, startedAt) {
+    const id = stopped.id || machineState.id;
+    const sources = machineState.sources && machineState.sources.length
+      ? machineState.sources
+      : checkedSources();
+    const title = helpers.deriveTitle(startedAt || machineState.startedAt);
+    try {
+      await invokeCreate({
+        projectRoot,
+        id,
+        title,
+        durationSeconds: stopped.duration_seconds | 0,
+        sources,
+        files: stopped.files || {},
+      });
+    } catch (e) {
+      dispatch({ type: 'CREATE_ERR', message: friendlyError(e) });
+      toast(`Failed to save recording: ${friendlyError(e)}`, 'error');
+      return;
+    }
+    dispatch({ type: 'CREATE_OK' });
+    // Render the list immediately so the new pending entity shows up.
+    await refresh();
+    selectedId = id;
+    renderList();
+    renderDetail();
+
+    try {
+      await invokeTranscribe(id);
+      dispatch({ type: 'TRANSCRIBE_OK' });
+    } catch (e) {
+      dispatch({ type: 'TRANSCRIBE_ERR', message: friendlyError(e) });
+      toast(`Transcription failed: ${friendlyError(e)}`, 'error');
+    }
+    // Always refresh — forge-lib has updated the file's frontmatter either way.
+    await refresh();
+    selectedId = id;
+    renderList();
+    renderDetail();
+  }
 
   /* ═══════════════════════════════════════════════════════════
      Record / Stop click
@@ -369,10 +422,10 @@ window.AudioForgeView = (function () {
           durationSeconds: stopped.duration_seconds,
           files: stopped.files || {},
         });
-        // Task 9 replaces this stub with the create+transcribe call:
-        dispatch({ type: 'CREATE_OK' });
-        dispatch({ type: 'TRANSCRIBE_OK' });
-        await refresh();
+        const startedAt = machineState.startedAt;
+        const stoppedSnapshot = Object.assign({}, stopped, { id: machineState.id });
+        // Drop into 'creating' UI state via the dispatched STOP_OK above; runStopPipeline drives the rest.
+        await runStopPipeline(stoppedSnapshot, startedAt);
       } catch (e) {
         dispatch({ type: 'STOP_ERR', message: friendlyError(e) });
         toast(friendlyError(e), 'error');
