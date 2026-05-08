@@ -19,6 +19,7 @@ window.AudioForgeView = (function () {
   let selectedId = null;
   let listenersAttached = false;
   let unlisteners = [];
+  let searchQuery = '';
 
   /* ── DOM helpers ── */
   function view() { return document.getElementById('view-audio-forge'); }
@@ -81,6 +82,7 @@ window.AudioForgeView = (function () {
 
     // Wire toolbar actions (interactivity in later tasks).
     $('[data-af-action="refresh"]').addEventListener('click', () => refresh());
+    wireSearch();
     // Record button is no-op here; Task 7 wires it.
   }
 
@@ -89,13 +91,139 @@ window.AudioForgeView = (function () {
      ═══════════════════════════════════════════════════════════ */
   function setProjectRoot(handle) {
     rootHandle = handle;
-    if (window.Shell && window.Shell.rootDirPath) {
-      projectRoot = window.Shell.rootDirPath;
+    // In Tauri mode, Shell.rootHandle is a path string. In browser mode,
+    // it's a FileSystemDirectoryHandle (no usable absolute path).
+    if (window.ForgeFS && window.ForgeFS.isTauri && window.ForgeFS.isTauri()) {
+      projectRoot = window.Shell ? window.Shell.rootHandle : null;
+    } else {
+      projectRoot = null;
     }
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     Disk scan
+     ═══════════════════════════════════════════════════════════ */
+  async function scanRecordings() {
+    if (!rootHandle) return [];
+    const indicator = ref('refresh-indicator');
+    if (indicator) indicator.textContent = 'Scanning…';
+    try {
+      const files = await ForgeFS.listMarkdownFiles(rootHandle, 'audio-forge/recordings');
+      const out = [];
+      for (const f of files) {
+        try {
+          const text = await ForgeFS.readFile(rootHandle, f.path);
+          const { frontmatter, body } = helpers.parseFrontmatter(text);
+          if (frontmatter && frontmatter.id && frontmatter.type === 'recording') {
+            out.push({
+              path: f.path,
+              filename: f.name,
+              frontmatter,
+              body,
+            });
+          }
+        } catch (e) {
+          console.warn('[AudioForge] failed to read', f.path, e);
+        }
+      }
+      out.sort((a, b) => {
+        const ac = a.frontmatter.created || '';
+        const bc = b.frontmatter.created || '';
+        return bc.localeCompare(ac);
+      });
+      return out;
+    } finally {
+      if (indicator) indicator.textContent = '';
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     List rendering
+     ═══════════════════════════════════════════════════════════ */
+  function filteredRecordings() {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return recordings;
+    return recordings.filter((r) => {
+      const t = (r.frontmatter.title || '').toLowerCase();
+      return t.includes(q);
+    });
+  }
+
+  function renderList() {
+    const list = ref('list');
+    const count = ref('count');
+    if (!list) return;
+    const items = filteredRecordings();
+    count.textContent = String(items.length);
+    if (items.length === 0) {
+      list.innerHTML = `<div class="af-empty" style="height:auto;padding:20px;font-size:13px"><i class="fa-solid fa-inbox" style="font-size:24px"></i><p>No recordings yet.</p></div>`;
+      return;
+    }
+    list.innerHTML = items.map((r) => {
+      const fm = r.frontmatter;
+      const status = (machineState.id === fm.id && machineState.status === 'transcribing')
+        ? helpers.statusBadge('transcribing')
+        : helpers.statusBadge(fm.transcript_status);
+      const dur = helpers.formatDuration(fm.duration_seconds || 0);
+      const date = helpers.formatTimestamp(fm.created || '').split(' ')[0] || '';
+      const sel = (r.frontmatter.id === selectedId) ? ' selected' : '';
+      return `
+        <div class="af-item${sel}" data-af-id="${esc(fm.id)}">
+          <div class="af-item-title">${esc(fm.title || '(untitled)')}</div>
+          <div class="af-item-meta">
+            <span>${esc(date)}</span>
+            <span>${esc(dur)}</span>
+            <span class="${status.cls}"><i class="fa-solid ${status.icon}"></i> ${esc(status.label)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-af-id]').forEach((el) => {
+      el.addEventListener('click', () => {
+        selectedId = el.dataset.afId;
+        renderList();
+        renderDetail();
+      });
+    });
+  }
+
+  function renderDetail() {
+    // Stub — Task 6 implements detail rendering.
+    const detail = ref('detail');
+    if (!detail) return;
+    if (!selectedId) {
+      detail.innerHTML = `
+        <div class="af-empty">
+          <i class="fa-solid fa-microphone"></i>
+          <p>No recording selected.</p>
+        </div>`;
+      return;
+    }
+    const r = recordings.find((x) => x.frontmatter.id === selectedId);
+    if (!r) { detail.innerHTML = ''; return; }
+    detail.innerHTML = `<div class="af-detail-title">${esc(r.frontmatter.title || '')}</div>`;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     refresh
+     ═══════════════════════════════════════════════════════════ */
   async function refresh() {
-    // Stub — Task 5 implements scanning.
+    recordings = await scanRecordings();
+    if (selectedId && !recordings.some((r) => r.frontmatter.id === selectedId)) {
+      selectedId = null;
+    }
+    renderList();
+    renderDetail();
+  }
+
+  /* ── Search wiring (called from scaffold AFTER scaffold completes) ── */
+  function wireSearch() {
+    const input = ref('search');
+    if (!input) return;
+    input.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderList();
+    });
   }
 
   return {
