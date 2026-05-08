@@ -7,7 +7,7 @@
     "tauri:build": "cd src-tauri && cargo tauri build",
     "tauri:build:mac": "cd src-tauri && cargo tauri build --target universal-apple-darwin",
     "tauri:build:debug": "cd src-tauri && cargo tauri build --debug",
-    "test": "echo \"No tests configured yet\"",
+    "test": "node --test",
     "lint": "echo \"No linting configured yet\""
   },
   "keywords": [

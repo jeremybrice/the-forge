@@ -409,6 +409,7 @@ pub async fn run_recording_create(
 
     let payload_arg = payload.to_string();
 
+    let workdir = resolve_forge_lib_workdir(&app, &project_root)?;
     let shell = app.shell();
     let output = shell
         .command("python3")
@@ -421,7 +422,7 @@ pub async fn run_recording_create(
             "--data",
             &payload_arg,
         ])
-        .current_dir(workspace_root_for(&project_root))
+        .current_dir(workdir)
         .output()
         .await
         .map_err(|e| format!("forge recording create exec: {e}"))?;
@@ -469,10 +470,11 @@ pub async fn run_recording_transcribe(
         args.push(m);
     }
 
+    let workdir = resolve_forge_lib_workdir(&app, &project_root)?;
     let output = shell
         .command("python3")
         .args(args.iter().map(|s| s.as_str()))
-        .current_dir(workspace_root_for(&project_root))
+        .current_dir(workdir)
         .output()
         .await
         .map_err(|e| format!("forge recording transcribe exec: {e}"))?;
@@ -512,10 +514,35 @@ fn relativize_audio(project_root: &str, abs_path: &str) -> String {
     }
 }
 
-fn workspace_root_for(project_root: &str) -> std::path::PathBuf {
-    // Run forge.py from the directory that contains forge-lib/. For The Forge
-    // Marketplace v2 dev tree, the project_root *is* the workspace root.
-    std::path::PathBuf::from(project_root)
+/// Returns the working directory python3 should run from so that
+/// `forge-lib/forge.py …` is the correct relative invocation. Prefers the
+/// user's project-local forge-lib WHEN IT SUPPORTS the recording subcommand
+/// (so per-project schema customization keeps working for new-enough
+/// forge-libs); otherwise falls back to the bundled forge-lib in the Tauri
+/// resource directory.
+///
+/// We detect "supports recording" by probing for `core/recording_ops.py` —
+/// that file only exists in Phase 1+ forge-libs. Older copies fail loudly
+/// at runtime with `forge: error: argument command: invalid choice:
+/// 'recording'`, so this guard avoids a confusing user-facing toast.
+fn resolve_forge_lib_workdir(app: &AppHandle, project_root: &str) -> Result<PathBuf, String> {
+    let project_forge_lib = Path::new(project_root).join("forge-lib");
+    let project_forge_py = project_forge_lib.join("forge.py");
+    let project_recording_ops = project_forge_lib.join("core").join("recording_ops.py");
+    if project_forge_py.is_file() && project_recording_ops.is_file() {
+        return Ok(PathBuf::from(project_root));
+    }
+    let resource_dir = app.path()
+        .resource_dir()
+        .map_err(|e| format!("resource_dir lookup failed: {e}"))?;
+    let bundled_forge_py = resource_dir.join("forge-lib").join("forge.py");
+    if bundled_forge_py.is_file() {
+        return Ok(resource_dir);
+    }
+    Err(format!(
+        "forge-lib with recording support not found in project ({}/forge-lib) or in app bundle ({:?})",
+        project_root, resource_dir.join("forge-lib")
+    ))
 }
 
 // ----------------- Helpers -----------------
