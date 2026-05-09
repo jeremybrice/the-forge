@@ -459,11 +459,24 @@ window.AudioForgeView = (function () {
                         s === 'creating'    ? 'Saving…'   :
                         s === 'transcribing'? 'Transcribing…' : 'Record';
     meter.style.display = recording ? '' : 'none';
-    elapsed.textContent = helpers.formatDuration(machineState.elapsed);
 
-    // Disable source checkboxes while not idle
+    const elapsedText = helpers.formatDuration(machineState.elapsed);
+    const limitMin = machineState.autoStopMinutes;
+    if (limitMin && limitMin > 0) {
+      elapsed.textContent = `${elapsedText} / ${helpers.formatDuration(limitMin * 60)}`;
+    } else {
+      elapsed.textContent = elapsedText;
+    }
+
+    // Disable source checkboxes and auto-stop dropdown while not idle
     $('[data-af-source="system"]').disabled = (s !== 'idle');
     $('[data-af-source="mic"]').disabled    = (s !== 'idle');
+    const autostopSelect = ref('autostop-select');
+    if (autostopSelect) autostopSelect.disabled = (s !== 'idle');
+    // If a custom-entry panel happened to be open and we are no longer idle,
+    // hide it (manual safety against weird edge timing).
+    const custom = ref('autostop-custom');
+    if (custom && s !== 'idle') custom.hidden = true;
   }
 
   function checkedSources() {
