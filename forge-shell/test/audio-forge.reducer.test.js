@@ -215,6 +215,74 @@ test('recording + ERROR_EVENT resets autoStop fields', () => {
   assert.equal(next.autoStopFired, false);
 });
 
+test('starting + START_ERR resets autoStop fields', () => {
+  let s = reduce(initialState, baseEvent('RECORD_CLICK', {
+    sources: ['mic'], autoStopMinutes: 30,
+  }));
+  const next = reduce(s, baseEvent('START_ERR', { message: 'fail' }));
+  assert.equal(next.status, 'idle');
+  assert.equal(next.autoStopMinutes, 0);
+  assert.equal(next.autoStopFired, false);
+});
+
+test('recording + TERMINATED_EVENT resets autoStop fields', () => {
+  let s = reduce(initialState, baseEvent('RECORD_CLICK', {
+    sources: ['mic'], autoStopMinutes: 30,
+  }));
+  s = reduce(s, baseEvent('START_OK', {
+    id: 'x', startedAt: 't', files: { mic: '/a.wav' },
+  }));
+  const next = reduce(s, baseEvent('TERMINATED_EVENT'));
+  assert.equal(next.status, 'idle');
+  assert.equal(next.autoStopMinutes, 0);
+  assert.equal(next.autoStopFired, false);
+});
+
+test('stopping + STOP_ERR resets autoStop fields', () => {
+  let s = reduce(initialState, baseEvent('RECORD_CLICK', {
+    sources: ['mic'], autoStopMinutes: 30,
+  }));
+  s = reduce(s, baseEvent('START_OK', {
+    id: 'x', startedAt: 't', files: { mic: '/a.wav' },
+  }));
+  s = reduce(s, baseEvent('STOP_CLICK', { auto: true }));
+  const next = reduce(s, baseEvent('STOP_ERR', { message: 'stop fail' }));
+  assert.equal(next.status, 'idle');
+  assert.equal(next.autoStopMinutes, 0);
+  assert.equal(next.autoStopFired, false);
+});
+
+test('creating + CREATE_ERR resets autoStop fields', () => {
+  let s = reduce(initialState, baseEvent('RECORD_CLICK', {
+    sources: ['mic'], autoStopMinutes: 30,
+  }));
+  s = reduce(s, baseEvent('START_OK', {
+    id: 'x', startedAt: 't', files: { mic: '/a.wav' },
+  }));
+  s = reduce(s, baseEvent('STOP_CLICK', { auto: true }));
+  s = reduce(s, baseEvent('STOP_OK', { durationSeconds: 60, files: s.files }));
+  const next = reduce(s, baseEvent('CREATE_ERR', { message: 'create fail' }));
+  assert.equal(next.status, 'idle');
+  assert.equal(next.autoStopMinutes, 0);
+  assert.equal(next.autoStopFired, false);
+});
+
+test('transcribing + TRANSCRIBE_ERR resets autoStop fields', () => {
+  let s = reduce(initialState, baseEvent('RECORD_CLICK', {
+    sources: ['mic'], autoStopMinutes: 30,
+  }));
+  s = reduce(s, baseEvent('START_OK', {
+    id: 'x', startedAt: 't', files: { mic: '/a.wav' },
+  }));
+  s = reduce(s, baseEvent('STOP_CLICK', { auto: true }));
+  s = reduce(s, baseEvent('STOP_OK', { durationSeconds: 60, files: s.files }));
+  s = reduce(s, baseEvent('CREATE_OK'));
+  const next = reduce(s, baseEvent('TRANSCRIBE_ERR', { message: 'whisper fail' }));
+  assert.equal(next.status, 'idle');
+  assert.equal(next.autoStopMinutes, 0);
+  assert.equal(next.autoStopFired, false);
+});
+
 test('transcribing + TRANSCRIBE_OK resets autoStop fields', () => {
   let s = reduce(initialState, baseEvent('RECORD_CLICK', {
     sources: ['mic'], autoStopMinutes: 30,
