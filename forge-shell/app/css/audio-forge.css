@@ -280,3 +280,69 @@
   color: var(--accent);
   cursor: pointer;
 }
+
+/* ── Auto-stop timer (toolbar) ───────────────────────────────── */
+.af-autostop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.af-autostop-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.af-autostop select {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.af-autostop select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.af-autostop-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.af-autostop-custom input[type="number"] {
+  width: 56px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  padding: 4px 6px;
+}
+.af-autostop-custom input[type="number"]:invalid,
+.af-autostop-custom input[type="number"].af-invalid {
+  border-color: #d33;
+}
+.af-autostop-custom-unit {
+  color: var(--text-secondary);
+}
+.af-autostop-custom button {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.af-autostop-custom button:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+.af-autostop-custom button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

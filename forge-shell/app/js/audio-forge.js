@@ -61,6 +61,26 @@ window.AudioForgeView = (function () {
             <label><input type="checkbox" data-af-source="mic" checked> mic</label>
           </div>
 
+          <div class="af-autostop" data-af-ref="autostop">
+            <label class="af-autostop-label" for="af-autostop-select">
+              <i class="fa-regular fa-clock"></i> Auto-stop:
+            </label>
+            <select id="af-autostop-select" data-af-ref="autostop-select">
+              <option value="0">Off</option>
+              <option value="30">30 min</option>
+              <option value="60">60 min</option>
+              <option value="90">90 min</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <span class="af-autostop-custom" data-af-ref="autostop-custom" hidden>
+              <input type="number" min="1" max="240" step="1"
+                     placeholder="min" data-af-ref="autostop-custom-input">
+              <span class="af-autostop-custom-unit">min</span>
+              <button type="button" data-af-action="autostop-set" disabled>Set</button>
+              <button type="button" data-af-action="autostop-cancel">Cancel</button>
+            </span>
+          </div>
+
           <button class="af-record-btn" data-af-action="toggle-record">
             <span class="af-record-dot"></span>
             <span data-af-ref="record-label">Record</span>
