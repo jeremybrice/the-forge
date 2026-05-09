@@ -41,6 +41,31 @@ window.AudioForgeView = (function () {
   let unlisteners = [];
   let searchQuery = '';
 
+  /* ── Auto-stop persistence ── */
+  const AUTOSTOP_KEY = 'audio-forge.autoStopMinutes';
+
+  function loadAutoStopPref() {
+    try {
+      const raw = window.localStorage.getItem(AUTOSTOP_KEY);
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n)) return 0;
+      if (n < 0 || n > 240) return 0;
+      return n; // 0 (Off) or 1..240
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function saveAutoStopPref(minutes) {
+    try {
+      const n = Number(minutes);
+      const clean = Number.isFinite(n) && n >= 0 && n <= 240 ? Math.floor(n) : 0;
+      window.localStorage.setItem(AUTOSTOP_KEY, String(clean));
+    } catch (e) {
+      // localStorage unavailable / quota — degrade silently
+    }
+  }
+
   /* ── DOM helpers ── */
   function view() { return document.getElementById('view-audio-forge'); }
   function $(sel) { return view().querySelector(sel); }
@@ -126,6 +151,39 @@ window.AudioForgeView = (function () {
     $('[data-af-action="toggle-record"]').addEventListener('click', () => {
       onToggleRecord();
     });
+
+    initAutoStopDropdown();
+  }
+
+  function initAutoStopDropdown() {
+    const select = ref('autostop-select');
+    if (!select) return;
+    const stored = loadAutoStopPref();
+    setAutoStopDropdownValue(stored);
+  }
+
+  function setAutoStopDropdownValue(minutes) {
+    const select = ref('autostop-select');
+    if (!select) return;
+    // Remove any prior transient custom option
+    const transient = select.querySelector('option[data-af-custom="1"]');
+    if (transient) transient.remove();
+    if (minutes === 0) {
+      select.value = '0';
+      return;
+    }
+    if (minutes === 30 || minutes === 60 || minutes === 90) {
+      select.value = String(minutes);
+      return;
+    }
+    // Custom value — insert a transient option just above the "Custom…" entry.
+    const customEntry = select.querySelector('option[value="custom"]');
+    const opt = document.createElement('option');
+    opt.value = String(minutes);
+    opt.textContent = `${minutes} min`;
+    opt.dataset.afCustom = '1';
+    select.insertBefore(opt, customEntry);
+    select.value = String(minutes);
   }
 
   /* ═══════════════════════════════════════════════════════════
