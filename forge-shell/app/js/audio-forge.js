@@ -719,19 +719,20 @@ window.AudioForgeView = (function () {
     const minutes = machineState.autoStopMinutes;
     try {
       const stopped = await invokeStop();
+      const startedAt = machineState.startedAt;
+      const recordingId = machineState.id;
       dispatch({
         type: 'STOP_OK',
         durationSeconds: stopped.duration_seconds,
         files: stopped.files || {},
       });
-      const startedAt = machineState.startedAt;
-      const stoppedSnapshot = Object.assign({}, stopped, { id: machineState.id });
-      await runStopPipeline(stoppedSnapshot, startedAt);
       const label = (minutes === 1) ? '1 min' : `${minutes} min`;
       toast(
         `⏱ Auto-stopped after ${label} — transcription will continue in the background.`,
         'info'
       );
+      const stoppedSnapshot = Object.assign({}, stopped, { id: recordingId });
+      await runStopPipeline(stoppedSnapshot, startedAt);
     } catch (e) {
       dispatch({ type: 'STOP_ERR', message: friendlyError(e) });
       toast(friendlyError(e), 'error');
@@ -823,6 +824,7 @@ window.AudioForgeView = (function () {
           startedAt: new Date(Date.now() - (s.elapsed_seconds || 0) * 1000).toISOString(),
           elapsed: s.elapsed_seconds || 0,
           sources: checkedSources(),
+          autoStopMinutes: loadAutoStopPref(),
         });
         renderToolbar();
       }
