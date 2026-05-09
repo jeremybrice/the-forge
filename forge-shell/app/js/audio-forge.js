@@ -702,12 +702,45 @@ window.AudioForgeView = (function () {
     try { return JSON.stringify(e); } catch { return String(e); }
   }
 
+  async function runAutoStop() {
+    const minutes = machineState.autoStopMinutes;
+    try {
+      const stopped = await invokeStop();
+      dispatch({
+        type: 'STOP_OK',
+        durationSeconds: stopped.duration_seconds,
+        files: stopped.files || {},
+      });
+      const startedAt = machineState.startedAt;
+      const stoppedSnapshot = Object.assign({}, stopped, { id: machineState.id });
+      await runStopPipeline(stoppedSnapshot, startedAt);
+      const label = (minutes === 1) ? '1 min' : `${minutes} min`;
+      toast(
+        `⏱ Auto-stopped after ${label} — transcription will continue in the background.`,
+        'info'
+      );
+    } catch (e) {
+      dispatch({ type: 'STOP_ERR', message: friendlyError(e) });
+      toast(friendlyError(e), 'error');
+    }
+  }
+
   function toast(msg, level) {
     if (window.ForgeUtils && ForgeUtils.Toast) {
       ForgeUtils.Toast.show(msg, level || 'info', 4000);
     } else {
       console.log(`[AudioForge ${level || 'info'}] ${msg}`);
     }
+  }
+
+  function maybeAutoStop() {
+    if (machineState.status !== 'recording') return;
+    if (machineState.autoStopFired) return;
+    const limit = machineState.autoStopMinutes;
+    if (!limit || limit <= 0) return;
+    if (machineState.elapsed < limit * 60) return;
+    dispatch({ type: 'STOP_CLICK', auto: true });
+    runAutoStop();
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -730,6 +763,7 @@ window.AudioForgeView = (function () {
     unlisteners.push(await evt.listen('audio-forge://elapsed', (e) => {
       const p = e.payload || {};
       dispatch({ type: 'ELAPSED', seconds: Number(p.seconds) || 0 });
+      maybeAutoStop();
     }));
     unlisteners.push(await evt.listen('audio-forge://error', (e) => {
       const p = e.payload || {};
