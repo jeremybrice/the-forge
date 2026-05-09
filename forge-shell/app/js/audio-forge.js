@@ -656,7 +656,8 @@ window.AudioForgeView = (function () {
         toast('Select at least one source (system or mic).', 'warn');
         return;
       }
-      dispatch({ type: 'RECORD_CLICK', sources });
+      const autoStopMinutes = getAutoStopSelection();
+      dispatch({ type: 'RECORD_CLICK', sources, autoStopMinutes });
       try {
         const started = await invokeStart(sources);
         const startedAt = new Date().toISOString();
