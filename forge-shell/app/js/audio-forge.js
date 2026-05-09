@@ -153,6 +153,7 @@ window.AudioForgeView = (function () {
     });
 
     initAutoStopDropdown();
+    wireAutoStopControls();
   }
 
   function initAutoStopDropdown() {
@@ -184,6 +185,81 @@ window.AudioForgeView = (function () {
     opt.dataset.afCustom = '1';
     select.insertBefore(opt, customEntry);
     select.value = String(minutes);
+  }
+
+  let lastCommittedAutoStop = 0;
+
+  function getAutoStopSelection() {
+    return lastCommittedAutoStop;
+  }
+
+  function wireAutoStopControls() {
+    const select = ref('autostop-select');
+    const custom = ref('autostop-custom');
+    const input = ref('autostop-custom-input');
+    const setBtn = view().querySelector('[data-af-action="autostop-set"]');
+    const cancelBtn = view().querySelector('[data-af-action="autostop-cancel"]');
+    if (!select) return;
+
+    lastCommittedAutoStop = loadAutoStopPref();
+
+    select.addEventListener('change', () => {
+      const v = select.value;
+      if (v === 'custom') {
+        // Reveal the custom-entry block; do NOT commit until Set.
+        if (custom) custom.hidden = false;
+        if (input) {
+          input.value = '';
+          input.classList.remove('af-invalid');
+          input.focus();
+        }
+        if (setBtn) setBtn.disabled = true;
+        // Revert select to the previously committed value so the dropdown
+        // does not lie about state while the input is open.
+        setAutoStopDropdownValue(lastCommittedAutoStop);
+        select.disabled = true; // prevent another change while custom is open
+        return;
+      }
+      const n = parseInt(v, 10);
+      const minutes = Number.isFinite(n) && n >= 0 && n <= 240 ? n : 0;
+      lastCommittedAutoStop = minutes;
+      saveAutoStopPref(minutes);
+      // If the user selected a transient custom option, keep it visible.
+      // If they selected a preset, drop any stale transient custom option.
+      if (minutes === 0 || minutes === 30 || minutes === 60 || minutes === 90) {
+        const transient = select.querySelector('option[data-af-custom="1"]');
+        if (transient) transient.remove();
+      }
+    });
+
+    if (input) {
+      input.addEventListener('input', () => {
+        const n = parseInt(input.value, 10);
+        const valid = Number.isFinite(n) && n >= 1 && n <= 240;
+        if (setBtn) setBtn.disabled = !valid;
+        input.classList.toggle('af-invalid', input.value !== '' && !valid);
+      });
+    }
+
+    if (setBtn) {
+      setBtn.addEventListener('click', () => {
+        const n = parseInt(input.value, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 240) return;
+        lastCommittedAutoStop = n;
+        saveAutoStopPref(n);
+        setAutoStopDropdownValue(n);
+        if (custom) custom.hidden = true;
+        select.disabled = false;
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (custom) custom.hidden = true;
+        setAutoStopDropdownValue(lastCommittedAutoStop);
+        select.disabled = false;
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
