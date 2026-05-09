@@ -41,6 +41,31 @@ window.AudioForgeView = (function () {
   let unlisteners = [];
   let searchQuery = '';
 
+  /* ── Auto-stop persistence ── */
+  const AUTOSTOP_KEY = 'audio-forge.autoStopMinutes';
+
+  function loadAutoStopPref() {
+    try {
+      const raw = window.localStorage.getItem(AUTOSTOP_KEY);
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n)) return 0;
+      if (n < 0 || n > 240) return 0;
+      return n; // 0 (Off) or 1..240
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function saveAutoStopPref(minutes) {
+    try {
+      const n = Number(minutes);
+      const clean = Number.isFinite(n) && n >= 0 && n <= 240 ? Math.floor(n) : 0;
+      window.localStorage.setItem(AUTOSTOP_KEY, String(clean));
+    } catch (e) {
+      // localStorage unavailable / quota — degrade silently
+    }
+  }
+
   /* ── DOM helpers ── */
   function view() { return document.getElementById('view-audio-forge'); }
   function $(sel) { return view().querySelector(sel); }
@@ -59,6 +84,26 @@ window.AudioForgeView = (function () {
           <div class="af-source-checkboxes" data-af-ref="sources">
             <label><input type="checkbox" data-af-source="system" checked> system</label>
             <label><input type="checkbox" data-af-source="mic" checked> mic</label>
+          </div>
+
+          <div class="af-autostop" data-af-ref="autostop">
+            <label class="af-autostop-label" for="af-autostop-select">
+              <i class="fa-regular fa-clock"></i> Auto-stop:
+            </label>
+            <select id="af-autostop-select" data-af-ref="autostop-select">
+              <option value="0">Off</option>
+              <option value="30">30 min</option>
+              <option value="60">60 min</option>
+              <option value="90">90 min</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <span class="af-autostop-custom" data-af-ref="autostop-custom" hidden>
+              <input type="number" min="1" max="240" step="1"
+                     placeholder="min" data-af-ref="autostop-custom-input">
+              <span class="af-autostop-custom-unit">min</span>
+              <button type="button" data-af-action="autostop-set" disabled>Set</button>
+              <button type="button" data-af-action="autostop-cancel">Cancel</button>
+            </span>
           </div>
 
           <button class="af-record-btn" data-af-action="toggle-record">
@@ -106,6 +151,115 @@ window.AudioForgeView = (function () {
     $('[data-af-action="toggle-record"]').addEventListener('click', () => {
       onToggleRecord();
     });
+
+    initAutoStopDropdown();
+    wireAutoStopControls();
+  }
+
+  function initAutoStopDropdown() {
+    const select = ref('autostop-select');
+    if (!select) return;
+    const stored = loadAutoStopPref();
+    setAutoStopDropdownValue(stored);
+  }
+
+  function setAutoStopDropdownValue(minutes) {
+    const select = ref('autostop-select');
+    if (!select) return;
+    // Remove any prior transient custom option
+    const transient = select.querySelector('option[data-af-custom="1"]');
+    if (transient) transient.remove();
+    if (minutes === 0) {
+      select.value = '0';
+      return;
+    }
+    if (minutes === 30 || minutes === 60 || minutes === 90) {
+      select.value = String(minutes);
+      return;
+    }
+    // Custom value — insert a transient option just above the "Custom…" entry.
+    const customEntry = select.querySelector('option[value="custom"]');
+    const opt = document.createElement('option');
+    opt.value = String(minutes);
+    opt.textContent = `${minutes} min`;
+    opt.dataset.afCustom = '1';
+    select.insertBefore(opt, customEntry);
+    select.value = String(minutes);
+  }
+
+  let lastCommittedAutoStop = 0;
+
+  function getAutoStopSelection() {
+    return lastCommittedAutoStop;
+  }
+
+  function wireAutoStopControls() {
+    const select = ref('autostop-select');
+    const custom = ref('autostop-custom');
+    const input = ref('autostop-custom-input');
+    const setBtn = view().querySelector('[data-af-action="autostop-set"]');
+    const cancelBtn = view().querySelector('[data-af-action="autostop-cancel"]');
+    if (!select) return;
+
+    lastCommittedAutoStop = loadAutoStopPref();
+
+    select.addEventListener('change', () => {
+      const v = select.value;
+      if (v === 'custom') {
+        // Reveal the custom-entry block; do NOT commit until Set.
+        if (custom) custom.hidden = false;
+        if (input) {
+          input.value = '';
+          input.classList.remove('af-invalid');
+          input.focus();
+        }
+        if (setBtn) setBtn.disabled = true;
+        // Revert select to the previously committed value so the dropdown
+        // does not lie about state while the input is open.
+        setAutoStopDropdownValue(lastCommittedAutoStop);
+        select.disabled = true; // prevent another change while custom is open
+        return;
+      }
+      const n = parseInt(v, 10);
+      const minutes = Number.isFinite(n) && n >= 0 && n <= 240 ? n : 0;
+      lastCommittedAutoStop = minutes;
+      saveAutoStopPref(minutes);
+      // If the user selected a transient custom option, keep it visible.
+      // If they selected a preset, drop any stale transient custom option.
+      if (minutes === 0 || minutes === 30 || minutes === 60 || minutes === 90) {
+        const transient = select.querySelector('option[data-af-custom="1"]');
+        if (transient) transient.remove();
+      }
+    });
+
+    if (input) {
+      input.addEventListener('input', () => {
+        const n = parseInt(input.value, 10);
+        const valid = Number.isFinite(n) && n >= 1 && n <= 240;
+        if (setBtn) setBtn.disabled = !valid;
+        input.classList.toggle('af-invalid', input.value !== '' && !valid);
+      });
+    }
+
+    if (setBtn) {
+      setBtn.addEventListener('click', () => {
+        const n = parseInt(input.value, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 240) return;
+        lastCommittedAutoStop = n;
+        saveAutoStopPref(n);
+        setAutoStopDropdownValue(n);
+        if (custom) custom.hidden = true;
+        select.disabled = false;
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (custom) custom.hidden = true;
+        setAutoStopDropdownValue(lastCommittedAutoStop);
+        select.disabled = false;
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -305,11 +459,24 @@ window.AudioForgeView = (function () {
                         s === 'creating'    ? 'Saving…'   :
                         s === 'transcribing'? 'Transcribing…' : 'Record';
     meter.style.display = recording ? '' : 'none';
-    elapsed.textContent = helpers.formatDuration(machineState.elapsed);
 
-    // Disable source checkboxes while not idle
+    const elapsedText = helpers.formatDuration(machineState.elapsed);
+    const limitMin = machineState.autoStopMinutes;
+    if (limitMin && limitMin > 0) {
+      elapsed.textContent = `${elapsedText} / ${helpers.formatDuration(limitMin * 60)}`;
+    } else {
+      elapsed.textContent = elapsedText;
+    }
+
+    // Disable source checkboxes and auto-stop dropdown while not idle
     $('[data-af-source="system"]').disabled = (s !== 'idle');
     $('[data-af-source="mic"]').disabled    = (s !== 'idle');
+    const autostopSelect = ref('autostop-select');
+    if (autostopSelect) autostopSelect.disabled = (s !== 'idle');
+    // If a custom-entry panel happened to be open and we are no longer idle,
+    // hide it (manual safety against weird edge timing).
+    const custom = ref('autostop-custom');
+    if (custom && s !== 'idle') custom.hidden = true;
   }
 
   function checkedSources() {
@@ -502,7 +669,8 @@ window.AudioForgeView = (function () {
         toast('Select at least one source (system or mic).', 'warn');
         return;
       }
-      dispatch({ type: 'RECORD_CLICK', sources });
+      const autoStopMinutes = getAutoStopSelection();
+      dispatch({ type: 'RECORD_CLICK', sources, autoStopMinutes });
       try {
         const started = await invokeStart(sources);
         const startedAt = new Date().toISOString();
@@ -547,12 +715,46 @@ window.AudioForgeView = (function () {
     try { return JSON.stringify(e); } catch { return String(e); }
   }
 
+  async function runAutoStop() {
+    const minutes = machineState.autoStopMinutes;
+    try {
+      const stopped = await invokeStop();
+      const startedAt = machineState.startedAt;
+      const recordingId = machineState.id;
+      dispatch({
+        type: 'STOP_OK',
+        durationSeconds: stopped.duration_seconds,
+        files: stopped.files || {},
+      });
+      const label = (minutes === 1) ? '1 min' : `${minutes} min`;
+      toast(
+        `⏱ Auto-stopped after ${label} — transcription will continue in the background.`,
+        'info'
+      );
+      const stoppedSnapshot = Object.assign({}, stopped, { id: recordingId });
+      await runStopPipeline(stoppedSnapshot, startedAt);
+    } catch (e) {
+      dispatch({ type: 'STOP_ERR', message: friendlyError(e) });
+      toast(friendlyError(e), 'error');
+    }
+  }
+
   function toast(msg, level) {
     if (window.ForgeUtils && ForgeUtils.Toast) {
       ForgeUtils.Toast.show(msg, level || 'info', 4000);
     } else {
       console.log(`[AudioForge ${level || 'info'}] ${msg}`);
     }
+  }
+
+  function maybeAutoStop() {
+    if (machineState.status !== 'recording') return;
+    if (machineState.autoStopFired) return;
+    const limit = machineState.autoStopMinutes;
+    if (!limit || limit <= 0) return;
+    if (machineState.elapsed < limit * 60) return;
+    dispatch({ type: 'STOP_CLICK', auto: true });
+    runAutoStop();
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -575,6 +777,7 @@ window.AudioForgeView = (function () {
     unlisteners.push(await evt.listen('audio-forge://elapsed', (e) => {
       const p = e.payload || {};
       dispatch({ type: 'ELAPSED', seconds: Number(p.seconds) || 0 });
+      maybeAutoStop();
     }));
     unlisteners.push(await evt.listen('audio-forge://error', (e) => {
       const p = e.payload || {};
@@ -621,6 +824,7 @@ window.AudioForgeView = (function () {
           startedAt: new Date(Date.now() - (s.elapsed_seconds || 0) * 1000).toISOString(),
           elapsed: s.elapsed_seconds || 0,
           sources: checkedSources(),
+          autoStopMinutes: loadAutoStopPref(),
         });
         renderToolbar();
       }

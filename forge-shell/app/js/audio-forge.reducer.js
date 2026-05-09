@@ -19,15 +19,21 @@
     elapsed: 0,
     meter: { system: 0, mic: 0 },
     error: null,
+    autoStopMinutes: 0,    // 0 = Off; otherwise integer in [1, 240]
+    autoStopFired: false,  // true once auto-stop has been triggered (idempotency)
   });
 
   function reduce(state, event) {
     switch (state.status) {
       case 'idle':
         if (event.type === 'RECORD_CLICK') {
+          const m = Number(event.autoStopMinutes);
+          const autoStopMinutes =
+            Number.isFinite(m) && m >= 1 && m <= 240 ? Math.floor(m) : 0;
           return Object.assign({}, initialState, {
             status: 'starting',
             sources: event.sources || [],
+            autoStopMinutes,
           });
         }
         return state;
@@ -62,7 +68,10 @@
           return Object.assign({}, state, { elapsed: Math.max(0, event.seconds | 0) });
         }
         if (event.type === 'STOP_CLICK') {
-          return Object.assign({}, state, { status: 'stopping' });
+          return Object.assign({}, state, {
+            status: 'stopping',
+            autoStopFired: state.autoStopFired || event.auto === true,
+          });
         }
         if (event.type === 'ERROR_EVENT') {
           return Object.assign({}, initialState, { error: event.message || 'recorder error' });
