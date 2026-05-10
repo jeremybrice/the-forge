@@ -118,6 +118,8 @@ Triage complete:
 - X tasks now need attention
 ```
 
+If triage surfaced systemic patterns (many blocked tasks, recurring overdue items), suggest: "Consider generating a status report with `/report-forge:generate` to share findings with leadership."
+
 ### Mode 3: External Sync (Future Enhancement)
 
 **Note:** External sync (Asana, Linear, Jira, GitHub) requires MCP integration.

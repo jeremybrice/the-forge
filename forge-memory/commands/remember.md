@@ -106,7 +106,10 @@ Remembered: [Entry]
 
 Added to: memory/[file path]
 
-Use /memory:recall to look it up later.
+This is now available for:
+- Product Forge card enrichment (product, module, client fields)
+- Report Forge scoping (entity validation)
+- Use /memory:recall to look it up later.
 ```
 
 ## Key Behaviors

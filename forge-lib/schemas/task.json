@@ -53,6 +53,11 @@
       "description": "Parent task or story filename (without extension)",
       "default": null
     },
+    "source": {
+      "type": ["string", "null"],
+      "description": "Origin plugin or system that created this task (e.g., 'slack-forge', 'cognitive-forge')",
+      "default": null
+    },
     "created": {
       "type": "string",
       "format": "date",

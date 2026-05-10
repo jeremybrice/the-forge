@@ -1,0 +1,287 @@
+{
+  "plugin": "tasks-forge",
+  "eval_candidates": ["task-management", "update (triage mode)"],
+  "contracts": ["1", "4", "5", "6", "IF4"],
+  "test_cases": [
+    {
+      "id": "isolation-task-mgmt-001",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Priority 1-2 tasks surface first when user asks what to work on",
+      "user_prompt": "What should I work on next?",
+      "setup_context": "tasks/ contains 6 tasks: 2 at priority 1 (Open), 2 at priority 3 (Open), 1 at priority 5 (Open), 1 Completed",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill instructs to show priority 1-2 Open tasks first, then priority 3, then highlight overdue. Completed task should not appear in recommendations.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-task-mgmt-002",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Status transition validation rejects invalid transitions",
+      "user_prompt": "Mark task-005 as completed (task-005 is currently Open)",
+      "setup_context": "task-005 exists with status Open",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill's valid transitions show Open can go to In Progress or Cancelled, NOT directly to Completed. The skill should guide the user to first move to In Progress, then to Completed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-task-mgmt-003",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Triage correctly categorizes a task that is both overdue AND blocked",
+      "user_prompt": "Triage my tasks",
+      "setup_context": "task-010 has status Blocked, due_date 2 weeks ago, blocked for 20 days",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Task qualifies as both overdue (past due_date) and stuck (Blocked 14+ days). Triage reasoning should surface both concerns. For stuck tasks, skill says: 'Blocker still exists? Keep Blocked. Alternative approach? Move to Open. Give up? Cancel.' The overdue aspect adds urgency to resolve the blocker.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-task-mgmt-004",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Natural language 'X is done' maps to Completed transition",
+      "user_prompt": "The API review is done",
+      "setup_context": "task-007 titled 'Review API spec' with status In Progress",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill's workflow prompts section says: when user says 'X is done', find the task by title, update status to Completed, confirm transition. Skill should guide finding task-007 by fuzzy title match and transitioning In Progress → Completed (a valid transition).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-task-mgmt-005",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Task creation reasoning correctly distinguishes actionable vs vague items",
+      "user_prompt": "I should probably think about reorganizing the codebase someday",
+      "setup_context": "No existing tasks about codebase reorganization",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill's 'When NOT to create a task' section includes 'Vague ideas without clear action (think about X)'. This prompt matches that pattern. Skill should guide against creating a task, or suggest the user refine the idea into a concrete action first.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-task-mgmt-006",
+      "component": "task-management",
+      "category": "isolation",
+      "description": "Blocked task prompts for blocker description",
+      "user_prompt": "Task-003 is blocked",
+      "setup_context": "task-003 exists with status In Progress",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Skill's workflow prompts say: when user says 'X is blocked', find the task, update status to Blocked, prompt for blocker description (add to task notes). The skill must instruct prompting for the blocker reason, not just silently transitioning.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-triage-001",
+      "component": "update (triage mode)",
+      "category": "isolation",
+      "description": "Triage mode queries all active statuses and flags overdue tasks",
+      "user_prompt": "/tasks:update --triage",
+      "setup_context": "tasks/ contains 10 tasks: 3 Open (one overdue), 4 In Progress (one not updated in 10 days), 2 Blocked (one for 20 days), 1 Completed",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Command queries Open, In Progress, and Blocked tasks. Flags: the overdue Open task (past due_date), the forgotten In Progress task (7+ days without update), and the stuck Blocked task (14+ days). Does NOT flag the Completed task. Presents each flagged task with the 5-option action menu.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-triage-002",
+      "component": "update (triage mode)",
+      "category": "isolation",
+      "description": "Triage stale detection uses 30-day threshold for Open tasks",
+      "user_prompt": "/tasks:update --triage",
+      "setup_context": "task-020 has status Open, created 25 days ago, no due_date. task-021 has status Open, created 35 days ago, no due_date.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Only task-021 (35 days) is flagged as stale. task-020 (25 days) does not meet the 30+ day threshold and should not be flagged. The stale task should be presented with the standard 5-option action menu.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-triage-003",
+      "component": "update (triage mode)",
+      "category": "isolation",
+      "description": "Triage summary report counts actions correctly",
+      "user_prompt": "/tasks:update --triage (user completes 2 tasks, reschedules 1, skips 1)",
+      "setup_context": "4 tasks flagged during triage. User selects: Complete for task-030, Complete for task-031, Reschedule for task-032, Skip for task-033.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Summary report shows: 2 tasks marked completed, 1 task rescheduled, 0 tasks updated (status change), and accurately reflects remaining tasks needing attention. Format matches the template in the command.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-triage-004",
+      "component": "update (triage mode)",
+      "category": "isolation",
+      "description": "Triage validates status transitions before applying user choices",
+      "user_prompt": "/tasks:update --triage (user selects 'Mark completed' for a Blocked task)",
+      "setup_context": "task-040 is Blocked and flagged as stuck (14+ days). User selects option 1 (Mark completed).",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Command should validate that Blocked → Completed is NOT a valid transition (the state machine only allows Blocked → In Progress, Open, or Cancelled). Should warn the user and suggest moving to In Progress first, then to Completed.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-task-mgmt-c1-001",
+      "component": "task-management",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Skill acknowledges Slack Forge as a task source during task listing",
+      "user_prompt": "What tasks do I have?",
+      "setup_context": "tasks/ contains tasks, some with source metadata indicating Slack harvest origin",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Skill should acknowledge that tasks can originate from Slack Forge harvest promotion. If tasks have Slack provenance metadata, it should be visible. At minimum, the skill text should mention Slack Forge as a possible task source.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Task list is correctly formatted with priorities and statuses shown",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-task-mgmt-c4-001",
+      "component": "task-management",
+      "category": "ecosystem",
+      "contract": "Contract 4",
+      "description": "Task reprioritization references Cognitive Forge debate outcomes",
+      "user_prompt": "Reprioritize my tasks based on the architecture decision we made",
+      "setup_context": "sessions/ contains a recent debate session about architecture. tasks/ contains tasks related to the architecture.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Skill should reference Cognitive Forge session records as a valid input for reprioritization reasoning. At minimum, the skill text should mention that debate outcomes can inform task priorities.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Priority guidance correctly applies the 1-5 scale with appropriate reasoning for changes",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-task-mgmt-c5-001",
+      "component": "task-management",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "After task creation, proactive handoff suggests linking to Product Forge",
+      "user_prompt": "Add a task to implement the new notification system",
+      "setup_context": "cards/ contains a Product Forge story card about notification system",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After task creation guidance, skill should suggest linking the task to a Product Forge card if one exists. Expected: 'If this relates to a Product Forge story, you can link them.'",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Task creation reasoning correctly identifies this as an actionable item worthy of a task",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-task-mgmt-c6-001",
+      "component": "task-management",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Memory-first resolution for shorthand in task description",
+      "user_prompt": "Add a task: fix the WPA auth bug for Acme",
+      "setup_context": "Forge Memory taxonomy contains entries for 'WPA' (Web Platform Authentication) and 'Acme' (Acme Corp, client)",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Skill should instruct checking Forge Memory for 'WPA' and 'Acme' before creating the task, using canonical names in the task description. This is a CLAUDE.md-level behavioral directive.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Task is created with actionable title, appropriate priority, and correct initial status",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-triage-c5-001",
+      "component": "update (triage mode)",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Post-triage summary suggests Report Forge for status reporting",
+      "user_prompt": "/tasks:update --triage (after completing triage of many tasks)",
+      "setup_context": "Triage surfaces 6 blocked tasks and 12 overdue items — systemic issues",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After triage summary, command should suggest: 'Consider generating a status report with `/report-forge:generate` to share triage outcomes.' This is Contract 5 (proactive handoff) and Implied Flow 4.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Triage correctly identifies all overdue and blocked tasks, presents action menus, and produces accurate summary counts",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-triage-if4-001",
+      "component": "update (triage mode)",
+      "category": "ecosystem",
+      "contract": "Implied Flow 4",
+      "description": "Triage with systemic blockers suggests Report Forge escalation",
+      "user_prompt": "/tasks:update --triage",
+      "setup_context": "5+ tasks are Blocked with similar blocker descriptions (e.g., all waiting on API team). 10+ tasks are overdue.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "When triage reveals systemic patterns (many tasks blocked by same dependency, widespread overdue items), the command should suggest escalating via Report Forge: 'There are several systemic blockers. Consider generating a status report with `/report-forge:generate` to surface these to leadership.'",
+          "level": "specificity",
+          "weight": 0.5
+        },
+        "isolation_correctness": {
+          "assertion": "Triage correctly flags all blocked and overdue tasks with appropriate categorization",
+          "weight": 0.5
+        }
+      }
+    },
+    {
+      "id": "ecosystem-task-mgmt-c1-002",
+      "component": "task-management",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Task management skill mentions Slack Forge promotion as intake path",
+      "user_prompt": "I have some tasks from a Slack discussion that need tracking",
+      "setup_context": "User mentions Slack as the source of tasks",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Skill should suggest using `/slack-forge:scan` and `/slack-forge:capture` to harvest tasks from Slack systematically, rather than manual re-entry. This is the Contract 1 flow.",
+          "level": "specificity",
+          "weight": 0.5
+        },
+        "isolation_correctness": {
+          "assertion": "Skill correctly identifies these as action items suitable for task creation",
+          "weight": 0.5
+        }
+      }
+    }
+  ]
+}

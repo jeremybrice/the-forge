@@ -159,6 +159,8 @@ The `updated` date is automatically set by forge-lib.
 Pushed to Jira: PROJ-123
 Jira URL: https://your-domain.atlassian.net/browse/PROJ-123
 Card updated: cards/{type}s/{filename}.md
+
+If this issue gets updated in Jira, pull changes back with `/product-forge:pull-from-jira {filename}`.
 ```
 
 ---

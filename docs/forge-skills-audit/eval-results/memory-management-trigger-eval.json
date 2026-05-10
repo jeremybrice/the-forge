@@ -1,0 +1,82 @@
+[
+  {
+    "query": "what does this acronym mean?",
+    "should_trigger": true
+  },
+  {
+    "query": "who is todd on the finance team?",
+    "should_trigger": true
+  },
+  {
+    "query": "decode: ask rm about q3 retro for acme",
+    "should_trigger": false
+  },
+  {
+    "query": "what did sarah mean by 'the usual process' in her message?",
+    "should_trigger": true
+  },
+  {
+    "query": "I keep hearing people say VMS — what is that in our org?",
+    "should_trigger": true
+  },
+  {
+    "query": "who is JB and what team does he lead?",
+    "should_trigger": true
+  },
+  {
+    "query": "translate this slack message: 'ping AM re: SOW for nexus v2 before EOD'",
+    "should_trigger": true
+  },
+  {
+    "query": "I got an email mentioning CSAT scores — what does CSAT stand for here?",
+    "should_trigger": true
+  },
+  {
+    "query": "when people say 'the platform', which product are they referring to?",
+    "should_trigger": true
+  },
+  {
+    "query": "who handles the escalation process — is it DevOps or SRE?",
+    "should_trigger": true
+  },
+  {
+    "query": "write a Python script to parse CSV files",
+    "should_trigger": false
+  },
+  {
+    "query": "help me create a new Jira ticket for the API migration",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a weekly status report for the engineering team",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the best way to structure a React component?",
+    "should_trigger": false
+  },
+  {
+    "query": "break down the notification system into smaller tasks",
+    "should_trigger": false
+  },
+  {
+    "query": "review this pull request for security issues",
+    "should_trigger": false
+  },
+  {
+    "query": "what are the OWASP top 10 vulnerabilities?",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a CI/CD pipeline using GitHub Actions",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how OAuth 2.0 authorization code flow works",
+    "should_trigger": false
+  },
+  {
+    "query": "help me debug this memory leak in the Node.js process",
+    "should_trigger": false
+  }
+]

@@ -1132,12 +1132,13 @@
   border-radius: 10px;
 }
 
-.prod-wl-status-active { background: rgba(74, 108, 247, 0.12); color: var(--accent); }
-.prod-wl-status-waiting { background: rgba(243, 156, 18, 0.12); color: #f39c12; }
-.prod-wl-status-someday { background: rgba(134, 142, 150, 0.12); color: var(--text-muted); }
-.prod-wl-status-done { background: rgba(39, 174, 96, 0.12); color: #27ae60; }
+.prod-wl-status-open { background: rgba(134, 142, 150, 0.12); color: var(--text-muted); }
+.prod-wl-status-in-progress { background: rgba(74, 108, 247, 0.12); color: var(--accent); }
+.prod-wl-status-blocked { background: rgba(243, 156, 18, 0.12); color: #f39c12; }
+.prod-wl-status-completed { background: rgba(39, 174, 96, 0.12); color: #27ae60; }
+.prod-wl-status-cancelled { background: rgba(108, 117, 125, 0.12); color: #6c757d; }
 
-[data-theme="dark"] .prod-wl-status-active { background: rgba(199, 97, 64, 0.15); }
+[data-theme="dark"] .prod-wl-status-in-progress { background: rgba(199, 97, 64, 0.15); }
 
 .prod-wl-mini-due {
   font-size: 11px;

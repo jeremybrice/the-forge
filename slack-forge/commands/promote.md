@@ -48,13 +48,13 @@ For each approved item with `harvest_type: "task"`:
    - `title` → task title
    - `source_channel` → include in description as provenance
    - `source_author` → include in description as provenance
-   - `confidence` → map high → "High" priority, medium → "Medium", low → "Low"
+   - `confidence` → map to integer priority: high → 2, medium → 3, low → 4
    - `tags` → task tags
 
 2. Create the task via forge-lib:
    ```bash
    forge task create "{title}" --data '{
-     "priority": "{mapped_priority}",
+     "priority": {mapped_priority},
      "status": "Open",
      "description": "Harvested from #{source_channel} by @{source_author} on {scan_date}.\n\n{extracted_content}",
      "tags": [{tags}]
@@ -139,13 +139,19 @@ View tasks: forge task query --status Open
 {if knowledge_promoted > 0}
 View knowledge: forge memory query-knowledge
 {/if}
+{if task_promoted > 0}
+You can triage these tasks with /tasks-forge:start
+{/if}
+{if knowledge_promoted > 0}
+These entries are now available for Product Forge card enrichment and Report Forge scoping.
+{/if}
 ```
 
 ## Notes
 
 - Promotion only processes approved items — run `/slack-forge:review` first
 - Failed promotions remain in "approved" status and can be retried
-- Task priority is inferred from harvest confidence (high/medium/low)
+- Task priority is inferred from harvest confidence: high → 2, medium → 3, low → 4
 - Knowledge type is inferred from content — the LLM determines the best category
 - JIRA digests are informational only and do not create downstream entities
 - All operations go through forge-lib for schema validation and consistency

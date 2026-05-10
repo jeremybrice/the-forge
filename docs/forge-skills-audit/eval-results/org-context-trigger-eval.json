@@ -1,0 +1,82 @@
+[
+  {
+    "query": "add this to our product taxonomy",
+    "should_trigger": true
+  },
+  {
+    "query": "which products do we have?",
+    "should_trigger": true
+  },
+  {
+    "query": "is 'the mobile app' a valid product name?",
+    "should_trigger": true
+  },
+  {
+    "query": "list all the teams in our organization",
+    "should_trigger": true
+  },
+  {
+    "query": "what clients are we currently working with?",
+    "should_trigger": true
+  },
+  {
+    "query": "which module does the billing feature belong to?",
+    "should_trigger": true
+  },
+  {
+    "query": "rename the 'Platform Services' team to 'Core Infrastructure' in our taxonomy",
+    "should_trigger": true
+  },
+  {
+    "query": "does 'Acme Corp' exist in our client list?",
+    "should_trigger": true
+  },
+  {
+    "query": "show me the product hierarchy for our SaaS offerings",
+    "should_trigger": true
+  },
+  {
+    "query": "what's the canonical name for what everyone calls 'the dashboard'?",
+    "should_trigger": true
+  },
+  {
+    "query": "what does the acronym PSR mean in our company?",
+    "should_trigger": false
+  },
+  {
+    "query": "who is the product manager for the mobile team?",
+    "should_trigger": false
+  },
+  {
+    "query": "create a story card for the new onboarding flow",
+    "should_trigger": false
+  },
+  {
+    "query": "write unit tests for the product catalog service",
+    "should_trigger": false
+  },
+  {
+    "query": "build a Rovo agent to manage our team assignments",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a quarterly business review report",
+    "should_trigger": false
+  },
+  {
+    "query": "what tasks are assigned to the platform team?",
+    "should_trigger": false
+  },
+  {
+    "query": "help me organize my project files into folders",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a new GitHub repository for the product API",
+    "should_trigger": false
+  },
+  {
+    "query": "explain the difference between microservices and monoliths",
+    "should_trigger": false
+  }
+]

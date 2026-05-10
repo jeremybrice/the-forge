@@ -118,6 +118,10 @@ When triaging tasks, consider:
 - Match if 80%+ words overlap
 - Use `external_id` for definitive matching when available
 
+## Memory-First Resolution
+
+When task descriptions contain shorthand, acronyms, or informal names (e.g., "fix the CRM bug for Acme"), check Forge Memory first via `/forge-memory:recall` to resolve to canonical names before creating or updating tasks. If a term resolves, use the canonical name in the task title and description. If unknown, ask the user to clarify and offer to add it with `/forge-memory:remember`.
+
 ## Conventions
 
 - Use consistent terminology (not "todo", "action item", "ticket" interchangeably)

@@ -27,6 +27,67 @@ window.TasksView = (function () {
   let taskSignature = '';
   let suppressExternalToasts = false;
 
+  /* ══════════════════════════════════════════════════════════
+     Task Schema (canonical — see forge-lib/schemas/task.json)
+     ══════════════════════════════════════════════════════════ */
+  const STATUS_VALUES = ['Open', 'In Progress', 'Blocked', 'Completed', 'Cancelled'];
+  const TERMINAL_STATUSES = ['Completed', 'Cancelled'];
+  const PRIORITY_VALUES = [1, 2, 3, 4, 5];
+  const DEFAULT_STATUS = 'Open';
+  const DEFAULT_PRIORITY = 3;
+
+  // Identity map today; kept as a seam so UI labels can diverge from canonical values without a schema change.
+  const STATUS_LABELS = {
+    'Open': 'Open',
+    'In Progress': 'In Progress',
+    'Blocked': 'Blocked',
+    'Completed': 'Completed',
+    'Cancelled': 'Cancelled',
+  };
+  const STATUS_ICONS = {
+    'Open': 'fa-regular fa-circle',
+    'In Progress': 'fa-regular fa-square-caret-right',
+    'Blocked': 'fa-regular fa-circle-pause',
+    'Completed': 'fa-regular fa-square-check',
+    'Cancelled': 'fa-regular fa-circle-xmark',
+  };
+  const PRIORITY_LABELS = {
+    1: 'P1 – Critical',
+    2: 'P2 – High',
+    3: 'P3 – Medium',
+    4: 'P4 – Low',
+    5: 'P5 – Someday',
+  };
+  // Reuse existing 3-class chip palette — no new CSS.
+  const PRIORITY_CHIP_CLASS = {
+    1: 'prod-chip-high',
+    2: 'prod-chip-high',
+    3: 'prod-chip-medium',
+    4: 'prod-chip-low',
+    5: 'prod-chip-low',
+  };
+
+  // Priority dot colors — integer-keyed mirror of the 3-band chip palette.
+  const PRIORITY_DOT_COLOR = {
+    1: '#e74c3c',
+    2: '#e74c3c',
+    3: '#f39c12',
+    4: '#3498db',
+    5: '#3498db',
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     Schema helpers
+     ══════════════════════════════════════════════════════════ */
+  // Integer priority → legacy 3-band label, used where UI still speaks
+  // 3-band vocabulary (timeline CSS classes, matrix bucketing, etc.)
+  function priorityBand(p) {
+    if (p === 1 || p === 2) return 'high';
+    if (p === 3) return 'medium';
+    if (p === 4 || p === 5) return 'low';
+    return 'medium';
+  }
+
   /* Active view tab */
   let activeView = 'board';
 
@@ -128,20 +189,19 @@ window.TasksView = (function () {
   };
 
   function buildTooltipHtml(task) {
-    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
-    var prio = (task.priority || 'medium').toLowerCase();
-    var statusLabel = (task.status || 'active').charAt(0).toUpperCase() + (task.status || 'active').slice(1);
+    var prio = task.priority;
+    var statusLabel = (task.status || DEFAULT_STATUS).charAt(0).toUpperCase() + (task.status || DEFAULT_STATUS).slice(1);
     var html = '<div class="prod-tooltip-title">' + esc(task.title) + '</div>';
 
     if (fieldVisibility.priority) {
-      html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>' + esc(prio.charAt(0).toUpperCase() + prio.slice(1)) + ' &middot; ' + esc(statusLabel) + '</div>';
+      html += '<div class="prod-tooltip-row"><span class="prod-tooltip-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>' + esc(PRIORITY_LABELS[prio] || '') + ' &middot; ' + esc(statusLabel) + '</div>';
     }
     if (fieldVisibility.assignee && task.assignee && task.assignee !== 'null') {
       html += '<div class="prod-tooltip-row"><i class="fa-regular fa-user" style="width:14px;text-align:center;"></i> ' + esc(task.assignee) + '</div>';
     }
     if (fieldVisibility.due_date && task.due_date && task.due_date !== 'null') {
       var today = new Date().toISOString().split('T')[0];
-      var isOverdue = task.due_date < today && task.status !== 'done';
+      var isOverdue = task.due_date < today && !TERMINAL_STATUSES.includes(task.status);
       html += '<div class="prod-tooltip-row' + (isOverdue ? ' prod-tooltip-overdue' : '') + '"><i class="fa-regular fa-calendar" style="width:14px;text-align:center;"></i> ' + esc(task.due_date) + (isOverdue ? ' (overdue)' : '') + '</div>';
     }
     if (fieldVisibility.tags && task.tags && task.tags.length > 0) {
@@ -196,10 +256,10 @@ window.TasksView = (function () {
 
     tasks.forEach(function (task) {
       if (filterPriority.length > 0) {
-        if (filterPriority.indexOf((task.priority || 'medium').toLowerCase()) === -1) return;
+        if (filterPriority.indexOf(String(task.priority)) === -1) return;
       }
       if (filterStatus.length > 0) {
-        if (filterStatus.indexOf((task.status || 'active').toLowerCase()) === -1) return;
+        if (filterStatus.indexOf(task.status || DEFAULT_STATUS) === -1) return;
       }
       if (filterAssignee) {
         if ((task.assignee || '').toLowerCase() !== filterAssignee.toLowerCase()) return;
@@ -292,16 +352,16 @@ window.TasksView = (function () {
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Priority</span>' +
-              '<button class="prod-filter-chip prod-chip-high" data-filter="priority" data-value="high" aria-pressed="false">High</button>' +
-              '<button class="prod-filter-chip prod-chip-medium" data-filter="priority" data-value="medium" aria-pressed="false">Medium</button>' +
-              '<button class="prod-filter-chip prod-chip-low" data-filter="priority" data-value="low" aria-pressed="false">Low</button>' +
+              PRIORITY_VALUES.map(function (p) {
+                return '<button class="prod-filter-chip ' + PRIORITY_CHIP_CLASS[p] + '" data-filter="priority" data-value="' + p + '" aria-pressed="false">' + esc(PRIORITY_LABELS[p]) + '</button>';
+              }).join('') +
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Status</span>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="active" aria-pressed="false">Active</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="waiting" aria-pressed="false">Waiting</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="someday" aria-pressed="false">Someday</button>' +
-              '<button class="prod-filter-chip" data-filter="status" data-value="done" data-ref="chip-done" aria-pressed="false">Done</button>' +
+              STATUS_VALUES.map(function (s) {
+                var refAttr = (s === 'Completed') ? ' data-ref="chip-done"' : '';
+                return '<button class="prod-filter-chip" data-filter="status" data-value="' + esc(s) + '"' + refAttr + ' aria-pressed="false">' + esc(STATUS_LABELS[s]) + '</button>';
+              }).join('') +
             '</div>' +
             '<div class="prod-filter-group">' +
               '<span class="prod-filter-label">Assignee</span>' +
@@ -664,12 +724,35 @@ window.TasksView = (function () {
 
     var frontmatter = parseYAML(yamlStr);
 
+    if (frontmatter.status !== undefined && frontmatter.status !== null && !STATUS_VALUES.includes(frontmatter.status)) {
+      console.warn('[forge-shell] Task file has invalid status: ' + JSON.stringify(frontmatter.status) + '. File: ' + filename + '. Valid: ' + STATUS_VALUES.join(', '));
+    }
+    if (frontmatter.priority !== undefined && frontmatter.priority !== null) {
+      var _testP = String(frontmatter.priority).trim();
+      var _testN = parseInt(_testP, 10);
+      if (isNaN(_testN) || !PRIORITY_VALUES.includes(_testN) || String(_testN) !== _testP) {
+        console.warn('[forge-shell] Task file has invalid priority: ' + JSON.stringify(frontmatter.priority) + '. File: ' + filename + '. Valid: 1-5 or null.');
+      }
+    }
+
+    var priority;
+    if (!('priority' in frontmatter)) {
+      priority = DEFAULT_PRIORITY;
+    } else if (frontmatter.priority === null) {
+      priority = null;
+    } else {
+      var _rawP = String(frontmatter.priority).trim();
+      var _n = parseInt(_rawP, 10);
+      // Coerce only if the string fully represents the integer (rejects "3abc").
+      priority = (isNaN(_n) || String(_n) !== _rawP) ? frontmatter.priority : _n;
+    }
+
     return {
       filename: filename,
       title: frontmatter.title || '',
       type: frontmatter.type || 'task',
-      status: frontmatter.status || 'active',
-      priority: frontmatter.priority || 'medium',
+      status: frontmatter.status || DEFAULT_STATUS,
+      priority: priority,
       assignee: frontmatter.assignee || null,
       creator: frontmatter.creator || null,
       created: frontmatter.created || '',
@@ -684,11 +767,17 @@ window.TasksView = (function () {
   }
 
   function serializeTaskFile(task) {
+    if (!STATUS_VALUES.includes(task.status)) {
+      throw new Error('Cannot save task: invalid status ' + JSON.stringify(task.status) + '. Must be one of: ' + STATUS_VALUES.join(', '));
+    }
+    if (task.priority !== null && task.priority !== undefined && !PRIORITY_VALUES.includes(task.priority)) {
+      throw new Error('Cannot save task: invalid priority ' + JSON.stringify(task.priority) + '. Must be integer 1-5 or null.');
+    }
     var yaml = '---\n';
     yaml += 'title: ' + task.title + '\n';
     yaml += 'type: ' + (task.type || 'task') + '\n';
     yaml += 'status: ' + task.status + '\n';
-    yaml += 'priority: ' + task.priority + '\n';
+    yaml += 'priority: ' + (task.priority === null || task.priority === undefined ? 'null' : task.priority) + '\n';
     yaml += 'assignee: ' + (task.assignee || 'null') + '\n';
     yaml += 'creator: ' + (task.creator || 'null') + '\n';
     yaml += 'created: ' + task.created + '\n';
@@ -728,11 +817,21 @@ window.TasksView = (function () {
     isSaving = true;
     suppressExternalToasts = true;
 
+    var content;
+    try {
+      content = serializeTaskFile(task);
+    } catch (e) {
+      ForgeUtils.Toast.show(e.message, 'error', 6000);
+      isSaving = false;
+      hasChanges = true;
+      suppressExternalToasts = false;
+      return;
+    }
+
     try {
       // Update the updated date
       task.updated = new Date().toISOString().split('T')[0];
 
-      var content = serializeTaskFile(task);
       await ForgeFS.writeFile(tasksDirHandle, task.filename, content);
 
       // Update signature to prevent external change detection
@@ -918,7 +1017,7 @@ window.TasksView = (function () {
     if (doneChip) {
       doneChip.style.display = hideDone ? 'none' : '';
       if (hideDone) {
-        var idx = filterStatus.indexOf('done');
+        var idx = filterStatus.indexOf('Completed');
         if (idx !== -1) {
           filterStatus.splice(idx, 1);
           doneChip.classList.remove('active');
@@ -955,32 +1054,20 @@ window.TasksView = (function () {
 
     // Group tasks by status
     var statuses = hideDone
-      ? ['active', 'waiting', 'someday']
-      : ['active', 'waiting', 'someday', 'done'];
-    var statusLabels = {
-      'active': 'Active',
-      'waiting': 'Waiting On',
-      'someday': 'Someday',
-      'done': 'Done'
-    };
-    var statusIcons = {
-      'active': 'fa-regular fa-square-caret-right',
-      'waiting': 'fa-regular fa-circle-pause',
-      'someday': 'fa-regular fa-calendar',
-      'done': 'fa-regular fa-square-check'
-    };
+      ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
+      : STATUS_VALUES.slice();
     var tasksByStatus = {};
     statuses.forEach(function (status) { tasksByStatus[status] = []; });
 
     tasks.forEach(function (task) {
-      var status = task.status || 'active';
+      var status = task.status || DEFAULT_STATUS;
       if (!tasksByStatus[status]) tasksByStatus[status] = [];
       tasksByStatus[status].push(task);
     });
 
     statuses.forEach(function (status) {
       var statusTasks = tasksByStatus[status] || [];
-      board.appendChild(createColumn(status, statusLabels[status], statusIcons[status], statusTasks));
+      board.appendChild(createColumn(status, STATUS_LABELS[status], STATUS_ICONS[status], statusTasks));
     });
   }
 
@@ -1085,8 +1172,8 @@ window.TasksView = (function () {
     card.draggable = true;
     card.dataset.filename = task.filename;
 
-    var priorityClass = (task.priority || 'medium').toLowerCase();
-    var priorityLabel = priorityClass.charAt(0).toUpperCase() + priorityClass.slice(1);
+    var priorityChipClass = PRIORITY_CHIP_CLASS[task.priority] || '';
+    var priorityLabel = PRIORITY_LABELS[task.priority] || '';
 
     var html =
       '<div class="prod-card-actions">' +
@@ -1095,8 +1182,8 @@ window.TasksView = (function () {
       '</div>' +
       '<div class="prod-card-title" data-action="edit-title">' + esc(task.title) + '</div>';
 
-    if (fieldVisibility.priority) {
-      html += '<div class="prod-priority-pill ' + priorityClass + '" style="margin-top:8px;">' + priorityLabel + '</div>';
+    if (fieldVisibility.priority && priorityChipClass) {
+      html += '<div class="prod-priority-pill ' + priorityChipClass + '" style="margin-top:8px;">' + esc(priorityLabel) + '</div>';
     }
 
     if (fieldVisibility.assignee && task.assignee) {
@@ -1105,7 +1192,7 @@ window.TasksView = (function () {
 
     if (fieldVisibility.due_date && task.due_date) {
       var today = new Date().toISOString().split('T')[0];
-      var isOverdue = task.due_date < today && task.status !== 'done';
+      var isOverdue = task.due_date < today && !TERMINAL_STATUSES.includes(task.status);
       var dueDateColor = isOverdue ? '#e74c3c' : 'var(--text-muted)';
       html += '<div class="prod-card-note" style="margin-top:8px;color:' + dueDateColor + ';"><i class="fa-regular fa-calendar-day"></i> ' + task.due_date + '</div>';
     }
@@ -1230,7 +1317,7 @@ window.TasksView = (function () {
       title: 'New Task',
       type: 'task',
       status: status,
-      priority: 'medium',
+      priority: DEFAULT_PRIORITY,
       assignee: null,
       creator: null,
       created: today,
@@ -1525,8 +1612,15 @@ window.TasksView = (function () {
 
       var html = '<div class="form-grid">';
       html += this._buildField('title', 'Title', 'text', task.title, { required: true, fullWidth: true });
-      html += this._buildField('status', 'Status', 'select', task.status, { options: ['active', 'waiting', 'someday', 'done'] });
-      html += this._buildField('priority', 'Priority', 'select', task.priority, { options: ['high', 'medium', 'low'] });
+      html += this._buildField('status', 'Status', 'select', task.status, { options: STATUS_VALUES, nullable: false });
+      var priorityOptions = PRIORITY_VALUES.map(function (v) {
+        return { value: v, label: PRIORITY_LABELS[v] };
+      });
+      html += this._buildField('priority', 'Priority', 'select', task.priority, {
+        options: priorityOptions,
+        nullable: true,
+        nullLabel: '— (no priority)'
+      });
       html += this._buildField('assignee', 'Assignee', 'text', task.assignee);
       html += this._buildField('creator', 'Creator', 'text', task.creator);
       html += this._buildField('due_date', 'Due Date', 'date', task.due_date);
@@ -1565,10 +1659,18 @@ window.TasksView = (function () {
 
       if (type === 'select') {
         var options = opts.options || [];
+        var nullable = opts.nullable !== false;  // default true for back-compat
+        var nullLabel = opts.nullLabel || '— None —';
+        var nullOpt = nullable
+          ? '<option value=""' + ((value === null || value === undefined || value === '') ? ' selected' : '') + '>' + esc(nullLabel) + '</option>'
+          : '';
         input = '<select data-task-field="' + key + '">' +
-          '<option value="">&mdash; None &mdash;</option>' +
+          nullOpt +
           options.map(function (o) {
-            return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>';
+            var v = (o !== null && typeof o === 'object') ? o.value : o;
+            var l = (o !== null && typeof o === 'object') ? o.label : o;
+            var sel = (String(v) === String(value)) ? ' selected' : '';
+            return '<option value="' + esc(String(v)) + '"' + sel + '>' + esc(l) + '</option>';
           }).join('') +
         '</select>';
       } else if (type === 'date') {
@@ -1984,11 +2086,10 @@ window.TasksView = (function () {
     }
 
     var today = new Date().toISOString().split('T')[0];
-    var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
     var withDates = [];
     var noDates = [];
 
-    var timelineTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var timelineTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     timelineTasks.forEach(function (t) {
       if (t.created && t.due_date && t.due_date !== 'null') withDates.push(t);
       else noDates.push(t);
@@ -2045,15 +2146,15 @@ window.TasksView = (function () {
       var startPct = (dayOffset(t.created) / rangeDays) * 100;
       var endPct = (dayOffset(t.due_date) / rangeDays) * 100;
       var width = Math.max(1, endPct - startPct);
-      var prio = (t.priority || 'medium').toLowerCase();
-      var isOverdue = t.due_date < today && t.status !== 'done';
+      var prio = priorityBand(t.priority);
+      var isOverdue = t.due_date < today && !TERMINAL_STATUSES.includes(t.status);
 
       var tlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
       html += '<div class="prod-tl-row' + tlDimmed + '" data-task-id="' + esc(t.filename) + '">';
 
       // Label column: priority dot + title + assignee initial
       html += '<div class="prod-tl-label-col">';
-      html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+      html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[t.priority] || '#f39c12') + '"></span>';
       html += '<span class="prod-tl-title" title="' + esc(t.title) + '">' + esc(t.title) + '</span>';
       if (t.assignee && t.assignee !== 'null') {
         html += '<span class="prod-tl-avatar" style="background:' + hashColor(t.assignee) + '">' + getInitial(t.assignee) + '</span>';
@@ -2076,7 +2177,7 @@ window.TasksView = (function () {
     if (noDates.length > 0) {
       html += '<div class="prod-tl-no-dates"><span class="prod-tl-no-dates-label"><i class="fa-regular fa-calendar-xmark"></i> No due date</span>';
       noDates.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
+        var prio = priorityBand(t.priority);
         var chipDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-tl-dimmed' : '';
         html += '<span class="prod-tl-chip prod-tl-' + prio + chipDimmed + '" data-task-id="' + esc(t.filename) + '">' + esc(t.title) + '</span>';
       });
@@ -2137,20 +2238,21 @@ window.TasksView = (function () {
     var overdue = 0;
     var done = 0;
     var nonDone = [];
-    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
-    var priorityCounts = { high: 0, medium: 0, low: 0 };
+    var statusCounts = {};
+    STATUS_VALUES.forEach(function (s) { statusCounts[s] = 0; });
+    var priorityCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 'null': 0 };
     var tagCounts = {};
 
     sourceTasks.forEach(function (t) {
-      var s = t.status || 'active';
+      var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
-      if (s === 'done') done++;
+      if (TERMINAL_STATUSES.includes(s)) done++;
       else nonDone.push(t);
 
-      var p = (t.priority || 'medium').toLowerCase();
+      var p = (t.priority === null || t.priority === undefined) ? 'null' : t.priority;
       if (priorityCounts[p] !== undefined) priorityCounts[p]++;
 
-      if (t.due_date && t.due_date !== 'null' && t.due_date < today && s !== 'done') overdue++;
+      if (t.due_date && t.due_date !== 'null' && t.due_date < today && !TERMINAL_STATUSES.includes(s)) overdue++;
 
       if (t.tags && t.tags.length) {
         t.tags.forEach(function (tag) {
@@ -2180,7 +2282,7 @@ window.TasksView = (function () {
     var dailyCompletions = {};
     sourceTasks.forEach(function (t) {
       if (t.created && t.created >= thirtyAgoStr) createdLast30++;
-      if (t.status === 'done' && t.updated && t.updated >= thirtyAgoStr) {
+      if (t.status === 'Completed' && t.updated && t.updated >= thirtyAgoStr) {
         completedLast30++;
         dailyCompletions[t.updated] = (dailyCompletions[t.updated] || 0) + 1;
       }
@@ -2199,15 +2301,23 @@ window.TasksView = (function () {
     }
 
     // Status donut gradient
-    var statusColors = { active: 'var(--accent)', waiting: '#f39c12', someday: 'var(--text-muted)', done: '#27ae60' };
-    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+    var statusColors = {
+      'Open': 'var(--text-muted)',
+      'In Progress': 'var(--accent)',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
+    };
     var statusColorRaw = {
-      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
-      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+      'Open': '#868e96',
+      'In Progress': document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
     };
     var conicParts = [];
     var cumPct = 0;
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       var pct = total > 0 ? (statusCounts[s] / total) * 100 : 0;
       if (pct > 0) {
         conicParts.push(statusColorRaw[s] + ' ' + cumPct.toFixed(1) + '% ' + (cumPct + pct).toFixed(1) + '%');
@@ -2242,11 +2352,11 @@ window.TasksView = (function () {
     html += '<div class="prod-summary-donut-row">';
     html += '<div class="prod-donut" style="background:conic-gradient(' + conicGrad + ')"><div class="prod-donut-hole">' + total + '</div></div>';
     html += '<div class="prod-donut-legend">';
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       var count = statusCounts[s];
       html += '<div class="prod-donut-legend-item">';
       html += '<span class="prod-donut-swatch" style="background:' + statusColorRaw[s] + '"></span>';
-      html += '<span class="prod-donut-legend-label">' + statusLabels[s] + '</span>';
+      html += '<span class="prod-donut-legend-label">' + STATUS_LABELS[s] + '</span>';
       html += '<span class="prod-donut-legend-count">' + count + '</span>';
       html += '</div>';
     });
@@ -2257,8 +2367,13 @@ window.TasksView = (function () {
     html += '<div class="prod-summary-section-title">Priority Distribution</div>';
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
+    var prioCountsBanded = {
+      high: priorityCounts[1] + priorityCounts[2],
+      medium: priorityCounts[3],
+      low: priorityCounts[4] + priorityCounts[5]
+    };
     ['high', 'medium', 'low'].forEach(function (p) {
-      var count = priorityCounts[p];
+      var count = prioCountsBanded[p];
       var pct = total > 0 ? (count / total) * 100 : 0;
       html += '<div class="prod-summary-bar-row">';
       html += '<span class="prod-summary-bar-label">' + prioLabels[p] + '</span>';
@@ -2290,7 +2405,7 @@ window.TasksView = (function () {
 
     // Upcoming due tasks
     var upcoming = sourceTasks.filter(function (t) {
-      return t.due_date && t.due_date !== 'null' && t.status !== 'done';
+      return t.due_date && t.due_date !== 'null' && !TERMINAL_STATUSES.includes(t.status);
     }).sort(function (a, b) {
       return a.due_date.localeCompare(b.due_date);
     }).slice(0, 8);
@@ -2300,10 +2415,10 @@ window.TasksView = (function () {
       html += '<div class="prod-summary-section-title">Upcoming Due</div>';
       html += '<table class="prod-due-table"><tbody>';
       upcoming.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
+        var prio = t.priority;
         var isOverdue = t.due_date < today;
         html += '<tr class="prod-due-row' + (isOverdue ? ' prod-due-overdue' : '') + '" data-task-id="' + esc(t.filename) + '">';
-        html += '<td><span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span></td>';
+        html += '<td><span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span></td>';
         html += '<td class="prod-due-title">' + esc(t.title) + '</td>';
         html += '<td class="prod-due-assignee">' + (t.assignee && t.assignee !== 'null' ? esc(t.assignee) : '<span style="color:var(--text-muted)">—</span>') + '</td>';
         html += '<td class="prod-due-date">' + esc(t.due_date) + '</td>';
@@ -2343,7 +2458,7 @@ window.TasksView = (function () {
     var lanes = {};
     var unassigned = [];
 
-    var workloadTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var workloadTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     workloadTasks.forEach(function (t) {
       if (t.assignee && t.assignee !== 'null') {
         if (!lanes[t.assignee]) lanes[t.assignee] = [];
@@ -2401,17 +2516,21 @@ window.TasksView = (function () {
       ? laneTasks.filter(function (t) { return isTaskMatched(t); })
       : laneTasks;
     var statusSource = matchedFilenames !== null ? filteredLaneTasks : laneTasks;
-    var statusCounts = { active: 0, waiting: 0, someday: 0, done: 0 };
+    var statusCounts = {};
+    STATUS_VALUES.forEach(function (s) { statusCounts[s] = 0; });
     statusSource.forEach(function (t) {
-      var s = t.status || 'active';
+      var s = t.status || DEFAULT_STATUS;
       if (statusCounts[s] !== undefined) statusCounts[s]++;
     });
     var statusTotal = statusSource.length;
 
     // Status bar segments
     var statusColors = {
-      active: document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
-      waiting: '#f39c12', someday: '#868e96', done: '#27ae60'
+      'Open': '#868e96',
+      'In Progress': document.documentElement.getAttribute('data-theme') === 'dark' ? '#c76140' : '#4a6cf7',
+      'Blocked': '#f39c12',
+      'Completed': '#27ae60',
+      'Cancelled': '#6c757d',
     };
 
     var html = '<div class="prod-workload-lane prod-wl-expanded">';
@@ -2426,7 +2545,7 @@ window.TasksView = (function () {
     html += '<div class="prod-wl-header-info">';
     html += '<span class="prod-wl-name">' + esc(name) + '</span>';
     html += '<div class="prod-wl-status-bar">';
-    ['active', 'waiting', 'someday', 'done'].forEach(function (s) {
+    STATUS_VALUES.slice().forEach(function (s) {
       if (statusCounts[s] > 0) {
         var pct = statusTotal > 0 ? (statusCounts[s] / statusTotal) * 100 : 0;
         html += '<div class="prod-wl-status-seg" style="width:' + pct + '%;background:' + statusColors[s] + '" title="' + s + ': ' + statusCounts[s] + '"></div>';
@@ -2445,21 +2564,20 @@ window.TasksView = (function () {
     if (laneTasks.length === 0) {
       html += '<div class="prod-wl-empty">No tasks</div>';
     } else {
-      var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
-      var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
       laneTasks.forEach(function (t) {
-        var prio = (t.priority || 'medium').toLowerCase();
-        var status = t.status || 'active';
+        var prio = t.priority;
+        var status = t.status || DEFAULT_STATUS;
         var wlDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-wl-dimmed' : '';
         html += '<div class="prod-wl-mini-card' + wlDimmed + '" data-task-id="' + esc(t.filename) + '">';
         html += '<div class="prod-wl-mini-top">';
-        html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[prio] || prioColors.medium) + '"></span>';
+        html += '<span class="prod-tl-prio-dot" style="background:' + (PRIORITY_DOT_COLOR[prio] || '#f39c12') + '"></span>';
         html += '<span class="prod-wl-mini-title">' + esc(t.title) + '</span>';
         html += '</div>';
         html += '<div class="prod-wl-mini-bottom">';
-        html += '<span class="prod-wl-mini-status prod-wl-status-' + status + '">' + (statusLabels[status] || status) + '</span>';
+        var statusSlug = String(status).toLowerCase().replace(/\s+/g, '-');
+        html += '<span class="prod-wl-mini-status prod-wl-status-' + esc(statusSlug) + '">' + esc(STATUS_LABELS[status] || status) + '</span>';
         if (t.due_date && t.due_date !== 'null') {
-          var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && status !== 'done';
+          var isOverdue = t.due_date < new Date().toISOString().split('T')[0] && !TERMINAL_STATUSES.includes(status);
           html += '<span class="prod-wl-mini-due' + (isOverdue ? ' prod-wl-mini-overdue' : '') + '"><i class="fa-regular fa-calendar"></i> ' + esc(t.due_date) + '</span>';
         }
         html += '</div></div>';
@@ -2482,9 +2600,8 @@ window.TasksView = (function () {
 
     var priorities = ['high', 'medium', 'low'];
     var statuses = hideDone
-      ? ['active', 'waiting', 'someday']
-      : ['active', 'waiting', 'someday', 'done'];
-    var statusLabels = { active: 'Active', waiting: 'Waiting', someday: 'Someday', done: 'Done' };
+      ? STATUS_VALUES.filter(function (s) { return !TERMINAL_STATUSES.includes(s); })
+      : STATUS_VALUES.slice();
     var prioLabels = { high: 'High', medium: 'Medium', low: 'Low' };
     var prioColors = { high: '#e74c3c', medium: '#f39c12', low: '#3498db' };
 
@@ -2500,10 +2617,10 @@ window.TasksView = (function () {
     });
     statuses.forEach(function (s) { colTotals[s] = 0; });
 
-    var matrixTasks = hideDone ? tasks.filter(function (t) { return t.status !== 'done'; }) : tasks;
+    var matrixTasks = hideDone ? tasks.filter(function (t) { return !TERMINAL_STATUSES.includes(t.status); }) : tasks;
     matrixTasks.forEach(function (t) {
-      var p = (t.priority || 'medium').toLowerCase();
-      var s = t.status || 'active';
+      var p = priorityBand(t.priority);
+      var s = t.status || DEFAULT_STATUS;
       if (!matrix[p]) matrix[p] = {};
       if (!matrix[p][s]) matrix[p][s] = [];
       matrix[p][s].push(t);
@@ -2550,7 +2667,7 @@ window.TasksView = (function () {
     var html = '<div class="prod-matrix-wrap"><table class="prod-matrix-table">';
     html += '<thead><tr><th></th>';
     statuses.forEach(function (s) {
-      html += '<th>' + statusLabels[s] + ' <span class="prod-matrix-col-badge">' + displayColTotals[s] + '</span></th>';
+      html += '<th>' + STATUS_LABELS[s] + ' <span class="prod-matrix-col-badge">' + displayColTotals[s] + '</span></th>';
     });
     html += '</tr></thead><tbody>';
 
@@ -2571,7 +2688,7 @@ window.TasksView = (function () {
           html += '<div class="prod-matrix-cards">';
           var showCount = Math.min(cellTasks.length, 4);
           cellTasks.slice(0, showCount).forEach(function (t) {
-            var tPrio = (t.priority || 'medium').toLowerCase();
+            var tPrio = priorityBand(t.priority);
             var mxDimmed = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
             html += '<div class="prod-matrix-mini' + mxDimmed + '" data-task-id="' + esc(t.filename) + '">';
             html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';
@@ -2592,7 +2709,7 @@ window.TasksView = (function () {
           if (cellTasks.length > 4) {
             html += '<div class="prod-matrix-overflow">';
             cellTasks.slice(4).forEach(function (t) {
-              var tPrio = (t.priority || 'medium').toLowerCase();
+              var tPrio = priorityBand(t.priority);
               var mxDimmed2 = (matchedFilenames !== null && !isTaskMatched(t)) ? ' prod-matrix-dimmed' : '';
               html += '<div class="prod-matrix-mini' + mxDimmed2 + '" data-task-id="' + esc(t.filename) + '">';
               html += '<span class="prod-tl-prio-dot" style="background:' + (prioColors[tPrio] || prioColors.medium) + '"></span>';

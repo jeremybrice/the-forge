@@ -24,8 +24,13 @@
     },
     "source": {
       "type": "string",
-      "enum": ["manual", "frontmatter", "auto-matched", "threshold-promoted"],
+      "enum": ["manual", "frontmatter", "auto-matched", "threshold-promoted", "slack-forge", "outlook-forge"],
       "default": "frontmatter"
+    },
+    "harvested_from": {
+      "type": ["string", "null"],
+      "description": "Origin channel or context when created via plugin promotion (e.g., '#engineering on 2026-03-01')",
+      "default": null
     },
     "last_recalled": {
       "type": ["string", "null"],

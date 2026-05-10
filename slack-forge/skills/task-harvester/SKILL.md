@@ -12,6 +12,10 @@ Use this skill when analyzing local transcript snapshots to identify actionable 
 - Input is transcript text from `slack-forge/transcripts/*.md`.
 - Do not fetch Slack data directly.
 
+## Term Resolution
+
+Before finalizing extracted items, check Forge Memory for canonical names of people, projects, acronyms, and terms mentioned in the transcript. Use `forge memory query-knowledge` to resolve shorthand. Use canonical names in task titles and descriptions where available.
+
 ## Task Signals
 
 - Direct requests: "Can you...", "Please...", "@name do X"

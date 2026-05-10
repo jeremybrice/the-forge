@@ -1,0 +1,460 @@
+{
+  "plugin": "cognitive-forge",
+  "eval_date": "2026-03-09",
+  "eval_candidates": ["debate", "explore", "forge-evaluator"],
+  "contracts": ["4", "5", "6", "IF2", "IF3"],
+  "test_cases": [
+    {
+      "id": "isolation-debate-001",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate command classifies concept and presents intake confirmation before spawning agents",
+      "user_prompt": "/cognitive-forge:debate Whether we should migrate from REST to GraphQL",
+      "setup_context": "No prior sessions or context needed",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output includes a Forge Intake block with Concept, Type (Business with Framework elements), and 'What I understand' summary. Waits for user confirmation before proceeding.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-002",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate spawns core agents simultaneously using parallel Task tool calls",
+      "user_prompt": "/cognitive-forge:debate The effectiveness of microservices vs monoliths for early-stage startups",
+      "setup_context": "User has confirmed intake. Concept classified as Business with Framework elements.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Three Task tool calls (forge-challenger, forge-explorer, forge-synthesizer) are issued in a single message with parallel execution. Each agent receives the Concept Brief template with concept, type, and context fields populated.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-003",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate recruits Decomposer for structurally complex concepts",
+      "user_prompt": "/cognitive-forge:debate Our platform migration strategy involving API gateway, service mesh, database sharding, event bus, and CDN restructuring",
+      "setup_context": "User confirmed intake. Concept has 5+ interacting components with nested dependencies.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Moderator identifies 5+ components and recruits forge-decomposer alongside the three core agents. Four Task tool calls issued in parallel.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-004",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate recruits Evaluator for empirically testable claims",
+      "user_prompt": "/cognitive-forge:debate Whether switching to Rust will improve our API response times by 50%",
+      "setup_context": "User confirmed intake. Concept makes specific factual claim (50% improvement).",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Moderator identifies the checkable factual claim ('50% improvement') and recruits forge-evaluator alongside core agents. Evaluator receives the specific claim to verify.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-005",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate synthesis follows the Forge Synthesis structure with all required sections",
+      "user_prompt": "/cognitive-forge:debate Whether we should open-source our internal tooling",
+      "setup_context": "All agent analyses have been returned. Debate Landscape has been presented.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Synthesis output contains all six required sections: Refined Understanding (2-3 paragraphs), Strengths Validated (bullet list), Weaknesses to Address (prioritized bullets with recommendations), Unexplored Territory (bullet list), Unresolved Tensions, and Forge Verdict (one paragraph qualitative judgment). Synthesis does not average perspectives but finds genuine integration.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-006",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate cross-examination triggers only on substantive tension",
+      "user_prompt": "/cognitive-forge:debate Whether AI code generation will replace junior developers",
+      "setup_context": "Challenger identifies a fatal flaw that Explorer's expansion depends on (e.g., Challenger says the talent pipeline will collapse, Explorer says it will redirect junior devs to higher-value work). Sharp, substantive disagreement.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Moderator identifies the specific tension, spawns a cross-examination Task for the challenged agent with the opposing critique included. Response addresses: where critique is valid, where it misses, and whether verdict changes. Limited to 1 round.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-007",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Debate persists session via forge-lib with correct parameters",
+      "user_prompt": "/cognitive-forge:debate The value of daily standups in remote teams",
+      "setup_context": "Synthesis has been delivered to the user.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Calls `forge session create debate` with: concept title, topic, --agents list, --status Completed, and --data JSON containing category, session_log, synthesis, key_insights array, and next_steps array. Parses the JSON response and reports filepath to user.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-debate-008",
+      "component": "debate",
+      "category": "isolation",
+      "description": "Quiet mode skips individual agent output and goes straight to synthesis",
+      "user_prompt": "/cognitive-forge:debate Whether to adopt trunk-based development --quiet",
+      "setup_context": "User confirmed intake.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Agent analyses are spawned but their individual outputs are NOT presented to the user. Output skips directly to Phase 5 (Forge Synthesis). No Challenger/Explorer/Synthesizer analysis sections shown.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-001",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore begins with conversational intake, not formatted block",
+      "user_prompt": "/cognitive-forge:explore The implications of event-driven architecture for our platform",
+      "setup_context": "No prior sessions needed.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Guide begins by asking about the concept conversationally (not presenting a formatted intake block immediately). Weaves questions about: concept in user's words, relationship to it (creator/evaluator/inheritor), what success looks like, and constraints. Only after sufficient understanding does it present the Exploration Map for confirmation.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-002",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore applies correct techniques based on concept type",
+      "user_prompt": "/cognitive-forge:explore Our new pricing strategy for enterprise customers",
+      "setup_context": "User confirmed Exploration Map. Concept classified as Business.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Guide applies Business-specific techniques: Perspective Synthesis (customer, competitor, operator, investor, regulator lenses), Evidence Anchoring (data for/against assumptions), and Boundary Mapping (failure conditions, scale changes). Pauses after each technique for user response.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-003",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore pauses after each technique for user input",
+      "user_prompt": "/cognitive-forge:explore Whether functional programming is superior to OOP",
+      "setup_context": "User confirmed Exploration Map. Concept classified as Philosophical. Phase 3 in progress.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After applying each technique (Steel Opposition, Boundary Mapping, Constraint Shaping), the Guide pauses and invites user response. Does NOT chain techniques back-to-back without giving user space to react, redirect, or go deeper.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-004",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore recruits Decomposer only for genuine complexity with user explanation",
+      "user_prompt": "/cognitive-forge:explore Our migration plan covering API gateway, auth service, data pipeline, ML inference layer, and monitoring stack",
+      "setup_context": "User confirmed Exploration Map. Concept has 5+ interacting components.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Guide tells the user WHY before spawning ('This concept has enough structural complexity...'). Spawns Decomposer via Task tool with dialogue context included. Summarizes Decomposer output conversationally (does not dump raw agent output). Integrates insights into ongoing dialogue.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-005",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore never recruits Challenger, Explorer, or Synthesizer agents",
+      "user_prompt": "/cognitive-forge:explore A complex philosophical argument about consciousness",
+      "setup_context": "Concept is complex with multiple angles. Guide is in Phase 3.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Guide embodies Challenger, Explorer, and Synthesizer perspectives through dialogue. Does NOT spawn these as separate agents. Only Decomposer and Evaluator are valid recruitment targets.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-006",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore synthesis adapts format to concept type",
+      "user_prompt": "/cognitive-forge:explore A new design system for our component library",
+      "setup_context": "Exploration complete through Phase 5. Concept classified as Creative.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Synthesis follows Creative concept format: generative possibilities with quality markers. Addresses: what was learned, how concept evolved, remaining tensions, refined understanding, and concrete next steps. Format is NOT forced into a rigid template.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-explore-007",
+      "component": "explore",
+      "category": "isolation",
+      "description": "Explore persists session with exploration-specific metadata",
+      "user_prompt": "/cognitive-forge:explore The future of remote work policies",
+      "setup_context": "Synthesis delivered. Session complete.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Calls `forge session create exploration` with concept title, topic, --agents (if recruited), --status Completed, and --data JSON containing category, relationship, techniques_applied array, session_log (narrative summary, not raw transcript), synthesis, key_insights, and next_steps.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-evaluator-001",
+      "component": "forge-evaluator",
+      "category": "isolation",
+      "description": "Evaluator produces all five required output sections",
+      "user_prompt": "Agent prompt: Evaluate claims in 'Switching to Rust will improve API response times by 50% and reduce cloud costs by 30%'",
+      "setup_context": "Evaluator recruited during debate. Concept makes two specific factual claims.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Output contains all five sections: Claim Inventory (3-5 claims with Verified/Plausible/Speculative/Contested classification), Evidence Assessment (per-claim evidence landscape with supporting/contradicting/confidence/what-if-false), Reality Gaps (prioritized unknowns), Comparable Evidence (precedents and analogies), and Evidence Verdict (solid ground vs. conjecture percentage + single most important thing to verify).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-evaluator-002",
+      "component": "forge-evaluator",
+      "category": "isolation",
+      "description": "Evaluator uses WebSearch for specific claims, not generic searches",
+      "user_prompt": "Agent prompt: Evaluate the claim that 'event-driven architectures reduce latency by 40% compared to request-response patterns'",
+      "setup_context": "Evaluator recruited. Concept includes a specific performance claim.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "WebSearch queries target the specific claim (e.g., 'event-driven architecture latency benchmarks' or 'event-driven vs request-response performance comparison'), not generic searches (e.g., 'event-driven architecture'). Evidence is presented neutrally without cherry-picking.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-evaluator-003",
+      "component": "forge-evaluator",
+      "category": "isolation",
+      "description": "Evaluator distinguishes 'no evidence exists' from 'could not find evidence'",
+      "user_prompt": "Agent prompt: Evaluate claims in a novel startup concept with no direct precedent",
+      "setup_context": "Evaluator recruited. Concept is novel with no established evidence base.",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "When evidence cannot be found, Evaluator explicitly distinguishes between 'no evidence exists for this claim' and 'I could not find evidence' (epistemic humility). Does not fabricate evidence or over-claim absence.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c4-001",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Contract 4",
+      "description": "Debate outcome suggests creating a Product Forge decision card",
+      "user_prompt": "/cognitive-forge:debate Whether we should migrate from REST to GraphQL",
+      "setup_context": "Debate has completed through synthesis. Clear recommendation emerged.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After synthesis, output includes suggestion to capture the decision as a Product Forge card, ideally with specific command reference like `/product-forge:create` and decision card type. The synthesis sections (Refined Understanding, Forge Verdict) should map to decision card fields (rationale, alternatives considered, impact).",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Synthesis is complete with all six required sections and follows synthesis principles (no averaging, honors strongest critique, preserves surprise, is actionable).",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c4-002",
+      "component": "explore",
+      "category": "ecosystem",
+      "contract": "Contract 4",
+      "description": "Exploration action items suggest task creation in Tasks Forge",
+      "user_prompt": "/cognitive-forge:explore The implications of switching to event-driven architecture",
+      "setup_context": "Exploration complete. Next steps include actionable items (e.g., 'prototype event bus', 'benchmark message throughput').",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Synthesis next_steps or concrete action items suggest tracking via Tasks Forge, ideally referencing `/tasks-forge:add`. Action items should be formatted as actionable task descriptions (title + context) compatible with task creation.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Exploration synthesis addresses all five required questions (what was learned, how concept evolved, tensions remaining, refined understanding, concrete next steps).",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c4-003",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Contract 4",
+      "description": "Debate with clear recommendation suggests both decision card AND task reprioritization",
+      "user_prompt": "/cognitive-forge:debate Whether to rewrite our monolith as microservices or invest in modular monolith",
+      "setup_context": "Debate produced a strong recommendation favoring modular monolith. Existing tasks may need reprioritization.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Post-synthesis output suggests BOTH: (1) capturing as a decision card via Product Forge, and (2) adjusting task priorities in Tasks Forge based on the decision outcome. Both downstream plugins are mentioned.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Forge Verdict provides a clear, actionable qualitative judgment about the concept's readiness and recommended direction.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c5-001",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Debate completion triggers proactive handoff suggestions",
+      "user_prompt": "/cognitive-forge:debate The viability of our serverless migration strategy",
+      "setup_context": "Debate fully completed and session persisted.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After synthesis and session persistence, the output proactively suggests at least one downstream handoff: decision card creation (Product Forge), task tracking (Tasks Forge), or deeper exploration (explore mode). Does not wait for user to ask.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Session is correctly persisted via forge-lib with all required metadata fields.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c5-002",
+      "component": "explore",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Exploration completion triggers proactive handoff suggestions",
+      "user_prompt": "/cognitive-forge:explore Our approach to technical debt management",
+      "setup_context": "Exploration fully completed and session persisted.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After synthesis and session persistence, the output proactively suggests downstream actions: task creation for action items (Tasks Forge), card creation for decisions (Product Forge), or remembering key insights (Forge Memory). Does not wait for user to ask.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Session is correctly persisted with narrative summary (not raw transcript) and exploration-specific metadata (relationship, techniques_applied).",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c6-001",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Debate checks Forge Memory for domain terms in the concept",
+      "user_prompt": "/cognitive-forge:debate Whether we should sunset the legacy SOAP endpoints",
+      "setup_context": "Forge Memory contains entries for 'SOAP endpoints' (mapped to 'Legacy Integration Layer') and related module context.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Before or during intake, the skill checks Forge Memory to resolve 'SOAP endpoints' and any related product/module context. Resolved context informs the debate framing and is included in the concept brief sent to agents.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Intake correctly classifies the concept and presents confirmation block with accurate understanding.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-c6-002",
+      "component": "explore",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Explore checks Forge Memory for acronyms and shorthand",
+      "user_prompt": "/cognitive-forge:explore How to improve the PSR dashboard performance",
+      "setup_context": "Forge Memory contains entry for 'PSR' (mapped to 'Platform Status Report').",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "During intake or early exploration, the Guide checks Forge Memory for 'PSR' before proceeding. If found, uses canonical expansion ('Platform Status Report'). If not found, asks user to clarify and offers to remember it via `/forge-memory:remember`.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Exploration Map accurately reflects the concept with resolved terminology.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-if2-001",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Implied Flow 2",
+      "description": "Debate command is discoverable as a destination from Slack Forge complex discussions",
+      "user_prompt": "/cognitive-forge:debate [topic surfaced from a Slack discussion]",
+      "setup_context": "User was directed here from a Slack Forge capture that flagged an unresolved multi-person discussion.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Debate command's description or intake phase acknowledges that concepts may originate from Slack discussions. If session_log or context references a Slack harvest, the debate framing incorporates that provenance.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Debate proceeds normally regardless of concept origin, with proper intake, agent spawning, and synthesis.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-if3-001",
+      "component": "debate",
+      "category": "ecosystem",
+      "contract": "Implied Flow 3",
+      "description": "Debate is discoverable as destination from Report Forge analysis findings",
+      "user_prompt": "/cognitive-forge:debate [architectural risk identified in a report]",
+      "setup_context": "User was directed here from a Report Forge report that identified a significant risk warranting deeper evaluation.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Debate command acknowledges that concepts may originate from report findings. If context references a Report Forge report, the concept brief incorporates that analytical context for agent consumption.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Debate proceeds normally with full phase execution regardless of concept origin.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-cognitive-if3-002",
+      "component": "explore",
+      "category": "ecosystem",
+      "contract": "Implied Flow 3",
+      "description": "Explore is discoverable as destination from Report Forge pattern identification",
+      "user_prompt": "/cognitive-forge:explore [pattern identified in a performance report]",
+      "setup_context": "User was directed here from a Report Forge report that identified a recurring pattern.",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Explore command acknowledges that exploration topics may originate from reports. If context references a Report Forge analysis, the exploration incorporates that analytical foundation.",
+          "level": "awareness",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Exploration proceeds with full conversational intake and technique application.",
+          "weight": 0.7
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,422 @@
+{
+  "plugin": "slack-forge",
+  "eval_date": "2026-03-09",
+  "eval_candidates": [
+    "task-harvester (skill + agent)",
+    "knowledge-harvester (skill + agent)",
+    "jira-digest (skill + agent)",
+    "scan command",
+    "promote command"
+  ],
+  "contracts": ["1", "5", "6", "IF2"],
+  "test_cases": [
+    {
+      "id": "isolation-slack-task-harvester-001",
+      "component": "task-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Task harvester extracts explicit task with owner, deadline, and provenance",
+      "user_prompt": "Capture tasks from the #engineering channel transcript",
+      "setup_context": "Transcript at slack-forge/transcripts/2026-03-08-24h-public-channels-001.md contains: '[2026-03-08 10:14 UTC] @alice: @bob can you fix the login timeout bug by Friday? It is blocking the QA team.'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Extracts a task with: title starting with a verb, confidence=high (explicit ask with owner+deadline), source_channel, source_author=alice, source_timestamp, content answering What/Who/Why/When, action_items array with at least one verb+person+deliverable entry",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-task-harvester-002",
+      "component": "task-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Task harvester correctly filters social/noise content",
+      "user_prompt": "Capture tasks from the #general channel transcript",
+      "setup_context": "Transcript contains only: '[2026-03-08 09:00 UTC] @carol: Good morning everyone!' and '[2026-03-08 09:01 UTC] @dave: Morning! Coffee is ready in the kitchen.'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Produces zero task harvest records. Reports skipped/noise count >= 2. Does not create harvest records for social chat.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-task-harvester-003",
+      "component": "task-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Task harvester assigns correct confidence levels",
+      "user_prompt": "Capture tasks from the #product channel transcript",
+      "setup_context": "Transcript contains three items: (1) '@alice: @bob please deploy the hotfix to prod by EOD' (explicit+owner+deadline), (2) '@carol: We should probably look into the memory leak sometime' (vague, no owner), (3) '@dave: I'll try to get the docs updated' (implied commitment, weak)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Item 1 gets confidence=high (explicit ask, owner, deadline). Item 2 gets confidence=low (vague, no owner). Item 3 gets confidence=medium (commitment but weak assignment). Content for each answers What/Who/Why/When where available.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-task-harvester-004",
+      "component": "task-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Task harvester deduplicates repeated task mentions",
+      "user_prompt": "Capture tasks from the #engineering transcript",
+      "setup_context": "Transcript contains '@alice: We need to migrate the database by Friday' at 09:00 and '@alice: Reminder — database migration needs to happen before Friday EOD' at 14:00",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates exactly one harvest record for the database migration task, not two. Deduplication merges the repeated mentions.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-task-harvester-005",
+      "component": "task-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Task harvester content quality meets minimum bar",
+      "user_prompt": "Capture tasks from transcript",
+      "setup_context": "Transcript contains a clear task: '@manager: @dev please investigate the payment processing latency issue reported by Acme Corp — they are threatening to churn'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Content field is a narrative paragraph of 2-3+ sentences (not a one-liner). Answers What (investigate latency), Who (manager requested, dev owns), Why (Acme Corp churn risk), When (implied urgency). source_context includes channel name, participants, and a key quote. action_items starts with a verb and names the responsible person.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-knowledge-harvester-001",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Knowledge harvester extracts decision with rationale and significance",
+      "user_prompt": "Capture knowledge from the #architecture channel transcript",
+      "setup_context": "Transcript contains: '[2026-03-07 14:00 UTC] @cto: We have decided to migrate from MongoDB to PostgreSQL for the billing module. The main driver is ACID compliance requirements for financial transactions.'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates a knowledge harvest with: confidence=high (explicit decision), content containing both a summary paragraph AND a significance paragraph prefixed with '**Significance:** '. Tags array starts with a memory-hint destination tag (project or general). source_context includes a direct quote from the transcript with attribution.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-knowledge-harvester-002",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Knowledge harvester filters ephemeral status chatter",
+      "user_prompt": "Capture knowledge from the #standup transcript",
+      "setup_context": "Transcript contains only: '[2026-03-08 09:30 UTC] @alice: Working on PROJ-42 today' and '[2026-03-08 09:31 UTC] @bob: Same, finishing up the PR review'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Produces zero knowledge harvest records. Ephemeral status updates fail the 2-week durability test and should be filtered out.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-knowledge-harvester-003",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Knowledge harvester captures terminology/acronym definitions",
+      "user_prompt": "Capture knowledge from transcript",
+      "setup_context": "Transcript contains: '[2026-03-07 11:00 UTC] @lead: Just to clarify — PSR stands for Product Status Report, it is the weekly doc we send to leadership every Friday.'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates a knowledge harvest with tags starting with 'glossary' (memory-hint). Content includes both the definition and its significance. Confidence is high (explicit definition).",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-knowledge-harvester-004",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "isolation",
+      "description": "Knowledge harvester captures ownership changes",
+      "user_prompt": "Capture knowledge from transcript",
+      "setup_context": "Transcript contains: '[2026-03-07 15:00 UTC] @vp: Starting next week, Todd will own the billing module. Sarah is transitioning to the platform team.'",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates a knowledge harvest with tags starting with 'person'. Content covers both ownership change facts and their significance. Provenance fields are complete.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-jira-digest-001",
+      "component": "jira-digest (skill + agent)",
+      "category": "isolation",
+      "description": "JIRA digest parses events and produces executive briefing structure",
+      "user_prompt": "Capture JIRA digest from the jira-bot transcript",
+      "setup_context": "JIRA transcript contains multiple events: assignment of PROJ-100 to @alice, status change of PROJ-101 from In Progress to Done, comment on PROJ-102 requesting review from @bob, and 8 QA subtask creations",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates a digest harvest with title format 'JIRA Digest — {date} ({timeframe})'. Content follows the 4-part structure: (1) Items Needing Action (assignment to alice, review request for bob), (2) Summary Stats line, (3) Status Transitions grouped by outcome, (4) Key Tickets to Watch. The 8 QA subtasks are summarized rather than listed individually. jira_events array captures each event with ticket, event_type, summary, needs_action fields.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-jira-digest-002",
+      "component": "jira-digest (skill + agent)",
+      "category": "isolation",
+      "description": "JIRA digest correctly sets needs_action flags",
+      "user_prompt": "Capture JIRA digest from transcript",
+      "setup_context": "JIRA transcript contains: (1) direct assignment PROJ-200 to user, (2) status change PROJ-201 To Done (informational), (3) blocker PROJ-202 needs intervention, (4) sprint change PROJ-203 moved to Sprint 5 (informational)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "needs_action=true for items 1 (direct assignment) and 3 (blocker). needs_action=false for items 2 (informational status change) and 4 (informational sprint change). Actionable items appear first in the content.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-scan-001",
+      "component": "scan command",
+      "category": "isolation",
+      "description": "Scan command checks prerequisites and prompts for timeframe and mode",
+      "user_prompt": "/slack-forge:scan",
+      "setup_context": "slack-forge/ directory exists with valid config containing 3 monitored channels and 1 JIRA channel",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Command (1) loads config via forge harvest config --get, (2) prompts for timeframe (24h/72h/1w/custom), (3) prompts for execution mode (scan only/scan then ask/scan and auto-capture), (4) presents scan brief with channel count and mode before proceeding, (5) waits for user confirmation.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-scan-002",
+      "component": "scan command",
+      "category": "isolation",
+      "description": "Scan command writes transcripts with correct YAML frontmatter format",
+      "user_prompt": "Scan channels for the last 24 hours, scan only mode",
+      "setup_context": "Config has channels #eng-team (C01ABC123) and JIRA channel #jira-notifications (C03GHI789)",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Transcripts written with YAML frontmatter (scan_date, timeframe, scan_run, generated) between --- delimiters. Channel headers use '## #name (ID)' format. Messages include [timestamp] @author: content format. Filenames resolved via forge transcript filename command. JIRA transcript goes through forge transcript clean pipeline.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-scan-003",
+      "component": "scan command",
+      "category": "isolation",
+      "description": "Scan command chains to capture in scan_and_auto_capture mode",
+      "user_prompt": "Scan last 24 hours with auto-capture",
+      "setup_context": "Valid config, channels accessible via MCP",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "After scan summary, command automatically invokes /slack-forge:capture without additional user prompting. Does not end with 'run /slack-forge:capture' suggestion — it executes it.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-promote-001",
+      "component": "promote command",
+      "category": "isolation",
+      "description": "Promote command correctly maps task harvests to Tasks Forge schema",
+      "user_prompt": "/slack-forge:promote",
+      "setup_context": "One approved task harvest exists with title='Fix login timeout', confidence=high, source_channel=#engineering, tags=['bug','urgent']",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates task via forge task create with: status=Open, priority=High (mapped from confidence=high), description includes provenance (channel, author, date), tags passed through. Marks harvest as promoted after successful creation.",
+          "weight": 0.5
+        },
+        "ecosystem_awareness": {
+          "assertion": "Task is created using the exact forge task create CLI schema that Tasks Forge expects (title, priority, status, description, tags). The promoted task includes provenance metadata so Tasks Forge can trace its origin to Slack harvest.",
+          "level": "context_passing",
+          "weight": 0.5
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-promote-002",
+      "component": "promote command",
+      "category": "isolation",
+      "description": "Promote command correctly maps knowledge harvests to Forge Memory schema",
+      "user_prompt": "/slack-forge:promote",
+      "setup_context": "One approved knowledge harvest exists with title='Todd owns billing module', tags=['person','ownership'], content about an ownership change",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Creates knowledge entry via forge memory create-knowledge person 'Todd' with source and harvested_on fields. Marks harvest as promoted after successful creation.",
+          "weight": 0.5
+        },
+        "ecosystem_awareness": {
+          "assertion": "Knowledge entry uses forge memory create-knowledge CLI with correct type (person/project/glossary) inferred from tags and content. The memory-hint tag system correctly maps to Forge Memory knowledge types.",
+          "level": "context_passing",
+          "weight": 0.5
+        }
+      }
+    },
+    {
+      "id": "isolation-slack-promote-003",
+      "component": "promote command",
+      "category": "isolation",
+      "description": "Promote command handles empty approved queue gracefully",
+      "user_prompt": "/slack-forge:promote",
+      "setup_context": "No approved harvest records exist",
+      "grading": {
+        "isolation_correctness": {
+          "assertion": "Reports 'No approved harvest records found' and suggests /slack-forge:review and /slack-forge:scan as next steps. Does not attempt any creation commands.",
+          "weight": 1.0
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract1-001",
+      "component": "promote command",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Promoted tasks use Tasks Forge compatible schema with source=slack-harvest provenance",
+      "user_prompt": "/slack-forge:promote",
+      "setup_context": "3 approved task harvests with varying confidence levels (high, medium, low)",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Each promoted task uses forge task create with fields that Tasks Forge can consume: title, status=Open, priority mapped from confidence, description with slack provenance, tags. The promote command summary shows 'tasks created in tasks-forge' and provides the forge task query command to view them.",
+          "level": "context_passing",
+          "weight": 0.6
+        },
+        "isolation_correctness": {
+          "assertion": "All 3 tasks created successfully. Each harvest marked as promoted. Summary shows correct counts.",
+          "weight": 0.4
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract1-002",
+      "component": "promote command",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Promoted knowledge uses Forge Memory compatible schema with correct type inference",
+      "user_prompt": "/slack-forge:promote",
+      "setup_context": "3 approved knowledge harvests: one person-tagged, one project-tagged, one glossary-tagged",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Each knowledge entry created via forge memory create-knowledge with the correct type (person/project/glossary) inferred from the first tag. The promote summary shows 'knowledge entries created in forge-memory' and provides forge memory query-knowledge command.",
+          "level": "context_passing",
+          "weight": 0.6
+        },
+        "isolation_correctness": {
+          "assertion": "All 3 knowledge entries created. Each harvest marked promoted. Type inference matches the memory-hint tag.",
+          "weight": 0.4
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract5-001",
+      "component": "capture command",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Capture command suggests review and promote as proactive handoff",
+      "user_prompt": "/slack-forge:capture",
+      "setup_context": "Transcripts exist for most recent scan",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After capture completes, output includes proactive suggestion: 'Run /slack-forge:review to approve or reject' — this is the handoff to the review→promote→Tasks Forge/Forge Memory pipeline.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Dispatches task-harvester, knowledge-harvester, and jira-digest agents. Presents summary with counts by type. All records created with status=pending.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract5-002",
+      "component": "review command",
+      "category": "ecosystem",
+      "contract": "Contract 5",
+      "description": "Review command suggests promotion after approvals",
+      "user_prompt": "/slack-forge:review",
+      "setup_context": "5 pending harvest records exist, user approves 3",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After review completes with approved_count > 0, output includes: 'Approved items are ready for promotion. Run /slack-forge:promote to push to tasks-forge and forge-memory.' — naming both downstream plugins by name.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Presents each item with type, title, source, confidence. Handles A/R/E/S actions correctly. Summary shows correct approved/rejected/skipped counts.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract6-001",
+      "component": "task-harvester (skill + agent)",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Task harvester resolves shorthand/acronyms against Forge Memory during extraction",
+      "user_prompt": "Capture tasks from transcript containing shorthand terms",
+      "setup_context": "Transcript contains: '@alice: @bob can you update the CRM integration for Acme by Thursday?' — CRM and Acme may be in Forge Memory taxonomy",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Task harvester checks Forge Memory to resolve 'CRM' and 'Acme' to canonical names before including them in the task content. Or at minimum, the skill instructions mention checking Forge Memory for term resolution.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Task extracted with correct provenance, confidence, and content quality regardless of term resolution.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract6-002",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "ecosystem",
+      "contract": "Contract 6",
+      "description": "Knowledge harvester resolves entity names against Forge Memory during extraction",
+      "user_prompt": "Capture knowledge from transcript with informal entity references",
+      "setup_context": "Transcript contains: '@cto: Todd is taking over the PSR process from Sarah effective Monday' — PSR, Todd, Sarah may be in Forge Memory",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Knowledge harvester checks Forge Memory to resolve 'PSR', 'Todd', and 'Sarah' to canonical entries. Or the skill instructions reference Forge Memory lookup for entity resolution.",
+          "level": "context_passing",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Knowledge item extracted with person tag, complete provenance, summary+significance structure.",
+          "weight": 0.7
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-IF2-001",
+      "component": "knowledge-harvester (skill + agent)",
+      "category": "ecosystem",
+      "contract": "Implied Flow 2",
+      "description": "Knowledge harvester flags complex unresolved discussions for Cognitive Forge debate",
+      "user_prompt": "Capture knowledge from transcript with multi-person architectural debate",
+      "setup_context": "Transcript contains a 10-message thread between @alice, @bob, and @carol debating REST vs GraphQL migration with no clear consensus reached",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "Knowledge harvester identifies the unresolved multi-person discussion and either (a) tags it as 'unresolved-discussion' or (b) suggests in the content/output that the topic could benefit from structured analysis with /cognitive-forge:debate.",
+          "level": "specificity",
+          "weight": 0.5
+        },
+        "isolation_correctness": {
+          "assertion": "Knowledge item captures the key viewpoints from the discussion with proper provenance and significance.",
+          "weight": 0.5
+        }
+      }
+    },
+    {
+      "id": "ecosystem-slack-contract1-003",
+      "component": "task-harvester (skill + agent)",
+      "category": "ecosystem",
+      "contract": "Contract 1",
+      "description": "Task harvester output mentions downstream promotion pathway",
+      "user_prompt": "Capture tasks from transcript",
+      "setup_context": "Transcript with multiple clear tasks",
+      "grading": {
+        "ecosystem_awareness": {
+          "assertion": "After task extraction, the harvester or capture command output mentions that approved tasks can be promoted to Tasks Forge via /slack-forge:promote. The capture summary explicitly references the review→promote pipeline.",
+          "level": "specificity",
+          "weight": 0.3
+        },
+        "isolation_correctness": {
+          "assertion": "Tasks extracted correctly with proper schema, provenance, and quality requirements met.",
+          "weight": 0.7
+        }
+      }
+    }
+  ]
+}

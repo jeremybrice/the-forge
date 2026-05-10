@@ -1,0 +1,82 @@
+[
+  {
+    "query": "what's our product ecosystem?",
+    "should_trigger": true
+  },
+  {
+    "query": "which teams own which modules?",
+    "should_trigger": true
+  },
+  {
+    "query": "describe our client relationships",
+    "should_trigger": true
+  },
+  {
+    "query": "how do our products integrate with each other?",
+    "should_trigger": true
+  },
+  {
+    "query": "what's the architecture of our platform from a product perspective?",
+    "should_trigger": true
+  },
+  {
+    "query": "which product handles user authentication?",
+    "should_trigger": true
+  },
+  {
+    "query": "tell me about the integration landscape across our products",
+    "should_trigger": true
+  },
+  {
+    "query": "who are our biggest clients and what products do they use?",
+    "should_trigger": true
+  },
+  {
+    "query": "what team is responsible for the billing module?",
+    "should_trigger": false
+  },
+  {
+    "query": "give me an overview of how our products are structured",
+    "should_trigger": true
+  },
+  {
+    "query": "create a story card for the new dashboard feature",
+    "should_trigger": false
+  },
+  {
+    "query": "triage my overdue tasks for this sprint",
+    "should_trigger": false
+  },
+  {
+    "query": "what does the acronym CSAT mean?",
+    "should_trigger": false
+  },
+  {
+    "query": "build a Rovo agent for ticket management",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a quarterly performance report",
+    "should_trigger": false
+  },
+  {
+    "query": "help me debug the product page rendering issue",
+    "should_trigger": false
+  },
+  {
+    "query": "write a product description for our landing page",
+    "should_trigger": false
+  },
+  {
+    "query": "set up product analytics with Mixpanel",
+    "should_trigger": false
+  },
+  {
+    "query": "explain the product lifecycle methodology",
+    "should_trigger": false
+  },
+  {
+    "query": "add 'Nexus' to our product taxonomy",
+    "should_trigger": false
+  }
+]

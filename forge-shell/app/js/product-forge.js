@@ -41,6 +41,11 @@
       if (!container) return;
       let html = '';
 
+      /* Recents always renders first when provided */
+      if (Array.isArray(hierarchy.recents)) {
+        html += this._renderRecentsSection(hierarchy.recents);
+      }
+
       html += this._renderSection('Initiatives', 'initiatives', hierarchy.tree.length, () => {
         let inner = '';
         for (const initNode of hierarchy.tree) inner += this._renderInitiativeNode(initNode);
@@ -92,6 +97,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + initNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -116,6 +122,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + epicNode.children.length + '</span>' : '') +
         '</div>';
 
@@ -137,6 +144,7 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          this._newBadgeHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -149,8 +157,83 @@
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          this._newBadgeHtml(card.filename) +
         '</div>' +
       '</div>';
+    },
+
+    /* _renderRecentsSection — renders the type-mixed Recents
+       section at the top of the tree. Each row is a leaf-style
+       node with: toggle stub, status dot, type chip, title,
+       optional NEW badge. */
+    _renderRecentsSection: function (cards) {
+      var self = this;
+      var collapsed = this.collapsedSections.has('recents');
+      var inner = cards.map(function (card) { return self._renderRecentsRow(card); }).join('');
+      return '<div class="pfl-tree-section" data-pfl-section="recents">' +
+        '<div class="pfl-tree-section-header" data-pfl-toggle-section="recents">' +
+          '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' +
+          '<span>Recents</span>' +
+          '<span class="pfl-count">' + cards.length + '</span>' +
+        '</div>' +
+        '<div class="pfl-tree-children' + (collapsed ? ' pfl-collapsed' : '') + '" data-pfl-section-body="recents">' + inner + '</div>' +
+      '</div>';
+    },
+
+    /* _newBadgeHtml — single source of truth for the NEW pill so
+       the markup, class, and condition stay synchronized across
+       all render methods. */
+    _newBadgeHtml: function (filename) {
+      return recentsTracker.isNew(filename) ? '<span class="pfl-new-badge">NEW</span>' : '';
+    },
+
+    /* _renderRecentsRow — a leaf row with type chip + optional
+       NEW badge. Uses pfl-indent-1 to match other leaf sections. */
+    _renderRecentsRow: function (card) {
+      var fm = card.frontmatter;
+      var type = fm.type || 'unknown';
+      return '<div class="pfl-tree-node pfl-indent-1" data-pfl-filename="' + ESC(card.filename) + '" data-pfl-type="' + ESC(type) + '">' +
+        '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
+          '<span class="pfl-toggle"></span>' +
+          '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          '<span class="pfl-type-chip" style="background:' + getTypeColor(type) + '" title="' + ESC(type) + '"></span>' +
+          (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
+          '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+          this._newBadgeHtml(card.filename) +
+        '</div>' +
+      '</div>';
+    },
+
+    /* expandAncestors — uncollapse every parent in the chain so the
+       structural row for `filename` is visible, and uncollapse the
+       section that owns the card. Used by the user-click path (so a
+       click in Recents reveals the structural location) and by the
+       auto-reveal path. Pure collapse-state mutation; does not render. */
+    expandAncestors: function (filename) {
+      var card = store.get(filename);
+      if (!card) return;
+
+      var cursor = card;
+      var safety = 16;  /* defensive against cyclic parent chains */
+      while (cursor && cursor.frontmatter && cursor.frontmatter.parent && safety-- > 0) {
+        this.collapsedNodes.delete(cursor.frontmatter.parent);
+        cursor = store.get(cursor.frontmatter.parent);
+      }
+
+      var type = card.frontmatter.type;
+      var sectionId = null;
+      if (type === 'initiative') sectionId = 'initiatives';
+      else if (type === 'epic') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-epics';
+      else if (type === 'story') sectionId = card.frontmatter.parent ? 'initiatives' : 'orphan-stories';
+      else if (type === 'intake') sectionId = 'intakes';
+      else if (type === 'checkpoint') sectionId = 'checkpoints';
+      else if (type === 'decision') sectionId = 'decisions';
+      else if (type === 'release-note') sectionId = 'release-notes';
+      if (sectionId) {
+        this.collapsedSections.delete(sectionId);
+      } else {
+        console.warn('expandAncestors: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
+      }
     },
 
     _bindEvents(container) {
@@ -195,7 +278,15 @@
             return;
           }
 
+          /* Reveal: expand ancestors first so the structural row is
+             visible, then select. _renderTree picks up the new
+             collapse state. (Keyboard nav and detail-panel nav-links
+             still call selectCard directly — those rows are already
+             visible and shouldn't force expansion.) */
+          this.expandAncestors(filename);
           ctrl.selectCard(filename);
+          ctrl._renderTree();
+          this.highlightSelected(filename);
         });
       });
     },
@@ -203,8 +294,7 @@
     highlightSelected(filename) {
       $qa('.pfl-tree-node-header.pfl-selected').forEach(el => el.classList.remove('pfl-selected'));
       if (filename) {
-        const el = $q('[data-pfl-select="' + filename + '"]');
-        if (el) el.classList.add('pfl-selected');
+        $qa('[data-pfl-select="' + filename + '"]').forEach(el => el.classList.add('pfl-selected'));
       }
     },
 
@@ -544,6 +634,24 @@
       };
     },
 
+    /* filterRecents — apply per-type status filters to a flat
+       recents array. Cards whose type is not initiative/epic/story
+       are unaffected by the panel's status filters. */
+    filterRecents: function (recents) {
+      if (this.getActiveCount() === 0) return recents;
+      var self = this;
+      return recents.filter(function (card) {
+        var fm = card.frontmatter || {};
+        var type = fm.type;
+        var key = type === 'initiative' ? 'initiative_status'
+                : type === 'epic'       ? 'epic_status'
+                : type === 'story'      ? 'story_status'
+                : null;
+        if (!key) return true;
+        return self._cardMatchesTypeStatus(card, key, self.filters[key]);
+      });
+    },
+
     render(container) {
       let html = '<div class="pfl-filter-header">';
       html += '<span>Status Filters</span>';
@@ -584,6 +692,116 @@
 
       html += '</div>';
       return html;
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     RecentsTracker — session-scoped state for "what just arrived"
+     - sessionAddedAt: filename → ms timestamp when first observed
+       in changes.added during this session
+     - unseenAddedCount: number of additions not yet acknowledged
+       by the user (cleared on click of toolbar "N new" suffix)
+     - PRUNE_HORIZON_MS: NEW badges and tracker entries expire after
+       this duration without user interaction (spec A6)
+     ═══════════════════════════════════════════════════════════════ */
+  var PRUNE_HORIZON_MS = 10 * 60 * 1000;  /* 10 minutes */
+
+  /* parseDate — accepts ISO date strings like "2026-05-05" or
+     full timestamps. Returns ms-since-epoch number, or null on
+     failure. Tolerant of null/undefined input.
+
+     Browser-console smoke test (paste into devtools after reload):
+       parseDate('2026-05-05')           → e.g. 1762128000000
+       parseDate('2026-05-05T14:32:00Z') → e.g. 1762178320000
+       parseDate('not a date')           → null
+       parseDate(null)                   → null
+       parseDate('')                     → null
+  */
+  function parseDate(s) {
+    if (!s || typeof s !== 'string') return null;
+    var t = Date.parse(s);
+    return isNaN(t) ? null : t;
+  }
+
+  var recentsTracker = {
+    /* sessionAddedAt — filename → ms timestamp when first observed.
+       Drives the NEW badge in render methods (via isNew) and the
+       10-minute prune horizon. */
+    sessionAddedAt: new Map(),
+
+    /* unseenSet — subset of sessionAddedAt: cards that have not yet
+       been acknowledged via the toolbar "N new" click OR the row
+       click. Drives the toolbar suffix count. */
+    unseenSet: new Set(),
+
+    get unseenAddedCount() {
+      return this.unseenSet.size;
+    },
+
+    reset: function () {
+      this.sessionAddedAt.clear();
+      this.unseenSet.clear();
+    },
+
+    noteAdded: function (filename) {
+      if (!filename) return;
+      if (!this.sessionAddedAt.has(filename)) {
+        this.sessionAddedAt.set(filename, Date.now());
+        this.unseenSet.add(filename);
+      }
+    },
+
+    markSeen: function (filename) {
+      if (!filename) return;
+      this.sessionAddedAt.delete(filename);
+      this.unseenSet.delete(filename);
+    },
+
+    forget: function (filename) {
+      this.markSeen(filename);
+    },
+
+    /* acknowledgeAllUnseen — called by the toolbar "N new" click.
+       Clears the unseen set (zeroing the counter) but leaves
+       sessionAddedAt intact so individual NEW badges stay until
+       click or prune. */
+    acknowledgeAllUnseen: function () {
+      this.unseenSet.clear();
+    },
+
+    pruneStale: function () {
+      var now = Date.now();
+      var self = this;
+      var toDelete = [];
+      this.sessionAddedAt.forEach(function (ts, filename) {
+        if (now - ts > PRUNE_HORIZON_MS) toDelete.push(filename);
+      });
+      toDelete.forEach(function (filename) {
+        self.sessionAddedAt.delete(filename);
+        self.unseenSet.delete(filename);
+      });
+    },
+
+    isNew: function (filename) {
+      return this.sessionAddedAt.has(filename);
+    },
+
+    getRecents: function (store, n) {
+      if (!store || typeof store.all !== 'function') return [];
+      var limit = (typeof n === 'number' && n > 0) ? n : 10;
+      var entries = store.all().map(function (card) {
+        var ts = parseDate(card.frontmatter && card.frontmatter.created);
+        if (ts === null) {
+          var fileTs = store.timestamps.get(card.filename);
+          ts = (typeof fileTs === 'number') ? fileTs : 0;
+        }
+        return { card: card, ts: ts, filename: card.filename };
+      });
+      entries.sort(function (a, b) {
+        if (b.ts !== a.ts) return b.ts - a.ts;
+        return a.filename < b.filename ? -1 : (a.filename > b.filename ? 1 : 0);
+      });
+      return entries.slice(0, limit).map(function (e) { return e.card; });
     }
   };
 
@@ -878,6 +1096,20 @@
         return;
       }
 
+      /* Read the "last shell open" watermark and advance it for the
+         next session. _loadCards uses _previousOpenedAt to badge
+         every card with frontmatter.created >= watermark. First-ever
+         launch defaults to 24h ago so the user sees something. */
+      try {
+        var raw = window.localStorage.getItem('pfl-last-shell-opened-at');
+        var prev = raw ? parseInt(raw, 10) : NaN;
+        this._previousOpenedAt = isNaN(prev) ? (Date.now() - 24 * 60 * 60 * 1000) : prev;
+        window.localStorage.setItem('pfl-last-shell-opened-at', String(Date.now()));
+      } catch (e) {
+        /* localStorage unavailable — fall back to 24h-ago watermark. */
+        this._previousOpenedAt = Date.now() - 24 * 60 * 60 * 1000;
+      }
+
       this._renderLayout(view, rootHandle);
       await this._loadCards();
       this._startAutoRefresh();
@@ -890,6 +1122,9 @@
       selectedCard = null;
       store.clear();
       cardsHandle = null;
+      recentsTracker.reset();
+      treeView.collapsedSections.clear();
+      treeView.collapsedNodes.clear();
     },
 
     async refresh() {
@@ -902,6 +1137,15 @@
       var card = store.get(filename);
       detailPanel.renderCard(card);
       treeView.highlightSelected(filename);
+
+      /* Acknowledging a card via click clears its NEW badge.
+         Re-render so the badge disappears from Recents and from
+         any structural duplicate. Cheap — render is fast. */
+      if (recentsTracker.isNew(filename)) {
+        recentsTracker.markSeen(filename);
+        this._renderTree();
+        this._updateRefreshIndicator();
+      }
     },
 
     /* ─── Internal ─── */
@@ -1027,6 +1271,23 @@
       }
 
       taxonomy = discoverTaxonomy(store.all());
+
+      /* Pre-populate NEW badges from the "last shell open" watermark.
+         Any card whose frontmatter.created >= watermark is treated
+         the same as a card that arrived via _doRefresh.changes.added —
+         shows up in unseenSet (toolbar count) and gets a NEW badge
+         until the user clicks it. Done before first render so badges
+         appear on first paint. */
+      var prev = this._previousOpenedAt;
+      if (typeof prev === 'number') {
+        store.all().forEach(function (card) {
+          var created = parseDate(card.frontmatter && card.frontmatter.created);
+          if (created !== null && created >= prev) {
+            recentsTracker.noteAdded(card.filename);
+          }
+        });
+      }
+
       this._renderTree();
       this._updateRefreshIndicator();
     },
@@ -1105,8 +1366,26 @@
         treeView.collapsedSections.clear();
       }
 
+      /* Build Recents (after structural search filter so titles
+         that don't match are not in the recents either). The
+         recents themselves are then filtered by search query
+         and per-type status filters. */
+      var allRecents = recentsTracker.getRecents(store, 10);
+      if (searching) {
+        var matchCardLocal = function (card) {
+          var title = (card.frontmatter.title || '').toLowerCase();
+          var fname = (card.filename || '').toLowerCase();
+          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
+        };
+        allRecents = allRecents.filter(matchCardLocal);
+      }
+      var filteredRecents = FilterPanel.filterRecents(allRecents);
+
       // Apply status filters
       hierarchy = FilterPanel.filterHierarchy(hierarchy);
+      /* Re-attach recents after filterHierarchy (which returns a new
+         object that doesn't carry recents through). */
+      hierarchy.recents = filteredRecents;
 
       treeView.render(hierarchy);
 
@@ -1125,7 +1404,32 @@
       var count = store.cards.size;
       var now = new Date();
       var time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      el.textContent = count + ' cards \u00B7 ' + time;
+      var unseen = recentsTracker.unseenAddedCount;
+
+      /* Build via DOM rather than HTML so we can attach a click
+         handler to just the suffix without re-binding every refresh. */
+      el.textContent = '';
+      el.appendChild(document.createTextNode(count + ' cards \u00B7 ' + time));
+      if (unseen > 0) {
+        var sep = document.createTextNode(' \u00B7 ');
+        el.appendChild(sep);
+        var span = document.createElement('span');
+        span.className = 'pfl-refresh-new-count';
+        span.textContent = unseen + ' new';
+        span.title = 'Click to show recent additions';
+        span.addEventListener('click', function () {
+          treeView.collapsedSections.delete('recents');
+          var sidebar = $q('.pfl-sidebar');
+          if (sidebar) sidebar.scrollTop = 0;
+          /* Clearing all unseen acknowledges the batch but does
+             NOT remove individual NEW badges from rows \u2014 those
+             still expire by click or by pruneStale (10min). */
+          recentsTracker.acknowledgeAllUnseen();
+          ctrl._renderTree();
+          ctrl._updateRefreshIndicator();
+        });
+        el.appendChild(span);
+      }
     },
 
     _renderFilterPanel() {
@@ -1235,8 +1539,16 @@
           if (!files.has(fn)) {
             changes.deleted.push(fn);
             store.delete(fn);
+            recentsTracker.forget(fn);
           }
         }
+
+        /* Feed the tracker with new arrivals BEFORE re-rendering so
+           NEW badges appear in the same render pass. */
+        for (var addedIdx = 0; addedIdx < changes.added.length; addedIdx++) {
+          recentsTracker.noteAdded(changes.added[addedIdx]);
+        }
+        recentsTracker.pruneStale();
 
         var hasChanges = changes.added.length + changes.modified.length + changes.deleted.length > 0;
         if (hasChanges) {
@@ -1251,6 +1563,9 @@
               detailPanel.renderCard(null);
             }
           }
+        }
+        if (changes.added.length > 0) {
+          this._maybeAutoReveal(changes.added);
         }
         this._updateRefreshIndicator();
       } catch (e) {
@@ -1429,6 +1744,67 @@
         document.removeEventListener('keydown', keydownHandler);
         keydownHandler = null;
       }
+    },
+
+    /* _revealCard — given a filename known to be in the store,
+       expand all ancestors + the section containing it (and the
+       Recents section), select it, scroll into view, and apply a
+       brief flash class to the row that auto-removes after 1.5s.
+       Idempotent and safe to call multiple times. */
+    _revealCard: function (filename) {
+      var card = store.get(filename);
+      if (!card) return;
+
+      /* 1+2. Expand ancestors and the owning section (shared with
+         the user-click path). */
+      treeView.expandAncestors(filename);
+      treeView.collapsedSections.delete('recents');  /* always show recents on reveal */
+
+      /* 3. Select, mark seen if needed (clears NEW badge), and
+         render once. selectCard sets selection state; we own the
+         render here so the rAF below sees a deterministic DOM
+         regardless of selectCard's internal behavior. */
+      selectedCard = filename;
+      var card2 = store.get(filename);
+      detailPanel.renderCard(card2);
+      if (recentsTracker.isNew(filename)) {
+        recentsTracker.markSeen(filename);
+      }
+      this._renderTree();
+      treeView.highlightSelected(filename);
+      this._updateRefreshIndicator();
+
+      /* 4. Scroll + flash on next animation frame so the new DOM
+         is in place. There may be multiple rows (Recents + structural)
+         — flash both. */
+      requestAnimationFrame(function () {
+        var rows = $qa('[data-pfl-select="' + filename + '"]');
+        if (rows && rows.length > 0) {
+          rows[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        rows.forEach(function (row) {
+          row.classList.add('pfl-flash-new');
+          setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
+        });
+      });
+    },
+
+    /* _maybeAutoReveal — decides whether a batch of newly-added
+       filenames is safe to auto-select and scroll to (single-add,
+       no current selection, no search, no active filters). Otherwise
+       leaves the unseen counter to be shown in the toolbar. */
+    _maybeAutoReveal: function (addedFilenames) {
+      var searchEl = $q('[data-pfl-search]');
+      var hasSearch = !!(searchEl && searchEl.value && searchEl.value.trim().length > 0);
+      var hasFilters = FilterPanel.getActiveCount() > 0;
+
+      if (hasSearch || hasFilters) return;       /* user is filtering — don't steal */
+      if (addedFilenames.length !== 1) return;   /* batch — surface via counter only */
+      if (selectedCard) return;                  /* user is on something — preserve */
+
+      var fn = addedFilenames[0];
+      this._revealCard(fn);
+      /* markSeen handled inside _revealCard's render path */
     }
   };
 
@@ -1436,6 +1812,9 @@
      Expose & Register
      ═══════════════════════════════════════════════════════════════ */
   window.ProductForgeLocalView = ctrl;
+  /* Debug-only — exposed for manual smoke testing of pure helpers.
+     Not part of the public surface; do not depend on this. */
+  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker };
   Shell.registerController('product-forge-local', window.ProductForgeLocalView);
 
 })();

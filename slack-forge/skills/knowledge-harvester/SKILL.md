@@ -12,6 +12,10 @@ Use this skill when analyzing local transcript snapshots to identify preservable
 - Input is transcript text from `slack-forge/transcripts/*.md`.
 - Do not fetch Slack data directly.
 
+## Term Resolution
+
+Before creating new knowledge entries, check Forge Memory for existing entries on the same people, projects, or terms. Use `forge memory query-knowledge` to avoid duplicates and ensure consistency with canonical names already in the system.
+
 ## Knowledge Signals
 
 - Decisions and rationale

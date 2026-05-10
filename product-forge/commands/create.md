@@ -174,6 +174,11 @@ Stories saved to cards/stories/:
 - ...
 ```
 
+**Next steps to suggest after confirmation:**
+- Push to Jira: `/product-forge:push-to-jira {filename}`
+- Track implementation tasks: `/tasks-forge:add` (use `parent: {filename}` to link)
+- Generate a deeper analysis: `/report-forge:generate`
+
 ## Key Rules
 
 - **Delegation**: All reasoning is done by agents. All persistence is done by you via forge-lib.
