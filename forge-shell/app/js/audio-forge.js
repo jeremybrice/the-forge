@@ -538,10 +538,16 @@ window.AudioForgeView = (function () {
   /* ═══════════════════════════════════════════════════════════
      Tauri command wrappers
      ═══════════════════════════════════════════════════════════ */
-  async function invokeStart(sources) {
+  async function invokeStart(sources, micDeviceUID) {
     const core = tauriCore();
     if (!core) throw new Error('Tauri runtime not available');
-    return core.invoke('start_recording', { projectRoot, sources });
+    // Tauri's serde maps camelCase ↔ snake_case automatically; we pass
+    // micDeviceUID and the Rust side receives mic_device_uid.
+    return core.invoke('start_recording', {
+      projectRoot,
+      sources,
+      micDeviceUID: micDeviceUID || null,
+    });
   }
   async function invokeStop() {
     const core = tauriCore();
@@ -732,7 +738,8 @@ window.AudioForgeView = (function () {
       const autoStopMinutes = getAutoStopSelection();
       dispatch({ type: 'RECORD_CLICK', sources, autoStopMinutes });
       try {
-        const started = await invokeStart(sources);
+        const micDeviceUID = (ref('mic-device-select') && ref('mic-device-select').value) || '';
+        const started = await invokeStart(sources, micDeviceUID);
         const startedAt = new Date().toISOString();
         dispatch({
           type: 'START_OK',
