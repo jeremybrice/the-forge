@@ -1,6 +1,116 @@
 import Foundation
 import AVFoundation
 import ScreenCaptureKit
+import CoreAudio
+
+// MARK: - Audio device enumeration
+
+struct AudioInputDevice {
+    let id: AudioDeviceID
+    let uid: String
+    let name: String
+    let isDefault: Bool
+    let inputChannels: UInt32
+}
+
+/// Enumerates all CoreAudio input devices visible on the system. Filters out
+/// output-only devices (devices with zero input channels). The order is
+/// CoreAudio's own enumeration order, which is stable across queries within a
+/// single session.
+func enumerateInputDevices() -> [AudioInputDevice] {
+    let systemObject = AudioObjectID(kAudioObjectSystemObject)
+
+    // List all device IDs
+    var listAddr = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    var listSize: UInt32 = 0
+    guard AudioObjectGetPropertyDataSize(systemObject, &listAddr, 0, nil, &listSize) == noErr else {
+        return []
+    }
+    let count = Int(listSize) / MemoryLayout<AudioDeviceID>.size
+    var deviceIDs = [AudioDeviceID](repeating: 0, count: count)
+    guard AudioObjectGetPropertyData(systemObject, &listAddr, 0, nil, &listSize, &deviceIDs) == noErr else {
+        return []
+    }
+
+    // Default input device
+    var defaultID: AudioDeviceID = 0
+    var defaultSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+    var defaultAddr = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultInputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    _ = AudioObjectGetPropertyData(systemObject, &defaultAddr, 0, nil, &defaultSize, &defaultID)
+
+    var results: [AudioInputDevice] = []
+    for id in deviceIDs {
+        // Input channel count via stream configuration
+        var streamAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(id, &streamAddr, 0, nil, &streamSize) == noErr, streamSize > 0 else {
+            continue
+        }
+        let bufList = UnsafeMutableRawPointer.allocate(byteCount: Int(streamSize), alignment: 16)
+        defer { bufList.deallocate() }
+        let ablTyped = bufList.assumingMemoryBound(to: AudioBufferList.self)
+        guard AudioObjectGetPropertyData(id, &streamAddr, 0, nil, &streamSize, ablTyped) == noErr else {
+            continue
+        }
+        let abl = UnsafeMutableAudioBufferListPointer(ablTyped)
+        let channels = abl.reduce(0) { $0 + Int($1.mNumberChannels) }
+        guard channels > 0 else { continue }
+
+        // UID
+        var uidAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var uidRef: Unmanaged<CFString>?
+        var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(id, &uidAddr, 0, nil, &uidSize, &uidRef) == noErr,
+              let uid = uidRef?.takeRetainedValue() as String? else {
+            continue
+        }
+
+        // Human-readable name
+        var nameAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceNameCFString,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var nameRef: Unmanaged<CFString>?
+        var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let name: String
+        if AudioObjectGetPropertyData(id, &nameAddr, 0, nil, &nameSize, &nameRef) == noErr,
+           let n = nameRef?.takeRetainedValue() as String? {
+            name = n
+        } else {
+            name = uid
+        }
+
+        results.append(AudioInputDevice(
+            id: id, uid: uid, name: name,
+            isDefault: id == defaultID,
+            inputChannels: UInt32(channels)
+        ))
+    }
+    return results
+}
+
+/// Look up a device by UID. Returns nil if no input device with that UID is
+/// currently connected.
+func inputDeviceID(forUID uid: String) -> AudioDeviceID? {
+    return enumerateInputDevices().first(where: { $0.uid == uid })?.id
+}
 
 // MARK: - Mic capture
 
