@@ -30,6 +30,15 @@ pub struct AudioFiles {
     pub mic: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioInputDevice {
+    pub uid: String,
+    pub name: String,
+    #[serde(rename = "isDefault")]
+    pub is_default: bool,
+    pub channels: u32,
+}
+
 pub struct RecorderState {
     inner: Mutex<Option<RecorderHandle>>,
 }
@@ -553,4 +562,57 @@ fn audio_forge_root(project_root: &str) -> PathBuf {
 
 fn active_state_path(project_root: &str) -> PathBuf {
     audio_forge_root(project_root).join("active.json")
+}
+
+#[tauri::command]
+pub async fn list_audio_devices(app: AppHandle) -> Result<Vec<AudioInputDevice>, String> {
+    let shell = app.shell();
+    let (mut rx, mut child) = shell
+        .sidecar("forge-recorder")
+        .map_err(|e| format!("sidecar lookup: {e}"))?
+        .spawn()
+        .map_err(|e| format!("sidecar spawn: {e}"))?;
+
+    child
+        .write(b"{\"cmd\":\"list_devices\"}\n")
+        .map_err(|e| format!("sidecar stdin: {e}"))?;
+
+    let timeout = std::time::Duration::from_secs(3);
+    let start = std::time::Instant::now();
+
+    while start.elapsed() < timeout {
+        match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
+            Ok(Some(CommandEvent::Stdout(bytes))) => {
+                let line = String::from_utf8_lossy(&bytes).to_string();
+                for raw in line.lines() {
+                    let trimmed = raw.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                        if value.get("event").and_then(|v| v.as_str()) == Some("devices") {
+                            let _ = child.kill();
+                            let arr = value
+                                .get("devices")
+                                .and_then(|v| v.as_array())
+                                .cloned()
+                                .unwrap_or_default();
+                            let devices: Vec<AudioInputDevice> = arr
+                                .into_iter()
+                                .filter_map(|v| serde_json::from_value(v).ok())
+                                .collect();
+                            return Ok(devices);
+                        }
+                    }
+                }
+            }
+            Ok(Some(CommandEvent::Stderr(_))) => {}
+            Ok(Some(CommandEvent::Terminated(_))) => break,
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    let _ = child.kill();
+    Err("timed out waiting for devices event".to_string())
 }
