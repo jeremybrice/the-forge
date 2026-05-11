@@ -559,6 +559,17 @@ final class Recorder {
         case "stop":
             stopCapture()
 
+        case "list_devices":
+            let devs = enumerateInputDevices().map { d -> [String: Any] in
+                return [
+                    "uid": d.uid,
+                    "name": d.name,
+                    "isDefault": d.isDefault,
+                    "channels": Int(d.inputChannels),
+                ]
+            }
+            emit(["event": "devices", "devices": devs])
+
         default:
             emitError(code: "UNKNOWN_COMMAND", message: "unknown cmd: \(cmd)")
         }
