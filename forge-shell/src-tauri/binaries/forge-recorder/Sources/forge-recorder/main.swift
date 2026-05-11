@@ -122,6 +122,9 @@ final class MicCapture {
     private(set) var lastRMS: Float = 0
     private(set) var sampleCount: Int64 = 0
     private var inputSampleRate: Double = 48000
+    private(set) var bufferPeakSinceStart: Float = 0
+    private var silenceTimer: DispatchSourceTimer?
+    var onSilenceDetected: ((Float) -> Void)?
 
     init(outputURL: URL, preferredDeviceUID: String? = nil) {
         self.outputURL = outputURL
@@ -223,6 +226,31 @@ final class MicCapture {
                 }
             }
 
+            // Track peak amplitude for the silence guard. Cheap; we already
+            // walked ch0 above for RMS. Mirror the RMS path's Float32/Int16
+            // branching so an Int16-delivering device doesn't trigger a
+            // false-positive MIC_SILENT_AT_SOURCE warning.
+            if frames > 0 {
+                if let floatChannels = buffer.floatChannelData {
+                    let ch0 = floatChannels[0]
+                    var peak: Float = 0
+                    for i in 0..<frames { peak = max(peak, abs(ch0[i])) }
+                    if peak > self.bufferPeakSinceStart {
+                        self.bufferPeakSinceStart = peak
+                    }
+                } else if let int16Channels = buffer.int16ChannelData {
+                    let ch0 = int16Channels[0]
+                    var peak: Float = 0
+                    for i in 0..<frames {
+                        let s = abs(Float(ch0[i]) / 32768.0)
+                        if s > peak { peak = s }
+                    }
+                    if peak > self.bufferPeakSinceStart {
+                        self.bufferPeakSinceStart = peak
+                    }
+                }
+            }
+
             do {
                 try file.write(from: buffer)
                 self.sampleCount += Int64(buffer.frameLength)
@@ -233,9 +261,26 @@ final class MicCapture {
 
         engine.prepare()
         try engine.start()
+
+        // Silent-source guard: 1.0s after the engine starts, check whether any
+        // non-zero audio has appeared. If not, the chosen mic is producing
+        // silence (lid closed, muted at HAL, HAL plugin interception, etc.).
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.forge.recorder.silence-check"))
+        timer.schedule(deadline: .now() + 1.0)
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            let peak = self.bufferPeakSinceStart
+            if peak < 1e-4 {
+                self.onSilenceDetected?(peak)
+            }
+        }
+        timer.resume()
+        self.silenceTimer = timer
     }
 
     func stop() {
+        silenceTimer?.cancel()
+        silenceTimer = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         file = nil
@@ -654,6 +699,19 @@ final class Recorder {
             do {
                 let cap = MicCapture(outputURL: url, preferredDeviceUID: preferredUID)
                 try cap.start()
+                cap.onSilenceDetected = { [weak self] peak in
+                    guard let self = self else { return }
+                    let deviceLabel = preferredUID ?? "(system default)"
+                    emit([
+                        "event": "warning",
+                        "code": "MIC_SILENT_AT_SOURCE",
+                        "message": "Microphone is producing silence (peak=\(peak)). Device=\(deviceLabel). Likely causes: MacBook lid closed disabling built-in mic, mic muted in System Settings, a HAL plugin (Wispr/Krisp/etc.) intercepting the input, or wrong device selected.",
+                        "peak": peak,
+                        "device_uid": preferredUID ?? NSNull(),
+                    ])
+                    // Note: recording continues — system audio may still be useful.
+                    _ = self  // silence unused-self warning if we add nothing else
+                }
                 self.activeMic = cap
                 startedFiles["mic"] = url.path
                 startedAny = true
