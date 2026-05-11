@@ -172,13 +172,24 @@ final class MicCapture {
         let inputFormat = inputNode.outputFormat(forBus: 0)
         self.inputSampleRate = inputFormat.sampleRate
 
-        // On-disk WAV: 48 kHz, mono, 16-bit PCM. AVAudioFile (via ExtAudioFile)
-        // converts the input buffer's format to these settings on write — no
-        // explicit AVAudioConverter needed in the real-time tap callback,
-        // which avoids SIGTRAPs from running the converter off the audio thread.
+        // On-disk WAV: match the input's actual sample rate, mono, 16-bit PCM.
+        //
+        // The sample rate MUST match `inputFormat.sampleRate` rather than be
+        // hardcoded. Setting kAudioOutputUnitProperty_CurrentDevice on the
+        // AUHAL bypasses AVAudioEngine's internal resampler — the tap then
+        // delivers samples at the device's native rate (e.g. 16 kHz for a
+        // Bluetooth HFP mic like AirPods). If the on-disk rate is hardcoded
+        // to 48 kHz, AVAudioFile writes those 16 kHz samples verbatim into a
+        // WAV header that claims 48 kHz, producing chipmunk playback (3x
+        // speed-up). Reflecting the actual rate keeps the WAV header honest
+        // and whisper handles arbitrary rates via its own internal resampling.
+        //
+        // We keep mono + 16-bit fixed because the existing tap callback writes
+        // a single-channel buffer per the existing RMS/peak path and whisper
+        // expects mono.
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 48000.0,
+            AVSampleRateKey: inputFormat.sampleRate,
             AVNumberOfChannelsKey: 1,
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
