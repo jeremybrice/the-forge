@@ -852,6 +852,15 @@ window.AudioForgeView = (function () {
       dispatch({ type: 'ERROR_EVENT', message: msg });
       toast(msg, 'error');
     }));
+    unlisteners.push(await evt.listen('audio-forge://warning', (e) => {
+      const p = e.payload || {};
+      // We only display warnings; they do not affect the state machine.
+      if (p.code === 'MIC_SILENT_AT_SOURCE') {
+        toast(p.message || 'Microphone is producing silence.', 'warn');
+      } else if (p.message) {
+        toast(p.message, 'warn');
+      }
+    }));
     unlisteners.push(await evt.listen('audio-forge://terminated', () => {
       // The sidecar exits cleanly after a normal stop (state is 'stopping' or
       // beyond by then). Only treat termination as unexpected when we still
