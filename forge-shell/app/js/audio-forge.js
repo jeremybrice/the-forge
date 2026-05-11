@@ -728,7 +728,13 @@ window.AudioForgeView = (function () {
       return;
     }
     const label = (title || '').trim() || id;
-    const ok = window.confirm(
+    // Tauri 2's webview proxies window.confirm through the dialog plugin and
+    // returns a Promise<boolean>, NOT a synchronous boolean. We must await so
+    // the user actually sees the dialog before the delete fires. The await
+    // form is also safe against a plain-browser fallback (which returns a
+    // boolean synchronously) — `await <non-promise>` just resolves to the
+    // value.
+    const ok = await window.confirm(
       `Delete "${label}"?\n\nThis removes the markdown file, its audio files, and the index entry. This cannot be undone.`
     );
     if (!ok) return;
