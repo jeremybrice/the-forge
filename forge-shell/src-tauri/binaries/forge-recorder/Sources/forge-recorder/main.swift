@@ -116,14 +116,16 @@ func inputDeviceID(forUID uid: String) -> AudioDeviceID? {
 
 final class MicCapture {
     let outputURL: URL
+    let preferredDeviceUID: String?
     let engine = AVAudioEngine()
     private var file: AVAudioFile?
     private(set) var lastRMS: Float = 0
     private(set) var sampleCount: Int64 = 0
     private var inputSampleRate: Double = 48000
 
-    init(outputURL: URL) {
+    init(outputURL: URL, preferredDeviceUID: String? = nil) {
         self.outputURL = outputURL
+        self.preferredDeviceUID = preferredDeviceUID
     }
 
     func start() throws {
@@ -135,6 +137,35 @@ final class MicCapture {
         try MicCapture.ensureAuthorized()
 
         let inputNode = engine.inputNode
+
+        // Apply preferred device override BEFORE first format query. AVAudioEngine
+        // lazily binds its input audio unit to a device on the first format
+        // access, so setting kAudioOutputUnitProperty_CurrentDevice later would
+        // be a no-op.
+        if let uid = preferredDeviceUID {
+            if let devID = inputDeviceID(forUID: uid), let au = inputNode.audioUnit {
+                var d = devID
+                let err = AudioUnitSetProperty(
+                    au,
+                    kAudioOutputUnitProperty_CurrentDevice,
+                    kAudioUnitScope_Global,
+                    0,
+                    &d,
+                    UInt32(MemoryLayout<AudioDeviceID>.size)
+                )
+                if err != noErr {
+                    FileHandle.standardError.write(Data(
+                        "[mic] AudioUnitSetProperty(CurrentDevice) failed for uid=\(uid): \(err)\n".utf8))
+                } else {
+                    FileHandle.standardError.write(Data(
+                        "[mic] using requested device uid=\(uid) id=\(devID)\n".utf8))
+                }
+            } else {
+                FileHandle.standardError.write(Data(
+                    "[mic] requested device uid=\(uid) not found; falling back to system default\n".utf8))
+            }
+        }
+
         let inputFormat = inputNode.outputFormat(forBus: 0)
         self.inputSampleRate = inputFormat.sampleRate
 
