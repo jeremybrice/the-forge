@@ -1,33 +1,195 @@
 import Foundation
 import AVFoundation
 import ScreenCaptureKit
+import CoreAudio
+
+// MARK: - Audio device enumeration
+
+struct AudioInputDevice {
+    let id: AudioDeviceID
+    let uid: String
+    let name: String
+    let isDefault: Bool
+    let inputChannels: UInt32
+}
+
+/// Enumerates all CoreAudio input devices visible on the system. Filters out
+/// output-only devices (devices with zero input channels). The order is
+/// CoreAudio's own enumeration order, which is stable across queries within a
+/// single session.
+func enumerateInputDevices() -> [AudioInputDevice] {
+    let systemObject = AudioObjectID(kAudioObjectSystemObject)
+
+    // List all device IDs
+    var listAddr = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDevices,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    var listSize: UInt32 = 0
+    guard AudioObjectGetPropertyDataSize(systemObject, &listAddr, 0, nil, &listSize) == noErr else {
+        return []
+    }
+    let count = Int(listSize) / MemoryLayout<AudioDeviceID>.size
+    var deviceIDs = [AudioDeviceID](repeating: 0, count: count)
+    guard AudioObjectGetPropertyData(systemObject, &listAddr, 0, nil, &listSize, &deviceIDs) == noErr else {
+        return []
+    }
+
+    // Default input device
+    var defaultID: AudioDeviceID = 0
+    var defaultSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+    var defaultAddr = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultInputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    _ = AudioObjectGetPropertyData(systemObject, &defaultAddr, 0, nil, &defaultSize, &defaultID)
+
+    var results: [AudioInputDevice] = []
+    for id in deviceIDs {
+        // Input channel count via stream configuration
+        var streamAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(id, &streamAddr, 0, nil, &streamSize) == noErr, streamSize > 0 else {
+            continue
+        }
+        let bufList = UnsafeMutableRawPointer.allocate(byteCount: Int(streamSize), alignment: 16)
+        defer { bufList.deallocate() }
+        let ablTyped = bufList.assumingMemoryBound(to: AudioBufferList.self)
+        guard AudioObjectGetPropertyData(id, &streamAddr, 0, nil, &streamSize, ablTyped) == noErr else {
+            continue
+        }
+        let abl = UnsafeMutableAudioBufferListPointer(ablTyped)
+        let channels = abl.reduce(0) { $0 + Int($1.mNumberChannels) }
+        guard channels > 0 else { continue }
+
+        // UID
+        var uidAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var uidRef: Unmanaged<CFString>?
+        var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(id, &uidAddr, 0, nil, &uidSize, &uidRef) == noErr,
+              let uid = uidRef?.takeRetainedValue() as String? else {
+            continue
+        }
+
+        // Human-readable name
+        var nameAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceNameCFString,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var nameRef: Unmanaged<CFString>?
+        var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let name: String
+        if AudioObjectGetPropertyData(id, &nameAddr, 0, nil, &nameSize, &nameRef) == noErr,
+           let n = nameRef?.takeRetainedValue() as String? {
+            name = n
+        } else {
+            name = uid
+        }
+
+        results.append(AudioInputDevice(
+            id: id, uid: uid, name: name,
+            isDefault: id == defaultID,
+            inputChannels: UInt32(channels)
+        ))
+    }
+    return results
+}
+
+/// Look up a device by UID. Returns nil if no input device with that UID is
+/// currently connected.
+func inputDeviceID(forUID uid: String) -> AudioDeviceID? {
+    return enumerateInputDevices().first(where: { $0.uid == uid })?.id
+}
 
 // MARK: - Mic capture
 
 final class MicCapture {
     let outputURL: URL
+    let preferredDeviceUID: String?
     let engine = AVAudioEngine()
     private var file: AVAudioFile?
     private(set) var lastRMS: Float = 0
     private(set) var sampleCount: Int64 = 0
     private var inputSampleRate: Double = 48000
+    private(set) var bufferPeakSinceStart: Float = 0
+    private var silenceTimer: DispatchSourceTimer?
+    var onSilenceDetected: ((Float) -> Void)?
 
-    init(outputURL: URL) {
+    init(outputURL: URL, preferredDeviceUID: String? = nil) {
         self.outputURL = outputURL
+        self.preferredDeviceUID = preferredDeviceUID
     }
 
     func start() throws {
+        // TCC pre-flight. On macOS, AVAudioEngine does NOT throw when mic
+        // permission is denied — it starts and delivers zero-amplitude buffers
+        // forever, producing silent WAVs that whisper transcribes as "Thank
+        // you." Surface the denial explicitly so the recorder bails with
+        // PERMISSION_MIC instead of recording silence.
+        try MicCapture.ensureAuthorized()
+
         let inputNode = engine.inputNode
+
+        // Apply preferred device override BEFORE first format query. AVAudioEngine
+        // lazily binds its input audio unit to a device on the first format
+        // access, so setting kAudioOutputUnitProperty_CurrentDevice later would
+        // be a no-op.
+        if let uid = preferredDeviceUID {
+            if let devID = inputDeviceID(forUID: uid), let au = inputNode.audioUnit {
+                var d = devID
+                let err = AudioUnitSetProperty(
+                    au,
+                    kAudioOutputUnitProperty_CurrentDevice,
+                    kAudioUnitScope_Global,
+                    0,
+                    &d,
+                    UInt32(MemoryLayout<AudioDeviceID>.size)
+                )
+                if err != noErr {
+                    FileHandle.standardError.write(Data(
+                        "[mic] AudioUnitSetProperty(CurrentDevice) failed for uid=\(uid): \(err)\n".utf8))
+                } else {
+                    FileHandle.standardError.write(Data(
+                        "[mic] using requested device uid=\(uid) id=\(devID)\n".utf8))
+                }
+            } else {
+                FileHandle.standardError.write(Data(
+                    "[mic] requested device uid=\(uid) not found; falling back to system default\n".utf8))
+            }
+        }
+
         let inputFormat = inputNode.outputFormat(forBus: 0)
         self.inputSampleRate = inputFormat.sampleRate
 
-        // On-disk WAV: 48 kHz, mono, 16-bit PCM. AVAudioFile (via ExtAudioFile)
-        // converts the input buffer's format to these settings on write — no
-        // explicit AVAudioConverter needed in the real-time tap callback,
-        // which avoids SIGTRAPs from running the converter off the audio thread.
+        // On-disk WAV: match the input's actual sample rate, mono, 16-bit PCM.
+        //
+        // The sample rate MUST match `inputFormat.sampleRate` rather than be
+        // hardcoded. Setting kAudioOutputUnitProperty_CurrentDevice on the
+        // AUHAL bypasses AVAudioEngine's internal resampler — the tap then
+        // delivers samples at the device's native rate (e.g. 16 kHz for a
+        // Bluetooth HFP mic like AirPods). If the on-disk rate is hardcoded
+        // to 48 kHz, AVAudioFile writes those 16 kHz samples verbatim into a
+        // WAV header that claims 48 kHz, producing chipmunk playback (3x
+        // speed-up). Reflecting the actual rate keeps the WAV header honest
+        // and whisper handles arbitrary rates via its own internal resampling.
+        //
+        // We keep mono + 16-bit fixed because the existing tap callback writes
+        // a single-channel buffer per the existing RMS/peak path and whisper
+        // expects mono.
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 48000.0,
+            AVSampleRateKey: inputFormat.sampleRate,
             AVNumberOfChannelsKey: 1,
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
@@ -75,6 +237,31 @@ final class MicCapture {
                 }
             }
 
+            // Track peak amplitude for the silence guard. Cheap; we already
+            // walked ch0 above for RMS. Mirror the RMS path's Float32/Int16
+            // branching so an Int16-delivering device doesn't trigger a
+            // false-positive MIC_SILENT_AT_SOURCE warning.
+            if frames > 0 {
+                if let floatChannels = buffer.floatChannelData {
+                    let ch0 = floatChannels[0]
+                    var peak: Float = 0
+                    for i in 0..<frames { peak = max(peak, abs(ch0[i])) }
+                    if peak > self.bufferPeakSinceStart {
+                        self.bufferPeakSinceStart = peak
+                    }
+                } else if let int16Channels = buffer.int16ChannelData {
+                    let ch0 = int16Channels[0]
+                    var peak: Float = 0
+                    for i in 0..<frames {
+                        let s = abs(Float(ch0[i]) / 32768.0)
+                        if s > peak { peak = s }
+                    }
+                    if peak > self.bufferPeakSinceStart {
+                        self.bufferPeakSinceStart = peak
+                    }
+                }
+            }
+
             do {
                 try file.write(from: buffer)
                 self.sampleCount += Int64(buffer.frameLength)
@@ -85,9 +272,26 @@ final class MicCapture {
 
         engine.prepare()
         try engine.start()
+
+        // Silent-source guard: 1.0s after the engine starts, check whether any
+        // non-zero audio has appeared. If not, the chosen mic is producing
+        // silence (lid closed, muted at HAL, HAL plugin interception, etc.).
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.forge.recorder.silence-check"))
+        timer.schedule(deadline: .now() + 1.0)
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            let peak = self.bufferPeakSinceStart
+            if peak < 1e-4 {
+                self.onSilenceDetected?(peak)
+            }
+        }
+        timer.resume()
+        self.silenceTimer = timer
     }
 
     func stop() {
+        silenceTimer?.cancel()
+        silenceTimer = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         file = nil
@@ -95,6 +299,54 @@ final class MicCapture {
 
     var durationSeconds: Double {
         sampleCount > 0 ? Double(sampleCount) / inputSampleRate : 0
+    }
+
+    /// Synchronously confirms (or requests) TCC microphone access for this
+    /// process. Throws if access is denied or restricted. Must be called from
+    /// the recorder's command thread, NOT from a CoreAudio callback.
+    ///
+    /// AVAudioEngine's silent-on-denial behavior is the reason this exists:
+    /// without an explicit check, a denied permission produces zero-amplitude
+    /// buffers with no error, and the failure is only visible downstream when
+    /// the WAV gets transcribed as "Thank you."
+    static func ensureAuthorized() throws {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        switch status {
+        case .authorized:
+            return
+        case .notDetermined:
+            // First-run: synchronously block on the TCC prompt completion.
+            let sem = DispatchSemaphore(value: 0)
+            var granted = false
+            AVCaptureDevice.requestAccess(for: .audio) { ok in
+                granted = ok
+                sem.signal()
+            }
+            // 60 s is generous; macOS shows the prompt immediately, the user
+            // just needs to click.
+            _ = sem.wait(timeout: .now() + 60)
+            if !granted {
+                throw NSError(
+                    domain: "ForgeRecorder", code: 10,
+                    userInfo: [NSLocalizedDescriptionKey:
+                        "microphone permission denied by user"])
+            }
+        case .denied:
+            throw NSError(
+                domain: "ForgeRecorder", code: 11,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "microphone permission denied — enable in System Settings → Privacy & Security → Microphone for forge-recorder, then retry"])
+        case .restricted:
+            throw NSError(
+                domain: "ForgeRecorder", code: 12,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "microphone access is restricted on this device (parental controls or MDM)"])
+        @unknown default:
+            throw NSError(
+                domain: "ForgeRecorder", code: 13,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "unknown microphone authorization status: \(status.rawValue)"])
+        }
     }
 }
 
@@ -394,6 +646,17 @@ final class Recorder {
         case "stop":
             stopCapture()
 
+        case "list_devices":
+            let devs = enumerateInputDevices().map { d -> [String: Any] in
+                return [
+                    "uid": d.uid,
+                    "name": d.name,
+                    "isDefault": d.isDefault,
+                    "channels": Int(d.inputChannels),
+                ]
+            }
+            emit(["event": "devices", "devices": devs])
+
         default:
             emitError(code: "UNKNOWN_COMMAND", message: "unknown cmd: \(cmd)")
         }
@@ -442,9 +705,24 @@ final class Recorder {
 
         if self.sources.contains("mic") {
             let url = URL(fileURLWithPath: outDir).appendingPathComponent("\(id)-mic.wav")
+            // Optional caller-provided device UID. nil => system default input.
+            let preferredUID = (payload["micDeviceUID"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             do {
-                let cap = MicCapture(outputURL: url)
+                let cap = MicCapture(outputURL: url, preferredDeviceUID: preferredUID)
                 try cap.start()
+                cap.onSilenceDetected = { [weak self] peak in
+                    guard let self = self else { return }
+                    let deviceLabel = preferredUID ?? "(system default)"
+                    emit([
+                        "event": "warning",
+                        "code": "MIC_SILENT_AT_SOURCE",
+                        "message": "Microphone is producing silence (peak=\(peak)). Device=\(deviceLabel). Likely causes: MacBook lid closed disabling built-in mic, mic muted in System Settings, a HAL plugin (Wispr/Krisp/etc.) intercepting the input, or wrong device selected.",
+                        "peak": peak,
+                        "device_uid": preferredUID ?? NSNull(),
+                    ])
+                    // Note: recording continues — system audio may still be useful.
+                    _ = self  // silence unused-self warning if we add nothing else
+                }
                 self.activeMic = cap
                 startedFiles["mic"] = url.path
                 startedAny = true

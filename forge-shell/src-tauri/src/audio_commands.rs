@@ -30,6 +30,15 @@ pub struct AudioFiles {
     pub mic: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioInputDevice {
+    pub uid: String,
+    pub name: String,
+    #[serde(rename = "isDefault")]
+    pub is_default: bool,
+    pub channels: u32,
+}
+
 pub struct RecorderState {
     inner: Mutex<Option<RecorderHandle>>,
 }
@@ -94,6 +103,7 @@ pub async fn start_recording(
     state: State<'_, RecorderState>,
     project_root: String,
     sources: Vec<String>,
+    mic_device_uid: Option<String>,
 ) -> Result<StartedRecording, String> {
     // Reject if a recording is already in progress
     {
@@ -128,6 +138,10 @@ pub async fn start_recording(
         "outDir": out_dir.to_string_lossy(),
         "id": id,
         "sources": sources,
+        // Optional. When present and non-empty, the recorder will set this
+        // device as the input on AVAudioEngine before starting. When null or
+        // empty, the recorder uses the system default input.
+        "micDeviceUID": mic_device_uid.as_deref().unwrap_or(""),
     });
     let line = format!("{}\n", start_cmd);
     child.write(line.as_bytes()).map_err(|e| format!("sidecar stdin: {e}"))?;
@@ -553,4 +567,118 @@ fn audio_forge_root(project_root: &str) -> PathBuf {
 
 fn active_state_path(project_root: &str) -> PathBuf {
     audio_forge_root(project_root).join("active.json")
+}
+
+#[tauri::command]
+pub async fn list_audio_devices(app: AppHandle) -> Result<Vec<AudioInputDevice>, String> {
+    let shell = app.shell();
+    let (mut rx, mut child) = shell
+        .sidecar("forge-recorder")
+        .map_err(|e| format!("sidecar lookup: {e}"))?
+        .spawn()
+        .map_err(|e| format!("sidecar spawn: {e}"))?;
+
+    child
+        .write(b"{\"cmd\":\"list_devices\"}\n")
+        .map_err(|e| format!("sidecar stdin: {e}"))?;
+
+    let timeout = std::time::Duration::from_secs(3);
+    let start = std::time::Instant::now();
+
+    while start.elapsed() < timeout {
+        match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
+            Ok(Some(CommandEvent::Stdout(bytes))) => {
+                let line = String::from_utf8_lossy(&bytes).to_string();
+                for raw in line.lines() {
+                    let trimmed = raw.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                        if value.get("event").and_then(|v| v.as_str()) == Some("devices") {
+                            let _ = child.kill();
+                            let arr = value
+                                .get("devices")
+                                .and_then(|v| v.as_array())
+                                .cloned()
+                                .unwrap_or_default();
+                            let devices: Vec<AudioInputDevice> = arr
+                                .into_iter()
+                                .filter_map(|v| serde_json::from_value(v).ok())
+                                .collect();
+                            return Ok(devices);
+                        }
+                    }
+                }
+            }
+            Ok(Some(CommandEvent::Stderr(_))) => {}
+            Ok(Some(CommandEvent::Terminated(_))) => break,
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    let _ = child.kill();
+    Err("timed out waiting for devices event".to_string())
+}
+
+/// Delete a recording (markdown + referenced WAVs + index entry) via forge-lib.
+///
+/// `relative_path` is the markdown file's path relative to the project root,
+/// e.g., `audio-forge/recordings/2026-05-11-recording-2026-05-11-0214-2.md`.
+/// The frontend already has this as `recording.path` from its scan, so it can
+/// be passed straight through. forge-lib's CLI expects an absolute path; we
+/// resolve here.
+#[tauri::command]
+pub async fn run_recording_delete(
+    app: AppHandle,
+    project_root: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let abs_path = Path::new(&project_root)
+        .join(&relative_path)
+        .to_string_lossy()
+        .to_string();
+
+    let workdir = resolve_forge_lib_workdir(&app, &project_root)?;
+    let shell = app.shell();
+    let output = shell
+        .command("python3")
+        .args([
+            "forge-lib/forge.py",
+            "recording",
+            "delete",
+            &abs_path,
+            "--directory",
+            &project_root,
+        ])
+        .current_dir(workdir)
+        .output()
+        .await
+        .map_err(|e| format!("forge recording delete exec: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "forge recording delete failed (exit {:?}): stdout={} stderr={}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let envelope: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("parse forge envelope: {e}: {stdout}"))?;
+    let success = envelope
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !success {
+        let err = envelope
+            .get("error")
+            .and_then(|s| s.as_str())
+            .unwrap_or("delete failed");
+        return Err(err.to_string());
+    }
+    Ok(())
 }

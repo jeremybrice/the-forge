@@ -41,6 +41,42 @@ window.AudioForgeView = (function () {
   let unlisteners = [];
   let searchQuery = '';
 
+  /* ── Mic device persistence ── */
+  const MIC_DEVICE_KEY = 'audio-forge.micDeviceUID';
+
+  function loadMicDeviceUID() {
+    try {
+      const raw = window.localStorage.getItem(MIC_DEVICE_KEY);
+      return (typeof raw === 'string' && raw.length > 0) ? raw : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveMicDeviceUID(uid) {
+    try {
+      if (uid && typeof uid === 'string') {
+        window.localStorage.setItem(MIC_DEVICE_KEY, uid);
+      } else {
+        window.localStorage.removeItem(MIC_DEVICE_KEY);
+      }
+    } catch (e) {
+      // localStorage unavailable / quota — degrade silently
+    }
+  }
+
+  function normalizeDeviceList(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((d) => d && typeof d.uid === 'string' && typeof d.name === 'string')
+      .map((d) => ({
+        uid: d.uid,
+        name: d.name,
+        isDefault: !!d.isDefault,
+        channels: Number.isFinite(d.channels) ? d.channels : 0,
+      }));
+  }
+
   /* ── Auto-stop persistence ── */
   const AUTOSTOP_KEY = 'audio-forge.autoStopMinutes';
 
@@ -84,6 +120,15 @@ window.AudioForgeView = (function () {
           <div class="af-source-checkboxes" data-af-ref="sources">
             <label><input type="checkbox" data-af-source="system" checked> system</label>
             <label><input type="checkbox" data-af-source="mic" checked> mic</label>
+          </div>
+
+          <div class="af-mic-device" data-af-ref="mic-device-wrap">
+            <label class="af-mic-device-label" for="af-mic-device-select">
+              <i class="fa-solid fa-microphone-lines"></i> Mic:
+            </label>
+            <select id="af-mic-device-select" data-af-ref="mic-device-select">
+              <option value="">(System default)</option>
+            </select>
           </div>
 
           <div class="af-autostop" data-af-ref="autostop">
@@ -154,6 +199,8 @@ window.AudioForgeView = (function () {
 
     initAutoStopDropdown();
     wireAutoStopControls();
+    populateMicDevices();
+    wireMicDeviceControl();
   }
 
   function initAutoStopDropdown() {
@@ -349,16 +396,30 @@ window.AudioForgeView = (function () {
       const date = helpers.formatTimestamp(fm.created || '').split(' ')[0] || '';
       const sel = (r.frontmatter.id === selectedId) ? ' selected' : '';
       return `
-        <div class="af-item${sel}" data-af-id="${esc(fm.id)}">
+        <div class="af-item${sel}" data-af-id="${esc(fm.id)}" data-af-path="${esc(r.path)}">
           <div class="af-item-title">${esc(fm.title || '(untitled)')}</div>
           <div class="af-item-meta">
             <span>${esc(date)}</span>
             <span>${esc(dur)}</span>
             <span class="${status.cls}"><i class="fa-solid ${status.icon}"></i> ${esc(status.label)}</span>
           </div>
+          <button class="af-item-delete" data-af-action="delete-recording"
+                  title="Delete recording" aria-label="Delete recording">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </div>
       `;
     }).join('');
+    // Per-item delete button. stopPropagation so the row's select handler
+    // doesn't also fire when the trash icon is clicked.
+    list.querySelectorAll('[data-af-action="delete-recording"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = btn.closest('[data-af-id]');
+        if (!row) return;
+        deleteRecording(row.dataset.afId, row.dataset.afPath, row.querySelector('.af-item-title')?.textContent || '');
+      });
+    });
     list.querySelectorAll('[data-af-id]').forEach((el) => {
       el.addEventListener('click', () => {
         selectedId = el.dataset.afId;
@@ -473,6 +534,8 @@ window.AudioForgeView = (function () {
     $('[data-af-source="mic"]').disabled    = (s !== 'idle');
     const autostopSelect = ref('autostop-select');
     if (autostopSelect) autostopSelect.disabled = (s !== 'idle');
+    const micDeviceSelect = ref('mic-device-select');
+    if (micDeviceSelect) micDeviceSelect.disabled = (s !== 'idle');
     // If a custom-entry panel happened to be open and we are no longer idle,
     // hide it (manual safety against weird edge timing).
     const custom = ref('autostop-custom');
@@ -489,10 +552,16 @@ window.AudioForgeView = (function () {
   /* ═══════════════════════════════════════════════════════════
      Tauri command wrappers
      ═══════════════════════════════════════════════════════════ */
-  async function invokeStart(sources) {
+  async function invokeStart(sources, micDeviceUID) {
     const core = tauriCore();
     if (!core) throw new Error('Tauri runtime not available');
-    return core.invoke('start_recording', { projectRoot, sources });
+    // Tauri's serde maps camelCase ↔ snake_case automatically; we pass
+    // micDeviceUID and the Rust side receives mic_device_uid.
+    return core.invoke('start_recording', {
+      projectRoot,
+      sources,
+      micDeviceUID: micDeviceUID || null,
+    });
   }
   async function invokeStop() {
     const core = tauriCore();
@@ -504,6 +573,17 @@ window.AudioForgeView = (function () {
     if (!core) throw new Error('Tauri runtime not available');
     return core.invoke('get_recording_status');
   }
+  async function invokeListDevices() {
+    const core = tauriCore();
+    if (!core) return [];
+    try {
+      const raw = await core.invoke('list_audio_devices');
+      return normalizeDeviceList(raw);
+    } catch (e) {
+      console.warn('[AudioForge] list_audio_devices failed', e);
+      return [];
+    }
+  }
   async function invokeCreate(payload) {
     const core = tauriCore();
     return core.invoke('run_recording_create', payload);
@@ -511,6 +591,11 @@ window.AudioForgeView = (function () {
   async function invokeTranscribe(id, model) {
     const core = tauriCore();
     return core.invoke('run_recording_transcribe', { projectRoot, id, model: model || 'large-v3-turbo' });
+  }
+  async function invokeDelete(relativePath) {
+    const core = tauriCore();
+    if (!core) throw new Error('Tauri runtime not available');
+    return core.invoke('run_recording_delete', { projectRoot, relativePath });
   }
 
   async function invokeRecover() {
@@ -634,6 +719,37 @@ window.AudioForgeView = (function () {
     renderDetail();
   }
 
+  async function deleteRecording(id, relativePath, title) {
+    if (!id || !relativePath) return;
+    // Don't allow deletion while a recording is in progress — the active.json
+    // / state machine assumes the recording set is stable while busy.
+    if (machineState.status !== 'idle') {
+      toast('Cannot delete while a recording is in progress.', 'warn');
+      return;
+    }
+    const label = (title || '').trim() || id;
+    // Tauri 2's webview proxies window.confirm through the dialog plugin and
+    // returns a Promise<boolean>, NOT a synchronous boolean. We must await so
+    // the user actually sees the dialog before the delete fires. The await
+    // form is also safe against a plain-browser fallback (which returns a
+    // boolean synchronously) — `await <non-promise>` just resolves to the
+    // value.
+    const ok = await window.confirm(
+      `Delete "${label}"?\n\nThis removes the markdown file, its audio files, and the index entry. This cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      await invokeDelete(relativePath);
+    } catch (e) {
+      toast(`Delete failed: ${friendlyError(e)}`, 'error');
+      return;
+    }
+    if (selectedId === id) selectedId = null;
+    await refresh();
+    renderDetail();
+    toast('Recording deleted.', 'info');
+  }
+
   async function retryTranscribe(id) {
     if (!id) return;
     // Drop into a transcribing-like UI for this id while the call runs.
@@ -672,7 +788,8 @@ window.AudioForgeView = (function () {
       const autoStopMinutes = getAutoStopSelection();
       dispatch({ type: 'RECORD_CLICK', sources, autoStopMinutes });
       try {
-        const started = await invokeStart(sources);
+        const micDeviceUID = (ref('mic-device-select') && ref('mic-device-select').value) || '';
+        const started = await invokeStart(sources, micDeviceUID);
         const startedAt = new Date().toISOString();
         dispatch({
           type: 'START_OK',
@@ -785,6 +902,15 @@ window.AudioForgeView = (function () {
       dispatch({ type: 'ERROR_EVENT', message: msg });
       toast(msg, 'error');
     }));
+    unlisteners.push(await evt.listen('audio-forge://warning', (e) => {
+      const p = e.payload || {};
+      // We only display warnings; they do not affect the state machine.
+      if (p.code === 'MIC_SILENT_AT_SOURCE') {
+        toast(p.message || 'Microphone is producing silence.', 'warn');
+      } else if (p.message) {
+        toast(p.message, 'warn');
+      }
+    }));
     unlisteners.push(await evt.listen('audio-forge://terminated', () => {
       // The sidecar exits cleanly after a normal stop (state is 'stopping' or
       // beyond by then). Only treat termination as unexpected when we still
@@ -843,6 +969,59 @@ window.AudioForgeView = (function () {
     }
     renderList();
     renderDetail();
+  }
+
+  async function populateMicDevices() {
+    const select = ref('mic-device-select');
+    if (!select) return;
+    const devices = await invokeListDevices();
+    const stored = loadMicDeviceUID();
+
+    // Wipe everything except the default placeholder.
+    const placeholder = select.querySelector('option[value=""]');
+    select.innerHTML = '';
+    if (placeholder) {
+      select.appendChild(placeholder);
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '(System default)';
+      select.appendChild(opt);
+    }
+
+    for (const d of devices) {
+      const opt = document.createElement('option');
+      opt.value = d.uid;
+      const tag = d.isDefault ? ' (default)' : '';
+      opt.textContent = `${d.name}${tag}`;
+      select.appendChild(opt);
+    }
+
+    // Restore prior selection if still available.
+    if (stored && devices.some((d) => d.uid === stored)) {
+      select.value = stored;
+    } else {
+      select.value = '';
+      if (stored) {
+        // The previously chosen device disappeared. Clear stored so we don't
+        // keep "remembering" something the user can no longer see.
+        saveMicDeviceUID('');
+        toast('Previously selected mic is unavailable; falling back to system default.', 'warn');
+      }
+    }
+  }
+
+  function wireMicDeviceControl() {
+    const select = ref('mic-device-select');
+    if (!select) return;
+    select.addEventListener('change', () => {
+      saveMicDeviceUID(select.value || '');
+    });
+    // Refresh the device list every time the user opens the dropdown so
+    // plug/unplug events are reflected without an app restart.
+    select.addEventListener('mousedown', () => {
+      populateMicDevices();
+    });
   }
 
   /* ── Search wiring (called from scaffold AFTER scaffold completes) ── */

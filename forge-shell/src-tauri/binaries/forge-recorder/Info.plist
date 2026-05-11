@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.forge-marketplace.shell.recorder</string>
+  <key>CFBundleName</key>
+  <string>forge-recorder</string>
+  <key>CFBundleExecutable</key>
+  <string>forge-recorder</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Forge Shell records your microphone for transcription via the audio-forge plugin.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Forge Shell records system audio for transcription via the audio-forge plugin.</string>
+</dict>
+</plist>

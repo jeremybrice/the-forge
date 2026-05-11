@@ -29,6 +29,32 @@ python forge-lib/forge.py recording transcribe <id>
 python forge-lib/forge.py recording prune --older-than-days 30
 ```
 
+## Choosing a Microphone
+
+By default Forge Shell records from the system default input device (System Settings → Sound → Input). The Audio Forge toolbar includes a **Mic** dropdown that lets you override this per project.
+
+- Pick **(System default)** to follow whatever macOS considers the default input.
+- Pick a specific device (e.g. "Logitech HD Webcam C615 (default)") to record from it regardless of the system default. This is useful when the MacBook is closed in clamshell mode (the built-in mic is disabled by hardware) or when a virtual device like BlackHole is the default but you want a physical mic.
+
+Your selection is remembered across launches via `localStorage`. If the device disappears (e.g. you unplug the USB mic), Forge Shell silently falls back to the system default and shows a one-time warning.
+
+### Silent-source warning
+
+Within ~1 second of pressing Record, Forge Shell checks whether the chosen mic is actually producing audio. If the input is bit-perfect silence (peak amplitude < 0.0001), a toast appears:
+
+> Microphone is producing silence (peak=0.0). Device=…. Likely causes: MacBook lid closed disabling built-in mic, mic muted in System Settings, a HAL plugin (Wispr/Krisp/etc.) intercepting the input, or wrong device selected.
+
+The recording continues — you may still want the system-audio track even when the mic is dead. Stop early if the warning surprises you.
+
+### Diagnosing a silent mic
+
+| Cause | Fix |
+|---|---|
+| Lid closed on MacBook Pro | Open the lid, or pick a different device in the dropdown |
+| Input muted at OS level | System Settings → Sound → Input → raise volume slider |
+| HAL plugin (Wispr Flow, Krisp, NVIDIA Broadcast) intercepting | Quit the interceptor app, retry |
+| Wrong default device selected | Pick the intended device explicitly in the toolbar |
+
 ## File Layout
 
 ```
