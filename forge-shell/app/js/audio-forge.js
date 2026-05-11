@@ -41,6 +41,42 @@ window.AudioForgeView = (function () {
   let unlisteners = [];
   let searchQuery = '';
 
+  /* ── Mic device persistence ── */
+  const MIC_DEVICE_KEY = 'audio-forge.micDeviceUID';
+
+  function loadMicDeviceUID() {
+    try {
+      const raw = window.localStorage.getItem(MIC_DEVICE_KEY);
+      return (typeof raw === 'string' && raw.length > 0) ? raw : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveMicDeviceUID(uid) {
+    try {
+      if (uid && typeof uid === 'string') {
+        window.localStorage.setItem(MIC_DEVICE_KEY, uid);
+      } else {
+        window.localStorage.removeItem(MIC_DEVICE_KEY);
+      }
+    } catch (e) {
+      // localStorage unavailable / quota — degrade silently
+    }
+  }
+
+  function normalizeDeviceList(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((d) => d && typeof d.uid === 'string' && typeof d.name === 'string')
+      .map((d) => ({
+        uid: d.uid,
+        name: d.name,
+        isDefault: !!d.isDefault,
+        channels: Number.isFinite(d.channels) ? d.channels : 0,
+      }));
+  }
+
   /* ── Auto-stop persistence ── */
   const AUTOSTOP_KEY = 'audio-forge.autoStopMinutes';
 
@@ -163,6 +199,8 @@ window.AudioForgeView = (function () {
 
     initAutoStopDropdown();
     wireAutoStopControls();
+    populateMicDevices();
+    wireMicDeviceControl();
   }
 
   function initAutoStopDropdown() {
@@ -482,6 +520,8 @@ window.AudioForgeView = (function () {
     $('[data-af-source="mic"]').disabled    = (s !== 'idle');
     const autostopSelect = ref('autostop-select');
     if (autostopSelect) autostopSelect.disabled = (s !== 'idle');
+    const micDeviceSelect = ref('mic-device-select');
+    if (micDeviceSelect) micDeviceSelect.disabled = (s !== 'idle');
     // If a custom-entry panel happened to be open and we are no longer idle,
     // hide it (manual safety against weird edge timing).
     const custom = ref('autostop-custom');
@@ -512,6 +552,17 @@ window.AudioForgeView = (function () {
     const core = tauriCore();
     if (!core) throw new Error('Tauri runtime not available');
     return core.invoke('get_recording_status');
+  }
+  async function invokeListDevices() {
+    const core = tauriCore();
+    if (!core) return [];
+    try {
+      const raw = await core.invoke('list_audio_devices');
+      return normalizeDeviceList(raw);
+    } catch (e) {
+      console.warn('[AudioForge] list_audio_devices failed', e);
+      return [];
+    }
   }
   async function invokeCreate(payload) {
     const core = tauriCore();
@@ -852,6 +903,59 @@ window.AudioForgeView = (function () {
     }
     renderList();
     renderDetail();
+  }
+
+  async function populateMicDevices() {
+    const select = ref('mic-device-select');
+    if (!select) return;
+    const devices = await invokeListDevices();
+    const stored = loadMicDeviceUID();
+
+    // Wipe everything except the default placeholder.
+    const placeholder = select.querySelector('option[value=""]');
+    select.innerHTML = '';
+    if (placeholder) {
+      select.appendChild(placeholder);
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '(System default)';
+      select.appendChild(opt);
+    }
+
+    for (const d of devices) {
+      const opt = document.createElement('option');
+      opt.value = d.uid;
+      const tag = d.isDefault ? ' (default)' : '';
+      opt.textContent = `${d.name}${tag}`;
+      select.appendChild(opt);
+    }
+
+    // Restore prior selection if still available.
+    if (stored && devices.some((d) => d.uid === stored)) {
+      select.value = stored;
+    } else {
+      select.value = '';
+      if (stored) {
+        // The previously chosen device disappeared. Clear stored so we don't
+        // keep "remembering" something the user can no longer see.
+        saveMicDeviceUID('');
+        toast('Previously selected mic is unavailable; falling back to system default.', 'warn');
+      }
+    }
+  }
+
+  function wireMicDeviceControl() {
+    const select = ref('mic-device-select');
+    if (!select) return;
+    select.addEventListener('change', () => {
+      saveMicDeviceUID(select.value || '');
+    });
+    // Refresh the device list every time the user opens the dropdown so
+    // plug/unplug events are reflected without an app restart.
+    select.addEventListener('mousedown', () => {
+      populateMicDevices();
+    });
   }
 
   /* ── Search wiring (called from scaffold AFTER scaffold completes) ── */
