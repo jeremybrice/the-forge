@@ -17,6 +17,13 @@ final class MicCapture {
     }
 
     func start() throws {
+        // TCC pre-flight. On macOS, AVAudioEngine does NOT throw when mic
+        // permission is denied — it starts and delivers zero-amplitude buffers
+        // forever, producing silent WAVs that whisper transcribes as "Thank
+        // you." Surface the denial explicitly so the recorder bails with
+        // PERMISSION_MIC instead of recording silence.
+        try MicCapture.ensureAuthorized()
+
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
         self.inputSampleRate = inputFormat.sampleRate
@@ -95,6 +102,54 @@ final class MicCapture {
 
     var durationSeconds: Double {
         sampleCount > 0 ? Double(sampleCount) / inputSampleRate : 0
+    }
+
+    /// Synchronously confirms (or requests) TCC microphone access for this
+    /// process. Throws if access is denied or restricted. Must be called from
+    /// the recorder's command thread, NOT from a CoreAudio callback.
+    ///
+    /// AVAudioEngine's silent-on-denial behavior is the reason this exists:
+    /// without an explicit check, a denied permission produces zero-amplitude
+    /// buffers with no error, and the failure is only visible downstream when
+    /// the WAV gets transcribed as "Thank you."
+    static func ensureAuthorized() throws {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        switch status {
+        case .authorized:
+            return
+        case .notDetermined:
+            // First-run: synchronously block on the TCC prompt completion.
+            let sem = DispatchSemaphore(value: 0)
+            var granted = false
+            AVCaptureDevice.requestAccess(for: .audio) { ok in
+                granted = ok
+                sem.signal()
+            }
+            // 60 s is generous; macOS shows the prompt immediately, the user
+            // just needs to click.
+            _ = sem.wait(timeout: .now() + 60)
+            if !granted {
+                throw NSError(
+                    domain: "ForgeRecorder", code: 10,
+                    userInfo: [NSLocalizedDescriptionKey:
+                        "microphone permission denied by user"])
+            }
+        case .denied:
+            throw NSError(
+                domain: "ForgeRecorder", code: 11,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "microphone permission denied — enable in System Settings → Privacy & Security → Microphone for forge-recorder, then retry"])
+        case .restricted:
+            throw NSError(
+                domain: "ForgeRecorder", code: 12,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "microphone access is restricted on this device (parental controls or MDM)"])
+        @unknown default:
+            throw NSError(
+                domain: "ForgeRecorder", code: 13,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "unknown microphone authorization status: \(status.rawValue)"])
+        }
     }
 }
 

@@ -24,4 +24,17 @@ DEST="$BIN_DIR/forge-recorder-$TRIPLE"
 
 cp -f "$SRC" "$DEST"
 chmod +x "$DEST"
+
+# Re-codesign so the embedded __TEXT,__info_plist section is hashed into the
+# Code Directory ("Info.plist=bound" in `codesign -dvvv`). Swift's linker
+# adhoc-signs the binary *before* sectcreate is fully reflected in the CD, so
+# without this step macOS reports the plist as unbound and may refuse to read
+# the bundle identifier for TCC attribution.
+#
+# We pin the identifier explicitly so the cdhash stays stable across rebuilds
+# and the user only sees the mic permission prompt once.
+/usr/bin/codesign --force --sign - \
+  --identifier com.forge-marketplace.shell.recorder \
+  "$DEST"
+
 echo "Wrote $DEST"
