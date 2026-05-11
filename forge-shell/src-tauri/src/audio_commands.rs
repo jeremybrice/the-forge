@@ -103,6 +103,7 @@ pub async fn start_recording(
     state: State<'_, RecorderState>,
     project_root: String,
     sources: Vec<String>,
+    mic_device_uid: Option<String>,
 ) -> Result<StartedRecording, String> {
     // Reject if a recording is already in progress
     {
@@ -137,6 +138,10 @@ pub async fn start_recording(
         "outDir": out_dir.to_string_lossy(),
         "id": id,
         "sources": sources,
+        // Optional. When present and non-empty, the recorder will set this
+        // device as the input on AVAudioEngine before starting. When null or
+        // empty, the recorder uses the system default input.
+        "micDeviceUID": mic_device_uid.as_deref().unwrap_or(""),
     });
     let line = format!("{}\n", start_cmd);
     child.write(line.as_bytes()).map_err(|e| format!("sidecar stdin: {e}"))?;
