@@ -46,6 +46,7 @@ pub fn run() {
       audio_commands::recover_orphaned_recording,
       audio_commands::run_recording_create,
       audio_commands::run_recording_transcribe,
+      audio_commands::run_recording_delete,
       audio_commands::list_audio_devices,
     ])
     .run(tauri::generate_context!())

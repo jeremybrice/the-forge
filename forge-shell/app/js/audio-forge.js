@@ -396,16 +396,30 @@ window.AudioForgeView = (function () {
       const date = helpers.formatTimestamp(fm.created || '').split(' ')[0] || '';
       const sel = (r.frontmatter.id === selectedId) ? ' selected' : '';
       return `
-        <div class="af-item${sel}" data-af-id="${esc(fm.id)}">
+        <div class="af-item${sel}" data-af-id="${esc(fm.id)}" data-af-path="${esc(r.path)}">
           <div class="af-item-title">${esc(fm.title || '(untitled)')}</div>
           <div class="af-item-meta">
             <span>${esc(date)}</span>
             <span>${esc(dur)}</span>
             <span class="${status.cls}"><i class="fa-solid ${status.icon}"></i> ${esc(status.label)}</span>
           </div>
+          <button class="af-item-delete" data-af-action="delete-recording"
+                  title="Delete recording" aria-label="Delete recording">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </div>
       `;
     }).join('');
+    // Per-item delete button. stopPropagation so the row's select handler
+    // doesn't also fire when the trash icon is clicked.
+    list.querySelectorAll('[data-af-action="delete-recording"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = btn.closest('[data-af-id]');
+        if (!row) return;
+        deleteRecording(row.dataset.afId, row.dataset.afPath, row.querySelector('.af-item-title')?.textContent || '');
+      });
+    });
     list.querySelectorAll('[data-af-id]').forEach((el) => {
       el.addEventListener('click', () => {
         selectedId = el.dataset.afId;
@@ -578,6 +592,11 @@ window.AudioForgeView = (function () {
     const core = tauriCore();
     return core.invoke('run_recording_transcribe', { projectRoot, id, model: model || 'large-v3-turbo' });
   }
+  async function invokeDelete(relativePath) {
+    const core = tauriCore();
+    if (!core) throw new Error('Tauri runtime not available');
+    return core.invoke('run_recording_delete', { projectRoot, relativePath });
+  }
 
   async function invokeRecover() {
     const core = tauriCore();
@@ -698,6 +717,31 @@ window.AudioForgeView = (function () {
     selectedId = id;
     renderList();
     renderDetail();
+  }
+
+  async function deleteRecording(id, relativePath, title) {
+    if (!id || !relativePath) return;
+    // Don't allow deletion while a recording is in progress — the active.json
+    // / state machine assumes the recording set is stable while busy.
+    if (machineState.status !== 'idle') {
+      toast('Cannot delete while a recording is in progress.', 'warn');
+      return;
+    }
+    const label = (title || '').trim() || id;
+    const ok = window.confirm(
+      `Delete "${label}"?\n\nThis removes the markdown file, its audio files, and the index entry. This cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      await invokeDelete(relativePath);
+    } catch (e) {
+      toast(`Delete failed: ${friendlyError(e)}`, 'error');
+      return;
+    }
+    if (selectedId === id) selectedId = null;
+    await refresh();
+    renderDetail();
+    toast('Recording deleted.', 'info');
   }
 
   async function retryTranscribe(id) {

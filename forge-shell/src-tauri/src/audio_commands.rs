@@ -621,3 +621,64 @@ pub async fn list_audio_devices(app: AppHandle) -> Result<Vec<AudioInputDevice>,
     let _ = child.kill();
     Err("timed out waiting for devices event".to_string())
 }
+
+/// Delete a recording (markdown + referenced WAVs + index entry) via forge-lib.
+///
+/// `relative_path` is the markdown file's path relative to the project root,
+/// e.g., `audio-forge/recordings/2026-05-11-recording-2026-05-11-0214-2.md`.
+/// The frontend already has this as `recording.path` from its scan, so it can
+/// be passed straight through. forge-lib's CLI expects an absolute path; we
+/// resolve here.
+#[tauri::command]
+pub async fn run_recording_delete(
+    app: AppHandle,
+    project_root: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let abs_path = Path::new(&project_root)
+        .join(&relative_path)
+        .to_string_lossy()
+        .to_string();
+
+    let workdir = resolve_forge_lib_workdir(&app, &project_root)?;
+    let shell = app.shell();
+    let output = shell
+        .command("python3")
+        .args([
+            "forge-lib/forge.py",
+            "recording",
+            "delete",
+            &abs_path,
+            "--directory",
+            &project_root,
+        ])
+        .current_dir(workdir)
+        .output()
+        .await
+        .map_err(|e| format!("forge recording delete exec: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "forge recording delete failed (exit {:?}): stdout={} stderr={}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let envelope: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("parse forge envelope: {e}: {stdout}"))?;
+    let success = envelope
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !success {
+        let err = envelope
+            .get("error")
+            .and_then(|s| s.as_str())
+            .unwrap_or("delete failed");
+        return Err(err.to_string());
+    }
+    Ok(())
+}
