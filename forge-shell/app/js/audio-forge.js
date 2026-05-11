@@ -86,6 +86,15 @@ window.AudioForgeView = (function () {
             <label><input type="checkbox" data-af-source="mic" checked> mic</label>
           </div>
 
+          <div class="af-mic-device" data-af-ref="mic-device-wrap">
+            <label class="af-mic-device-label" for="af-mic-device-select">
+              <i class="fa-solid fa-microphone-lines"></i> Mic:
+            </label>
+            <select id="af-mic-device-select" data-af-ref="mic-device-select">
+              <option value="">(System default)</option>
+            </select>
+          </div>
+
           <div class="af-autostop" data-af-ref="autostop">
             <label class="af-autostop-label" for="af-autostop-select">
               <i class="fa-regular fa-clock"></i> Auto-stop:
