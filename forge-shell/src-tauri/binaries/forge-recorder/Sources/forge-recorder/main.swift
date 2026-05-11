@@ -649,8 +649,10 @@ final class Recorder {
 
         if self.sources.contains("mic") {
             let url = URL(fileURLWithPath: outDir).appendingPathComponent("\(id)-mic.wav")
+            // Optional caller-provided device UID. nil => system default input.
+            let preferredUID = (payload["micDeviceUID"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             do {
-                let cap = MicCapture(outputURL: url)
+                let cap = MicCapture(outputURL: url, preferredDeviceUID: preferredUID)
                 try cap.start()
                 self.activeMic = cap
                 startedFiles["mic"] = url.path
