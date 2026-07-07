@@ -110,12 +110,13 @@
 }
 
 .af-sidebar {
-  width: 320px;
+  width: var(--plugin-sidebar-current, 320px);
   border-right: 1px solid var(--border-color);
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.18s ease;
 }
 
 .af-sidebar-header {
