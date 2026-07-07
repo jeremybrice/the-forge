@@ -44,7 +44,7 @@
     Helpers.SidebarStorage.write(pluginId, 'collapsed', collapsed ? '1' : '0');
   }
 
-  function _applyState(el, layout, sidebar, state, defaults) {
+  function _applyState(el, layout, sidebar, state) {
     if (state.collapsed) {
       el.classList.add(_collapsedClassName(_prefix(layout)));
       layout.style.removeProperty('--plugin-sidebar-current');
@@ -107,7 +107,7 @@
     }
 
     function applyAndPersist(state) {
-      _applyState(el, layout, sidebar, state, defaults);
+      _applyState(el, layout, sidebar, state);
       _writeState(pluginId, state.width, state.collapsed);
     }
 
@@ -128,11 +128,12 @@
       st.width = clamped;
       st.collapsed = false;
       applyAndPersist(st);
+      if (toggleBtn) _toggleIcon(toggleBtn, false);
     }
 
     /* ── Initial state ── */
     var initial = _readState(pluginId, defaults);
-    _applyState(el, layout, sidebar, initial, defaults);
+    _applyState(el, layout, sidebar, initial);
     if (toggleBtn) _toggleIcon(toggleBtn, initial.collapsed);
 
     /* ── Toggle button ── */
@@ -148,7 +149,7 @@
     var startW = 0;
 
     function onMouseDown(e) {
-      if (initial.collapsed) return;     /* belt-and-suspenders: resizer is display:none when collapsed */
+      if (el.classList.contains(_collapsedClassName(_prefix(layout)))) return;     /* belt-and-suspenders: resizer is display:none when collapsed */
       e.preventDefault();
       dragging = true;
       startX = e.clientX;
