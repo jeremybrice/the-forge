@@ -560,3 +560,65 @@
 }
 
 .modal-overlay.visible .modal-content { animation: modalIn 0.25s ease; }
+
+/* ═══════════════════════════════════════════════════════════
+   Sidebar resizer + collapse (shared across all plugin views)
+   (added 2026-07-07 — collapsible + resizable plugin sidebars)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Drag handle on the right edge of every plugin sidebar.
+   Sits in the sidebar grid column and hangs 3px over the divider. */
+.sidebar-resizer {
+  grid-row: 2;
+  grid-column: 1;
+  justify-self: end;
+  width: 6px;
+  margin-right: -3px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  transition: background 0.15s ease;
+}
+.sidebar-resizer:hover,
+.sidebar-resizer:focus-visible,
+.sidebar-resizer.dragging {
+  background: var(--accent);
+  outline: none;
+}
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--border-color);
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer.dragging::after {
+  background: transparent;
+}
+
+/* Hide sidebar + resizer when the layout has the *-sidebar-collapsed class.
+   Attribute selector matches all 7 plugin prefixes (pfl/cf/raf/rf/sf/of/af). */
+[class$="-sidebar-collapsed"] .pfl-sidebar,
+[class$="-sidebar-collapsed"] .cf-sidebar,
+[class$="-sidebar-collapsed"] .raf-sidebar,
+[class$="-sidebar-collapsed"] .rf-sidebar,
+[class$="-sidebar-collapsed"] .sf-sidebar,
+[class$="-sidebar-collapsed"] .of-sidebar,
+[class$="-sidebar-collapsed"] .af-sidebar,
+[class$="-sidebar-collapsed"] .sidebar-resizer {
+  display: none;
+}
+
+/* While dragging, disable text selection on everything and force
+   the resize cursor so it doesn't flicker on hover boundaries. */
+body.sidebar-dragging,
+body.sidebar-dragging * {
+  user-select: none;
+  cursor: col-resize !important;
+}
