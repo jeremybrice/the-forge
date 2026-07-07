@@ -133,6 +133,7 @@ window.OutlookForgeView = (function () {
           </div>
 
         </div>
+        <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
 
         <!-- Detail Panel -->
         <div class="of-detail-panel" data-of-ref="detail-panel"></div>
@@ -159,6 +160,15 @@ window.OutlookForgeView = (function () {
 
       </div>
     `;
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'outlook-forge',
+        rootSelector: '#view-outlook-forge',
+        sidebarSelector: '.of-sidebar',
+        toggleSelector: '[data-of-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════

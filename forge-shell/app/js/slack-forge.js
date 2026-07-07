@@ -131,6 +131,7 @@ window.SlackForgeView = (function () {
           </div>
 
         </div>
+        <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
 
         <!-- Detail Panel -->
         <div class="sf-detail-panel" data-sf-ref="detail-panel"></div>
@@ -157,6 +158,15 @@ window.SlackForgeView = (function () {
 
       </div>
     `;
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'slack-forge',
+        rootSelector: '#view-slack-forge',
+        sidebarSelector: '.sf-sidebar',
+        toggleSelector: '[data-sf-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════

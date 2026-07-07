@@ -125,6 +125,7 @@ window.ReportForgeView = (function () {
           </div>
           <div class="rf-report-list" data-ref="report-list"></div>
         </div>
+        <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
 
         <!-- Detail Panel -->
         <div class="rf-detail-panel" data-ref="detail-panel">
@@ -133,6 +134,15 @@ window.ReportForgeView = (function () {
       </div>
     `;
     initialized = true;
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'report-forge',
+        rootSelector: '#view-report-forge',
+        sidebarSelector: '.rf-sidebar',
+        toggleSelector: '[data-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════

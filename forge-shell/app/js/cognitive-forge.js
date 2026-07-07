@@ -99,6 +99,7 @@ window.CognitiveForgeView = (function () {
           </div>
           <div class="cf-session-list" data-ref="session-list"></div>
         </div>
+        <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
 
         <!-- Detail Panel -->
         <div class="cf-detail-panel" data-ref="detail-panel">
@@ -110,6 +111,15 @@ window.CognitiveForgeView = (function () {
     bindToolbar();
     bindFilters();
     bindSearch();
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'cognitive-forge',
+        rootSelector: '#view-cognitive-forge',
+        sidebarSelector: '.cf-sidebar',
+        toggleSelector: '[data-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
