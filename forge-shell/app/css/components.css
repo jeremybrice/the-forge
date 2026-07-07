@@ -617,6 +617,16 @@
   [class$="-sidebar-collapsed"] .sidebar-resizer {
     display: none;
   }
+
+  /* When the sidebar is collapsed, collapse the first grid column to 0
+     so the detail panel takes the full viewport width. Specificity (0,2,0)
+     beats the per-plugin .X-layout rule (0,1,0). The transition on
+     grid-template-columns in each plugin's layout rule carries through
+     so collapse/expand animates smoothly. No-op for audio-forge
+     (display: flex, no grid-template-columns). */
+  [class$="-sidebar-collapsed"] > [class$="-layout"] {
+    grid-template-columns: 0 1fr;
+  }
 }
 
 /* While dragging, disable text selection on everything and force

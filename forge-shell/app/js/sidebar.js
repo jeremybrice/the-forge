@@ -120,10 +120,7 @@
 
     function setWidth(px) {
       var clamped = Helpers.clampWidth(px, cfg);
-      if (clamped == null) {
-        setCollapsed(true);
-        return;
-      }
+      if (clamped == null) clamped = cfg.min;
       var st = _readState(pluginId, defaults);
       st.width = clamped;
       st.collapsed = false;
@@ -182,12 +179,7 @@
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       var finalW = sidebar.getBoundingClientRect().width;
-      if (finalW <= cfg.min + 1) {
-        /* dragged below threshold → auto-collapse + reset to default on re-expand */
-        setCollapsed(true);
-      } else {
-        setWidth(finalW);
-      }
+      setWidth(finalW);
     }
 
     function onKeyDown(e) {
