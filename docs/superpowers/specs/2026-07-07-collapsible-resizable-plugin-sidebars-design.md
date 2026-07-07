@@ -22,8 +22,9 @@ This change makes the collapse + resize behavior work on desktop, makes the togg
 ## 2. Goals
 
 - Every plugin sidebar can be **collapsed** (hidden entirely) or **expanded** with a single click.
+- When collapsed, the **detail panel takes the full viewport width** — the previously-reserved sidebar column collapses to 0 (or the sidebar element is removed from flex layout for audio-forge), so the detail content can flow edge-to-edge.
 - Every plugin sidebar can be **resized** by dragging its right edge, within sane bounds.
-- A drag below the minimum width **auto-collapses** the sidebar (matches macOS panel behavior).
+- A drag below the minimum width **clamps at the minimum** (no auto-collapse). Collapse only happens via the toolbar button or the keyboard `Enter`/`Space` on the focused resizer. Drag is for resizing only.
 - Collapsed and width state **persists per plugin** in `localStorage`, so each plugin remembers its own layout.
 - Works with **keyboard only**: the resizer is focusable as `role="separator"`, ←/→ step 16px, Home/End jump to min/max, Enter/Space toggles.
 - Mobile behavior (≤768px sidebar-as-overlay) is **unchanged** — this change is desktop-focused.
@@ -45,7 +46,7 @@ Exposes a single function on the global `Sidebar` object:
 ```js
 window.Sidebar = {
   init(config)         // wire up one plugin's sidebar; idempotent
-  _clampWidth(px, cfg) // internal: returns integer px or null (= auto-collapse)
+  _clampWidth(px, cfg) // internal: returns integer px or null (= sub-min, callers clamp to cfg.min)
   _storage(pluginId, k)// internal: safe localStorage wrapper
 }
 ```
@@ -59,9 +60,9 @@ window.Sidebar = {
 | `sidebarSelector` | string | yes | the `<aside>` to resize/collapse (`'.pfl-sidebar'`) |
 | `toggleSelector` | string | yes | the toolbar toggle button (`'[data-pfl-action="toggle-sidebar"]'`) |
 | `resizerSelector` | string | yes | the drag handle `<div>` (`'.pfl-sidebar-resizer'`) |
-| `minWidth` | number | yes (default 180) | minimum px before auto-collapse |
-| `maxWidth` | number | yes (default 480) | maximum px |
-| `defaultWidth` | number | yes (default 280) | reset width after auto-collapse |
+| `minWidth` | number | yes (default 180) | minimum px the sidebar can be dragged to; dragging below this clamps to `minWidth` (no auto-collapse) |
+| `maxWidth` | number | yes (default 480) | maximum px the sidebar can be dragged to |
+| `defaultWidth` | number | yes (default 280) | width to apply on first render and on collapse→expand (when no persisted width exists) |
 
 Behavior:
 
@@ -134,6 +135,18 @@ transition: grid-template-columns 0.18s ease;
 ```
 
 (This is set in the per-plugin CSS file, not in `components.css`, to keep plugin layout grids co-located with the rest of that plugin's layout styles.)
+
+**When the sidebar is collapsed** (`*-sidebar-collapsed` class on the view root), the layout's grid template is overridden so the first column collapses to 0 and the detail panel fills the full viewport:
+
+```css
+[class$="-sidebar-collapsed"] > [class$="-layout"] {
+  grid-template-columns: 0 1fr;
+}
+```
+
+This rule sits inside the same `@media (min-width: 769px)` block as the other collapsed-state styles. Specificity (0,2,0) beats the per-plugin `.pfl-layout { ... }` rule (0,1,0) so the override wins when the collapsed class is present. The `transition: grid-template-columns 0.18s ease` carries through, so collapse/expand animates smoothly.
+
+Audio-forge uses `display: flex` (not CSS grid) for its layout, so this rule is a no-op for it; `.af-detail` already has `flex: 1` and expands to fill the remaining space when `.af-sidebar` is `display: none`.
 
 ### 4.3 Collapsed-state selector
 
@@ -229,7 +242,7 @@ Add `<script src="js/sidebar.js"></script>` before the plugin controller scripts
         ▼                              ▼
    flip class, persist         set width, on mouseup
    collapsed flag              persist width (or
-                               auto-collapse + reset)
+                                auto-collapse + reset)  (replaced: now just persists final width)
 ```
 
 ## 6. Error handling
@@ -239,7 +252,7 @@ Add `<script src="js/sidebar.js"></script>` before the plugin controller scripts
 - **No resizer at init**: log a `console.warn`, skip resize wiring; toggle still works.
 - **Re-init** (e.g. plugin view re-renders): `Sidebar.init` checks `data-sidebar-init="1"` on the root element, tears down prior listeners, then re-binds. Prevents double-fires.
 - **Drag start while already collapsed**: `Sidebar.init` skips the drag listener while the layout has the `*-sidebar-collapsed` class. The resizer is also `display: none` in that state, so this is mostly belt-and-suspenders.
-- **Window resize below `minWidth`**: the drag clamps at minWidth; the sidebar is never narrower than the configured minimum. We do not auto-collapse on window resize alone (user intent is clearer with explicit drag past min).
+- **Drag past minWidth**: clamps at minWidth; never auto-collapses. The user must use the toolbar button (or keyboard `Enter`/`Space` on the resizer) to collapse.
 
 ## 7. Testing
 
@@ -247,7 +260,7 @@ Add `<script src="js/sidebar.js"></script>` before the plugin controller scripts
 
 New file `app/test/sidebar.test.js` using `node --test` + `jsdom`. Tests cover pure logic only (no DOM wiring):
 
-- `clampWidth(170, {min:180,max:480,default:280})` → `null` (signals auto-collapse)
+- `clampWidth(170, {min:180,max:480,default:280})` → `null` (signals sub-min; caller clamps to `cfg.min`=180)
 - `clampWidth(180, ...)` → `180`
 - `clampWidth(200, ...)` → `200`
 - `clampWidth(600, ...)` → `480`
@@ -265,7 +278,7 @@ For each of the 7 plugins:
 - [ ] Reload page: previous collapsed state is restored.
 - [ ] Drag the right edge of the sidebar right; width grows up to 480px.
 - [ ] Drag the right edge of the sidebar left; width shrinks down to 180px.
-- [ ] Continue dragging left past minWidth; sidebar auto-collapses; release and click toggle to expand at default width (280px).
+- [ ] Continue dragging left past minWidth; sidebar clamps at minWidth (180px); release — sidebar stays at 180px. To collapse, use the toolbar button (or Tab to the resizer, press Enter).
 - [ ] Reload page: previous custom width is restored.
 - [ ] Tab to the resizer handle; ←/→ arrows step width by 16px; Home/End jump to min/max.
 - [ ] Tab to the resizer; Enter toggles collapse.

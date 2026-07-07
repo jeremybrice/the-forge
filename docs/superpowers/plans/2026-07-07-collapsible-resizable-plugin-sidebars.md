@@ -62,7 +62,7 @@ No deletions anywhere. Rollout order is deliberately safe: shared module + CSS f
 **Interfaces (this task produces):**
 ```js
 // Returns a clamped integer px, or null if the input is below minWidth
-// (signals the caller to auto-collapse the sidebar).
+// (signals the caller to clamp to cfg.min — no auto-collapse).
 clampWidth(px, cfg) → number | null
 // cfg = { min: number, max: number, default: number }
 
@@ -86,7 +86,7 @@ const helpers = require('../app/js/sidebar.helpers.js');
 
 const cfg = { min: 180, max: 480, default: 280 };
 
-test('clampWidth: returns null below min (signals auto-collapse)', () => {
+test('clampWidth: returns null below min (signals caller to clamp to cfg.min)', () => {
   assert.equal(helpers.clampWidth(170, cfg), null);
   assert.equal(helpers.clampWidth(0, cfg), null);
   assert.equal(helpers.clampWidth(-10, cfg), null);
@@ -145,7 +145,7 @@ Expected: FAIL — `Cannot find module '../app/js/sidebar.helpers.js'`
 
   function clampWidth(px, cfg) {
     if (typeof px !== 'number' || !Number.isFinite(px)) return cfg.default;
-    if (px < cfg.min) return null;             // signals auto-collapse
+    if (px < cfg.min) return null;             // signals caller to clamp to cfg.min
     if (px > cfg.max) return cfg.max;
     return Math.round(px);
   }
@@ -489,12 +489,7 @@ Create `forge-shell/app/js/sidebar.js`:
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       var finalW = sidebar.getBoundingClientRect().width;
-      if (finalW <= cfg.min + 1) {
-        /* dragged below threshold → auto-collapse + reset to default on re-expand */
-        setCollapsed(true);
-      } else {
-        setWidth(finalW);
-      }
+      setWidth(finalW);
     }
 
     function onKeyDown(e) {
@@ -1268,7 +1263,7 @@ Wait for the app to launch. Open each plugin via the leftmost icon rail.
 - [ ] Reload page (Ctrl+R): previous collapsed state is restored.
 - [ ] Drag the right edge of the sidebar right; width grows up to 480px.
 - [ ] Drag the right edge of the sidebar left; width shrinks down to 180px.
-- [ ] Continue dragging left past minWidth; sidebar auto-collapses; release and click toggle to expand at default width (280px).
+- [ ] Continue dragging left past minWidth; sidebar clamps at minWidth (180px); release — sidebar stays at 180px. Use the toolbar button (or Tab to the resizer, press Enter) to collapse.
 - [ ] Reload page: previous custom width is restored.
 - [ ] Tab to the resizer handle (yellow focus ring should appear); ←/→ arrows step width by 16px; Home/End jump to min/max.
 - [ ] Tab to the resizer; Enter toggles collapse.
@@ -1298,7 +1293,7 @@ git log --oneline -10
 | Spec section | Covered by |
 |---|---|
 | §1 Background | (read-only context) |
-| §2 Goals (collapse, resize, auto-collapse, persist, keyboard, desktop-only) | Tasks 1, 2, 3, 6, 7, 8 |
+| §2 Goals (collapse, resize, full-width detail on collapse, no auto-collapse, persist, keyboard, desktop-only) | Tasks 1, 2, 3, 6, 7, 8 |
 | §3 Non-Goals (no presets, no touch, mobile unchanged) | Task 10 verifies mobile unchanged |
 | §4.1 `Sidebar.init` API | Task 2 |
 | §4.2 Shared CSS for resizer + dragging | Task 3 |
