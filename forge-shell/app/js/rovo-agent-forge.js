@@ -857,6 +857,17 @@
     if (folderPath) folderPath.classList.add('hidden');
     renderAgentList();
     renderDetailState();
+
+    /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'rovo-agent-forge',
+        rootSelector: '#view-rovo-agent-forge',
+        sidebarSelector: '.raf-sidebar',
+        toggleSelector: '[data-raf-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   function destroy() {

@@ -498,6 +498,18 @@ window.CognitiveForgeView = (function () {
     if (folderPath) folderPath.classList.add('hidden');
     renderSessionList();
     renderDetailState();
+
+    /* Re-apply sidebar state on every init so the icon + class
+       always reflect localStorage. Sidebar.init is idempotent. */
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'cognitive-forge',
+        rootSelector: '#view-cognitive-forge',
+        sidebarSelector: '.cf-sidebar',
+        toggleSelector: '[data-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   function destroy() {

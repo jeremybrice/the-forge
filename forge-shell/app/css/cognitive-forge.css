@@ -28,11 +28,15 @@
 
 .cf-filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
+  min-width: 0;
 }
+
+.cf-filter-bar .filter-btn { flex: 1 1 auto; min-width: 0; }
 
 .cf-session-list {
   flex: 1;

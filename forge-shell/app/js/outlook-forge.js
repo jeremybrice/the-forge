@@ -799,6 +799,17 @@ window.OutlookForgeView = (function () {
       }
 
       loadData();
+
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'outlook-forge',
+          rootSelector: '#view-outlook-forge',
+          sidebarSelector: '.of-sidebar',
+          toggleSelector: '[data-of-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
     },
 
     destroy() {

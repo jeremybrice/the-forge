@@ -1059,6 +1059,18 @@ window.AudioForgeView = (function () {
       renderToolbar();
       refresh();
       reconcileStatus();
+
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'audio-forge',
+          rootSelector: '#view-audio-forge',
+          sidebarSelector: '.af-sidebar',
+          toggleSelector: '[data-af-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
+
       // Orphan recovery
       invokeRecover().then((active) => {
         if (active) renderRecoveryBanner(active);

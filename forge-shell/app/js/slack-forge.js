@@ -795,6 +795,17 @@ window.SlackForgeView = (function () {
       }
 
       loadData();
+
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'slack-forge',
+          rootSelector: '#view-slack-forge',
+          sidebarSelector: '.sf-sidebar',
+          toggleSelector: '[data-sf-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
     },
 
     destroy() {

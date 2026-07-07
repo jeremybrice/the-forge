@@ -753,6 +753,17 @@ window.ReportForgeView = (function () {
       loadReports();
       startAutoRefresh();
 
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'report-forge',
+          rootSelector: '#view-report-forge',
+          sidebarSelector: '.rf-sidebar',
+          toggleSelector: '[data-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
+
       // Update folder path
       const folderPathDiv = $('[data-ref="folder-path"]');
       const folderNameSpan = $('[data-ref="folder-name"]');
