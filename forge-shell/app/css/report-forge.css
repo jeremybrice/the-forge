@@ -6,23 +6,13 @@
 .rf-layout {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
-  grid-template-columns: var(--plugin-sidebar-width) 1fr;
+  grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   height: 100%;
   overflow: hidden;
+  transition: grid-template-columns 0.18s ease;
 }
 
 .rf-layout > .plugin-toolbar { grid-column: 1 / -1; }
-
-/* Sidebar toggle button - mobile only */
-.rf-toolbar-toggle {
-  display: none !important;
-}
-
-@media (max-width: 768px) {
-  .rf-toolbar-toggle {
-    display: inline-flex !important;
-  }
-}
 
 /* Sidebar */
 .rf-sidebar {
