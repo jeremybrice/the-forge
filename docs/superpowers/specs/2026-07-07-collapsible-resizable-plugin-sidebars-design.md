@@ -15,7 +15,7 @@ Today there is no way to either:
 - **Resize** it (the width is hardcoded to a single CSS variable).
 - **Persist** a user's preferred width/collapsed state across sessions.
 
-Five of the seven plugins (cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge) already have a `data-*-action="toggle-sidebar"` button in their toolbar, but it is hidden on desktop (`display: none !important` in each plugin's CSS) and only used as a mobile slide-over toggle below 768px (`@media (max-width: 768px)`). The audio-forge plugin does not yet have a toggle button at all.
+Five of the seven plugins (cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge) already have a `data-*-action="toggle-sidebar"` button in their toolbar, but it is hidden on desktop (`display: none !important` in each plugin's CSS) and only used as a mobile slide-over toggle below 768px (`@media (max-width: 768px)`). The remaining two — **product-forge-local** and **audio-forge** — do not yet have a toggle button at all and need one added. (Verified by grepping for `toggle-sidebar` in `app/js/*.js`: present in cognitive, raf, rf, sf, of; absent in pfl and af.)
 
 This change makes the collapse + resize behavior work on desktop, makes the toggle button visible on desktop, and wires a draggable right-edge handle for resizing.
 
@@ -174,7 +174,15 @@ Sidebar.init({
 });
 ```
 
-`audio-forge.js` is the only plugin without a toolbar toggle button today; one is added to match the pattern of the other six.
+`product-forge.js` and `audio-forge.js` are the two plugins without a toolbar toggle button today; both get one added to match the pattern of the other five. The product-forge toolbar (currently lines 1175–1187) gains a new button as the first child of `.plugin-toolbar` (before the title), so it sits at the far left of the toolbar consistent with the other five plugins:
+
+```html
+<button class="btn-icon pfl-toolbar-toggle" data-pfl-action="toggle-sidebar" title="Toggle sidebar">
+  <i class="fa-solid fa-chevron-left"></i>
+</button>
+```
+
+The audio-forge toolbar gains the analogous `af-toolbar-toggle` button.
 
 ### 4.5 Per-plugin CSS edits
 
@@ -278,7 +286,7 @@ For each of the 7 plugins:
 | `app/css/slack-forge.css` | same | +3 / −3 |
 | `app/css/outlook-forge.css` | same | +3 / −3 |
 | `app/css/audio-forge.css` | same | +3 / −3 |
-| `app/js/product-forge.js` | add resizer `<div>`; call `Sidebar.init` | +10 |
+| `app/js/product-forge.js` | add toolbar toggle button (see §4.4); resizer `<div>`; call `Sidebar.init` | +18 |
 | `app/js/cognitive-forge.js` | same | +10 |
 | `app/js/rovo-agent-forge.js` | same | +10 |
 | `app/js/report-forge.js` | same | +10 |
@@ -287,7 +295,7 @@ For each of the 7 plugins:
 | `app/js/audio-forge.js` | add toolbar toggle button + resizer + `Sidebar.init` | +15 |
 | `STYLE_GUIDE.md` | document `--plugin-sidebar-current` token + sidebar contract | +20 |
 
-Net: ~330 lines added, ~15 lines removed.
+Net: ~340 lines added, ~15 lines removed.
 
 ## 9. Rollout
 
