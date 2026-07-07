@@ -153,14 +153,6 @@ window.ReportForgeView = (function () {
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => refresh());
     }
-
-    const toggleBtn = $('[data-action="toggle-sidebar"]');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
-        const sidebar = $('.rf-sidebar');
-        if (sidebar) sidebar.classList.toggle('collapsed');
-      });
-    }
   }
 
   /* ═══════════════════════════════════════════════════════════
