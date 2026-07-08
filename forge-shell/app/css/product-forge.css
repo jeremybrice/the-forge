@@ -9,6 +9,7 @@
   grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   height: 100%;
   overflow: hidden;
+  position: relative;
   transition: grid-template-columns 0.18s ease;
 }
 
@@ -323,20 +324,21 @@
 /* ── Filter Panel ── */
 .pfl-filter-panel {
   position: absolute;
-  top: 0;
+  top: var(--toolbar-height);
   right: 0;
+  bottom: 0;
   width: 280px;
-  height: 100%;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   box-shadow: var(--shadow-lg);
   z-index: 20;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   transform: translateX(100%);
   transition: transform 0.2s ease;
 }
-.pfl-filter-panel.pfl-open {
+.pfl-filter-panel.open {
   transform: translateX(0);
 }
 

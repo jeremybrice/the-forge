@@ -1183,7 +1183,7 @@
             '</div>' +
             '<div class="spacer"></div>' +
             '<div class="pfl-filter-badge">' +
-              '<button class="btn-icon" data-pfl-filter-toggle title="Filter"><i class="fa-solid fa-filter"></i></button>' +
+              '<button class="btn-icon" data-pfl-action="toggle-filter" title="Filter"><i class="fa-solid fa-filter"></i></button>' +
             '</div>' +
             '<span class="refresh-indicator" data-pfl-refresh-ind></span>' +
             '<button class="btn-icon" data-pfl-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
@@ -1206,8 +1206,8 @@
               '<div>Select a card from the tree to view details</div>' +
             '</div>' +
             '<div class="pfl-card-detail hidden"></div>' +
-            '<div class="pfl-filter-panel" data-pfl-filter-panel></div>' +
           '</main>' +
+          '<div class="pfl-filter-panel" data-pfl-filter-panel></div>' +
 
         '</div>' +
 
@@ -1234,12 +1234,12 @@
       }
 
       /* Bind filter toggle */
-      var filterBtn = $q('[data-pfl-filter-toggle]');
+      var filterBtn = $q('[data-pfl-action="toggle-filter"]');
       if (filterBtn) {
         filterBtn.addEventListener('click', function () {
           FilterPanel.open = !FilterPanel.open;
           var panel = $q('[data-pfl-filter-panel]');
-          if (panel) panel.classList.toggle('pfl-open', FilterPanel.open);
+          if (panel) panel.classList.toggle('open', FilterPanel.open);
           if (FilterPanel.open) ctrl._renderFilterPanel();
         });
       }
@@ -1497,7 +1497,7 @@
         closeBtn.addEventListener('click', function () {
           FilterPanel.open = false;
           var panel = $q('[data-pfl-filter-panel]');
-          if (panel) panel.classList.remove('pfl-open');
+          if (panel) panel.classList.remove('open');
         });
       }
     },
