@@ -421,34 +421,6 @@
   line-height: 1;
 }
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .pfl-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .pfl-sidebar {
-    position: fixed;
-    left: 0;
-    top: var(--toolbar-height);
-    bottom: 0;
-    width: var(--plugin-sidebar-width);
-    z-index: 20;
-    transform: translateX(-100%);
-    transition: transform var(--transition);
-    box-shadow: var(--shadow-md);
-  }
-
-  .pfl-sidebar.pfl-mobile-open {
-    transform: translateX(0);
-  }
-
-  .pfl-detail-panel {
-    grid-column: 1;
-    padding: 16px;
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════
    Recents section, NEW badges, flash, type chip
    (added 2026-05-05 — recents + auto-reveal feature)

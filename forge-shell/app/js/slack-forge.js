@@ -197,11 +197,6 @@ window.SlackForgeView = (function () {
           if (panel) panel.classList.toggle('open', filterPanelOpen);
           return;
         }
-        if (act === 'toggle-sidebar') {
-          const layout = view().querySelector('.sf-layout');
-          if (layout) layout.classList.toggle('sf-sidebar-open');
-          return;
-        }
       }
 
       /* View toggle (Harvests / Transcripts) */

@@ -329,26 +329,3 @@
 .rf-viz-footer i {
   color: var(--accent);
 }
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .rf-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .rf-sidebar {
-    grid-column: 1;
-  }
-
-  .rf-detail-panel {
-    grid-column: 1;
-  }
-
-  .rf-sidebar:not(.collapsed) + .rf-detail-panel {
-    display: none;
-  }
-
-  .rf-report-detail .metadata-grid {
-    grid-template-columns: 1fr;
-  }
-}

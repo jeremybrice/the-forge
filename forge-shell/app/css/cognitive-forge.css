@@ -73,29 +73,3 @@
   color: var(--text-muted);
   font-size: 13px;
 }
-
-/* ── Responsive: collapse sidebar below 768px ── */
-@media (max-width: 768px) {
-  .cf-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .cf-sidebar {
-    display: none;
-  }
-
-  .cf-layout.cf-sidebar-open .cf-sidebar {
-    display: flex;
-    position: absolute;
-    top: var(--toolbar-height);
-    left: 0;
-    bottom: 0;
-    width: var(--plugin-sidebar-width);
-    z-index: 5;
-    box-shadow: var(--shadow-md);
-  }
-
-  .cf-detail-panel {
-    grid-column: 1;
-  }
-}

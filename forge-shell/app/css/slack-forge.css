@@ -239,20 +239,3 @@
 .sf-filter-group .filter-btn.active[data-sf-filter-status="approved"] { background: var(--sf-status-approved); border-color: var(--sf-status-approved); }
 .sf-filter-group .filter-btn.active[data-sf-filter-status="promoted"] { background: var(--sf-status-promoted); border-color: var(--sf-status-promoted); }
 .sf-filter-group .filter-btn.active[data-sf-filter-status="rejected"] { background: var(--sf-status-rejected); border-color: var(--sf-status-rejected); }
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .sf-layout { grid-template-columns: 1fr; }
-  .sf-sidebar { display: none; }
-  .sf-layout.sf-sidebar-open .sf-sidebar {
-    display: flex;
-    position: absolute;
-    top: var(--toolbar-height);
-    left: 0;
-    bottom: 0;
-    width: var(--plugin-sidebar-width);
-    z-index: 5;
-    box-shadow: var(--shadow-md);
-  }
-  .sf-detail-panel { grid-column: 1; }
-}

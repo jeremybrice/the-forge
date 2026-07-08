@@ -199,11 +199,6 @@ window.OutlookForgeView = (function () {
           if (panel) panel.classList.toggle('open', filterPanelOpen);
           return;
         }
-        if (act === 'toggle-sidebar') {
-          const layout = view().querySelector('.of-layout');
-          if (layout) layout.classList.toggle('of-sidebar-open');
-          return;
-        }
       }
 
       /* View toggle (Harvests / Transcripts) */

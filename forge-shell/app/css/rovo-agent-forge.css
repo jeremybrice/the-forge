@@ -307,29 +307,3 @@
 .raf-diff-container .diff-field .new-val {
   color: var(--status-green);
 }
-
-/* ── Responsive: collapse sidebar below 768px ── */
-@media (max-width: 768px) {
-  .raf-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .raf-sidebar {
-    display: none;
-  }
-
-  .raf-layout.raf-sidebar-open .raf-sidebar {
-    display: flex;
-    position: absolute;
-    top: var(--toolbar-height);
-    left: 0;
-    bottom: 0;
-    width: var(--plugin-sidebar-width);
-    z-index: 5;
-    box-shadow: var(--shadow-md);
-  }
-
-  .raf-detail-panel {
-    grid-column: 1;
-  }
-}

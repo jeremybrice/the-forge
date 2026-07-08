@@ -132,9 +132,6 @@ window.CognitiveForgeView = (function () {
       if (!btn) return;
       const action = btn.dataset.action;
       if (action === 'refresh') refresh();
-      if (action === 'toggle-sidebar') {
-        view.querySelector('.cf-layout').classList.toggle('cf-sidebar-open');
-      }
     });
   }
 

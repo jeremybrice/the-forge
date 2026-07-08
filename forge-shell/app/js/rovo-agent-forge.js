@@ -213,9 +213,6 @@
       if (!btn) return;
       var action = btn.dataset.rafAction;
       if (action === 'refresh') refresh();
-      if (action === 'toggle-sidebar') {
-        view.querySelector('.raf-layout').classList.toggle('raf-sidebar-open');
-      }
     });
   }
 
