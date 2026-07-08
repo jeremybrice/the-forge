@@ -16,8 +16,12 @@
   // Runtime environment detection
   const isTauri = typeof window.__TAURI__ !== 'undefined';
   const isBrowser = !isTauri && 'showDirectoryPicker' in window;
+  // Neither Tauri nor the File System Access API is available (e.g. cmux's
+  // embedded webview) — fall back to the local HTTP API served alongside
+  // this page by forge-shell/server.js.
+  const isServer = !isTauri && !isBrowser;
 
-  console.log(`[ForgeFS] Runtime mode: ${isTauri ? 'Desktop (Tauri)' : isBrowser ? 'Browser (File System Access API)' : 'Unknown'}`);
+  console.log(`[ForgeFS] Runtime mode: ${isTauri ? 'Desktop (Tauri)' : isBrowser ? 'Browser (File System Access API)' : 'Server (local HTTP API)'}`);
 
   // Debug: Log available Tauri APIs
   if (isTauri) {
@@ -57,6 +61,23 @@
     },
 
     /**
+     * Check if running in server mode (local HTTP API fallback)
+     * @returns {boolean}
+     */
+    isServer() {
+      return isServer;
+    },
+
+    /**
+     * True when `root` is an absolute path string rather than a
+     * FileSystemDirectoryHandle (true for both Tauri and server mode).
+     * @returns {boolean}
+     */
+    usesPathStrings() {
+      return isTauri || isServer;
+    },
+
+    /**
      * Prompt user to select a directory
      * @returns {Promise<FileSystemDirectoryHandle|string>} Handle (browser) or path (Tauri)
      */
@@ -91,7 +112,47 @@
           startIn: 'documents'
         });
       } else {
-        throw new Error('File system access not supported in this environment');
+        // Server mode: no native picker is available, so prompt for an
+        // absolute path via the shared confirm dialog, offering recent
+        // projects (from the server's config file) as autocomplete options.
+        let recent = [];
+        try {
+          const config = await fetch('/api/config').then(r => r.json());
+          recent = config.recentProjects || [];
+        } catch (e) {
+          console.warn('[ForgeFS] Could not load recent projects:', e);
+        }
+
+        const inputId = 'server-path-picker-input';
+        const listId = 'server-path-picker-recent';
+        const options = recent.map(p => `<option value="${p.replace(/"/g, '&quot;')}"></option>`).join('');
+        const details = `
+          <input id="${inputId}" type="text" list="${listId}" placeholder="/absolute/path/to/project"
+                 style="width:100%;padding:8px;box-sizing:border-box;font-family:monospace;" autofocus />
+          <datalist id="${listId}">${options}</datalist>
+        `;
+
+        const confirmed = await ForgeUtils.Confirm.show(
+          'Select Project Folder',
+          'Enter the absolute path to your Forge project directory:',
+          details
+        );
+
+        if (!confirmed) {
+          const abort = new Error('Directory selection cancelled');
+          abort.name = 'AbortError';
+          throw abort;
+        }
+
+        const input = document.getElementById(inputId);
+        const selectedPath = input ? input.value.trim() : '';
+        if (!selectedPath) {
+          throw new Error('No path entered');
+        }
+
+        // Validate the path exists and is a directory before returning it.
+        await this.readDir(selectedPath, '');
+        return selectedPath;
       }
     },
 
@@ -129,7 +190,13 @@
         const file = await fileHandle.getFile();
         return await file.text();
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string' ? `${root}/${relativePath}` : relativePath;
+        const res = await fetch(`/api/fs/read?path=${encodeURIComponent(fullPath)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to read file ${relativePath}: ${err.error}`);
+        }
+        return await res.text();
       }
     },
 
@@ -169,7 +236,16 @@
         await writable.write(content);
         await writable.close();
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string' ? `${root}/${relativePath}` : relativePath;
+        const res = await fetch('/api/fs/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: fullPath, content })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to write file ${relativePath}: ${err.error}`);
+        }
       }
     },
 
@@ -212,7 +288,15 @@
         }
         return entries;
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string'
+          ? (relativePath ? `${root}/${relativePath}` : root)
+          : relativePath;
+        const res = await fetch(`/api/fs/readdir?path=${encodeURIComponent(fullPath)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to read directory ${relativePath}: ${err.error}`);
+        }
+        return await res.json();
       }
     },
 
@@ -259,7 +343,15 @@
           return [];
         }
       } else {
-        throw new Error('File system access not supported');
+        const dirPath = typeof root === 'string' ? root : '';
+        try {
+          const res = await fetch(`/api/fs/list-md?path=${encodeURIComponent(dirPath)}&subdir=${encodeURIComponent(subdir)}`);
+          if (!res.ok) return [];
+          return await res.json();
+        } catch (error) {
+          console.warn(`Failed to list markdown files in ${subdir}:`, error);
+          return [];
+        }
       }
     },
 
@@ -324,7 +416,13 @@
           modified: file.lastModified
         };
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string' ? `${root}/${relativePath}` : relativePath;
+        const res = await fetch(`/api/fs/meta?path=${encodeURIComponent(fullPath)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to get file metadata for ${relativePath}: ${err.error}`);
+        }
+        return await res.json();
       }
     },
 
@@ -357,7 +455,7 @@
           });
         };
       } else {
-        console.warn('File watching not supported in browser mode');
+        console.warn('File watching not supported outside Tauri mode');
         return () => {}; // No-op cleanup
       }
     },
@@ -374,11 +472,19 @@
           return null;
         }
       }
+      if (isServer) {
+        try {
+          const config = await fetch('/api/config').then(r => r.json());
+          return config.currentProject || null;
+        } catch (error) {
+          return null;
+        }
+      }
       return null;
     },
 
     /**
-     * Save the current project path (Tauri only)
+     * Save the current project path (Tauri and server modes only)
      * @param {string} path - Project path to save
      * @returns {Promise<void>}
      */
@@ -389,17 +495,35 @@
         } catch (error) {
           console.error('Failed to save project path:', error);
         }
+      } else if (isServer) {
+        try {
+          await fetch('/api/config/project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path })
+          });
+        } catch (error) {
+          console.error('Failed to save project path:', error);
+        }
       }
     },
 
     /**
-     * Get recent projects list (Tauri only)
+     * Get recent projects list (Tauri and server modes only)
      * @returns {Promise<Array<string>>}
      */
     async getRecentProjects() {
       if (isTauri) {
         try {
           return await window.__TAURI__.core.invoke('get_recent_projects');
+        } catch (error) {
+          return [];
+        }
+      }
+      if (isServer) {
+        try {
+          const config = await fetch('/api/config').then(r => r.json());
+          return config.recentProjects || [];
         } catch (error) {
           return [];
         }
@@ -435,7 +559,16 @@
           currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
         }
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string' ? `${root}/${relativePath}` : relativePath;
+        const res = await fetch('/api/fs/mkdir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: fullPath })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to create directory ${relativePath}: ${err.error}`);
+        }
       }
     },
 
@@ -472,7 +605,16 @@
         const fileName = parts[parts.length - 1];
         await currentHandle.removeEntry(fileName);
       } else {
-        throw new Error('File system access not supported');
+        const fullPath = typeof root === 'string' ? `${root}/${relativePath}` : relativePath;
+        const res = await fetch('/api/fs/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: fullPath })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Failed to delete file ${relativePath}: ${err.error}`);
+        }
       }
     }
   };

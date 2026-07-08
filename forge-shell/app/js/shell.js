@@ -191,8 +191,8 @@ const Shell = {
       this.rootHandle = await ForgeUtils.FS.pickDirectory('readwrite');
 
       // Save based on mode
-      if (ForgeFS.isTauri()) {
-        // In Tauri mode, rootHandle is a path string - save to config
+      if (ForgeFS.usesPathStrings()) {
+        // Tauri/server mode: rootHandle is a path string - save to config
         await ForgeFS.setProjectPath(this.rootHandle);
       } else {
         // In browser mode, rootHandle is a FileSystemDirectoryHandle - save to IndexedDB
@@ -201,14 +201,17 @@ const Shell = {
 
       await this._onDirectoryReady();
     } catch (e) {
-      if (e.name !== 'AbortError') console.error('Directory selection failed:', e);
+      if (e.name !== 'AbortError') {
+        console.error('Directory selection failed:', e);
+        ForgeUtils.Toast.show(`Directory selection failed: ${e.name}: ${e.message}`, 'error', 6000);
+      }
     }
   },
 
   async _tryRestore() {
     try {
-      if (ForgeFS.isTauri()) {
-        // Tauri mode: try to restore from config
+      if (ForgeFS.usesPathStrings()) {
+        // Tauri/server mode: try to restore from config
         const savedPath = await ForgeFS.getProjectPath();
         if (!savedPath) return false;
 
@@ -237,7 +240,7 @@ const Shell = {
       }
     } catch (e) {
       console.log('Could not restore directory:', e);
-      if (!ForgeFS.isTauri()) {
+      if (!ForgeFS.usesPathStrings()) {
         await ForgeUtils.DB.remove('rootDir').catch(() => {});
       }
       return false;

@@ -414,7 +414,7 @@ ForgeUtils.FS = {
    * In Tauri mode, permissions are handled at OS level
    */
   async requestPermission(handle, mode) {
-    if (ForgeFS.isTauri()) {
+    if (ForgeFS.usesPathStrings()) {
       return true; // Tauri handles permissions via OS
     }
 
@@ -430,7 +430,7 @@ ForgeUtils.FS = {
    */
   async getSubDir(parentHandle, name) {
     try {
-      if (ForgeFS.isTauri()) {
+      if (ForgeFS.usesPathStrings()) {
         // In Tauri mode, parentHandle is a path string
         const subPath = typeof parentHandle === 'string'
           ? `${parentHandle}/${name}`
@@ -454,7 +454,7 @@ ForgeUtils.FS = {
    */
   async getFile(dirHandle, name) {
     try {
-      if (ForgeFS.isTauri()) {
+      if (ForgeFS.usesPathStrings()) {
         // In Tauri mode, dirHandle is a path string
         const text = await ForgeFS.readFile(dirHandle, name);
         const meta = await ForgeFS.getFileMeta(dirHandle, name);
@@ -489,7 +489,7 @@ ForgeUtils.FS = {
     const files = [];
 
     try {
-      if (ForgeFS.isTauri()) {
+      if (ForgeFS.usesPathStrings()) {
         // Tauri mode: use listMarkdownFiles
         const mdFiles = await ForgeFS.listMarkdownFiles(dirHandle, relativePath);
 
@@ -537,7 +537,7 @@ ForgeUtils.FS = {
    * Works with both FileSystemFileHandle (browser) and path strings (Tauri)
    */
   async writeFile(fileHandle, content) {
-    if (ForgeFS.isTauri()) {
+    if (ForgeFS.usesPathStrings()) {
       // In Tauri mode, fileHandle is a path string
       // We need to extract the root and relative path
       // This is a bit tricky, so we'll use a helper
@@ -555,7 +555,7 @@ ForgeUtils.FS = {
    */
   async dirExists(parentHandle, name) {
     try {
-      if (ForgeFS.isTauri()) {
+      if (ForgeFS.usesPathStrings()) {
         // Try to read the directory
         await ForgeFS.readDir(parentHandle, name);
         return true;

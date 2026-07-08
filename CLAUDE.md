@@ -80,12 +80,25 @@ python forge.py --help
 - `outlook-forge.js` — Outlook harvest dashboard with calendar integration
 - `roadmap.js` — Roadmap timeline view
 
-**Launch:**
+**Launch (desktop app):**
 ```bash
 cd forge-shell
 npm install
-npm run tauri dev
+npm run tauri:dev
 ```
+Requires the Rust toolchain (`rustup`) and the Tauri CLI (`cargo install tauri-cli`) installed locally.
+
+**Launch in a browser (e.g. cmux):** `forge-shell/app` is dual/triple-mode and can run without Tauri:
+```bash
+cd forge-shell
+node server.js        # or: npm run serve
+```
+Serves the dashboard at `http://127.0.0.1:4173`. `ForgeFS` (`forge-shell/app/js/fs-adapter.js`) auto-detects the runtime and picks one of three backends:
+- **Tauri** — native fs via Rust commands (desktop app)
+- **Browser** — File System Access API (`showDirectoryPicker`), real Chrome/Edge tabs only
+- **Server** — falls back to `server.js`'s local HTTP API (`/api/fs/*`, `/api/config*`) whenever `showDirectoryPicker` isn't available, which is the case in cmux's embedded browser. In this mode "Select Project Folder" is a typed-path dialog instead of a native picker.
+
+`server.js` binds to `127.0.0.1` only and shares the same config file as the Tauri app (`~/Library/Application Support/forge-shell/config.json` on macOS), so the last-selected project carries over between desktop and browser/cmux usage.
 
 See `forge-shell/README.md` for details.
 
@@ -103,3 +116,15 @@ See `forge-shell/README.md` for details.
 ## Version
 
 **v2.3.0** — Audio-forge plugin (Phase 1: CLI for transcribing system+mic WAVs via local Whisper). Phase 2 adds Forge Shell recording UI.
+
+# >>> relay >>>
+<!-- adapters/claude-code/CLAUDE.relay.md -->
+## Relay — session handoff (L2)
+When the user signals the session is wrapping up ("done for today", "let's
+continue tomorrow", or a task completes and we're winding down), run
+`/session-save` to persist a Relay handoff. If unsure the session is ending,
+offer it in one line.
+At wrap-up, also capture durable facts/lessons with `/relay-learn` (or inline
+`knowledge add`), and surface any graduation-ready lesson for the user to approve.
+
+# <<< relay <<<
