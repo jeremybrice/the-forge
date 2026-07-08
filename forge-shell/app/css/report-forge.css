@@ -26,10 +26,6 @@
   min-height: 0;
 }
 
-.rf-sidebar.collapsed {
-  display: none;
-}
-
 /* Report List */
 .rf-report-list {
   flex: 1;
