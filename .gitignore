@@ -65,3 +65,6 @@ audio-forge/audio/
 audio-forge/recordings/*.md
 audio-forge/recordings/index.json
 !audio-forge/recordings/.gitkeep
+
+# >>> relay >>>
+.session-log/

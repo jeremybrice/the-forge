@@ -9,6 +9,14 @@
             "command": "make -C forge-lib link 2>/dev/null || true"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".relay/adapters/claude-code/relay-session-start.sh"
+          }
+        ]
       }
     ],
     "TaskCompleted": [
