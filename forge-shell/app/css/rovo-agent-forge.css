@@ -18,9 +18,10 @@
 .raf-layout {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
-  grid-template-columns: var(--plugin-sidebar-width) 1fr;
+  grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   height: 100%;
   overflow: hidden;
+  transition: grid-template-columns 0.18s ease;
 }
 
 .raf-layout > .plugin-toolbar {
@@ -41,11 +42,15 @@
 
 .raf-filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
+  min-width: 0;
 }
+
+.raf-filter-bar .filter-btn { flex: 1 1 auto; min-width: 0; }
 
 .raf-agent-list {
   flex: 1;
@@ -326,20 +331,5 @@
 
   .raf-detail-panel {
     grid-column: 1;
-  }
-
-  .raf-toolbar-toggle {
-    display: inline-flex !important;
-  }
-}
-
-/* Hide sidebar toggle on desktop */
-.raf-toolbar-toggle {
-  display: none !important;
-}
-
-@media (max-width: 768px) {
-  .raf-toolbar-toggle {
-    display: inline-flex !important;
   }
 }

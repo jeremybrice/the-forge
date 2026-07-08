@@ -115,6 +115,9 @@ window.AudioForgeView = (function () {
       <div class="af-layout">
 
         <div class="plugin-toolbar">
+          <button class="btn-icon af-toolbar-toggle" data-af-action="toggle-sidebar" title="Toggle sidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>
           <span class="toolbar-title"><i class="fa-solid fa-microphone"></i> Audio Forge</span>
 
           <div class="af-source-checkboxes" data-af-ref="sources">
@@ -180,6 +183,7 @@ window.AudioForgeView = (function () {
             </div>
             <div class="af-list" data-af-ref="list"></div>
           </div>
+          <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
           <div class="af-detail" data-af-ref="detail">
             <div class="af-empty">
               <i class="fa-solid fa-microphone"></i>
@@ -201,6 +205,16 @@ window.AudioForgeView = (function () {
     wireAutoStopControls();
     populateMicDevices();
     wireMicDeviceControl();
+
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'audio-forge',
+        rootSelector: '#view-audio-forge',
+        sidebarSelector: '.af-sidebar',
+        toggleSelector: '[data-af-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   function initAutoStopDropdown() {
@@ -314,10 +328,10 @@ window.AudioForgeView = (function () {
      ═══════════════════════════════════════════════════════════ */
   function setProjectRoot(handle) {
     rootHandle = handle;
-    // In Tauri mode the handle IS the project-root path string (Shell.boot
+    // In Tauri/server mode the handle IS the project-root path string (Shell.boot
     // passes its rootHandle into ctrl.init). In browser mode handle is a
     // FileSystemDirectoryHandle and there's no usable absolute path.
-    if (window.ForgeFS && window.ForgeFS.isTauri && window.ForgeFS.isTauri()) {
+    if (window.ForgeFS && window.ForgeFS.usesPathStrings && window.ForgeFS.usesPathStrings()) {
       projectRoot = (typeof handle === 'string') ? handle : null;
     } else {
       projectRoot = null;
@@ -1045,6 +1059,18 @@ window.AudioForgeView = (function () {
       renderToolbar();
       refresh();
       reconcileStatus();
+
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'audio-forge',
+          rootSelector: '#view-audio-forge',
+          sidebarSelector: '.af-sidebar',
+          toggleSelector: '[data-af-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
+
       // Orphan recovery
       invokeRecover().then((active) => {
         if (active) renderRecoveryBanner(active);

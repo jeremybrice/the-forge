@@ -178,3 +178,64 @@ All plugins use the same CSS custom property names for theming:
 - `--shadow-sm`, `--shadow-md`, `--shadow-lg`
 - `--radius-sm` (4px), `--radius-md` (8px), `--radius-lg` (12px)
 - `--transition` (0.2s ease)
+
+## Sidebar Contract (collapsible + resizable, added 2026-07-07)
+
+All Forge plugin views that show a left-hand list panel (sidebar) **must** use the shared `Sidebar.init(...)` module to enable collapse and resize. This applies to: product-forge, cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge, audio-forge.
+
+### Required HTML structure
+
+```html
+<aside class="<prefix>-sidebar"> ... </aside>
+<div class="sidebar-resizer" role="separator" tabindex="0"
+     aria-orientation="vertical" aria-label="Resize sidebar"></div>
+<main class="<prefix>-detail-panel"> ... </main>
+```
+
+The resizer must be a **direct sibling** of the sidebar `<aside>` so it lands in the same CSS grid column. The layout root class must be `<prefix>-layout` (e.g. `pfl-layout`, `cf-layout`).
+
+### Required CSS on the layout
+
+```css
+.<prefix>-layout {
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr;
+  grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
+  transition: grid-template-columns 0.18s ease;
+}
+```
+
+`--plugin-sidebar-current` is set inline by `Sidebar.init` when the user drags; the fallback `--plugin-sidebar-width` (= 280px) is the default.
+
+> **Exception — audio-forge uses a flex layout.** `audio-forge` is the one plugin whose `.af-layout` is `display: flex` (not CSS grid) because its detail area needs to coexist with a footer player that is a flex sibling. In audio-forge the `--plugin-sidebar-current` variable is applied to `width` on `.af-sidebar` instead of to `grid-template-columns`, and the resizer is a direct flex sibling of the sidebar rather than a grid-column element. The same `Sidebar.init(...)` call still applies; only the CSS shape differs.
+
+### Required JS
+
+At the end of your layout-scaffolding function, call:
+
+```js
+window.Sidebar.init({
+  pluginId:       '<your-plugin-id>',
+  rootSelector:   '#view-<your-plugin-id>',
+  sidebarSelector: '.<prefix>-sidebar',
+  toggleSelector: '[data-<prefix>-action="toggle-sidebar"]',
+  resizerSelector: '.sidebar-resizer',
+  minWidth:    180,    // optional, default 180
+  maxWidth:    480,    // optional, default 480
+  defaultWidth: 280    // optional, default 280
+});
+```
+
+Defaults: `minWidth: 180`, `maxWidth: 480`, `defaultWidth: 280`. Do not deviate from these without updating the spec.
+
+### Required toolbar button
+
+The toolbar must contain a toggle button with the `data-<prefix>-action="toggle-sidebar"` attribute and a chevron icon (the module swaps the icon between `fa-chevron-left` and `fa-chevron-right` based on state). It must be a `.btn-icon` inside `.plugin-toolbar`. Do **not** add a separate `display: none` rule to hide it on desktop.
+
+### localStorage keys
+
+The module writes to:
+- `forge-shell-sidebar-<pluginId>-width` (integer px string)
+- `forge-shell-sidebar-<pluginId>-collapsed` (`'1'` or `'0'`)
+
+Both keys are namespaced by `pluginId` so each plugin's layout is independent.

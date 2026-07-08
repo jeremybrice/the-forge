@@ -1173,6 +1173,9 @@
         /* Toolbar */
         '<div class="pfl-layout">' +
           '<div class="plugin-toolbar">' +
+            '<button class="btn-icon pfl-toolbar-toggle" data-pfl-action="toggle-sidebar" title="Toggle sidebar">' +
+              '<i class="fa-solid fa-chevron-left"></i>' +
+            '</button>' +
             '<span class="toolbar-title"><i class="fa-solid fa-clipboard-list"></i> Product Forge</span>' +
             '<div class="folder-path">' +
               '<span><i class="fa-solid fa-folder-open"></i></span>' +
@@ -1194,6 +1197,7 @@
             '</div>' +
             '<div class="pfl-tree-view"></div>' +
           '</aside>' +
+          '<div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>' +
 
           /* Detail panel */
           '<main class="pfl-detail-panel">' +
@@ -1254,6 +1258,16 @@
       var searchInput = $q('[data-pfl-search]');
       if (searchInput) {
         searchInput.addEventListener('input', function () { ctrl._renderTree(); });
+      }
+
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'product-forge-local',
+          rootSelector: '#view-product-forge-local',
+          sidebarSelector: '.pfl-sidebar',
+          toggleSelector: '[data-pfl-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
       }
     },
 

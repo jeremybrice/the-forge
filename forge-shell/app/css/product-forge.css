@@ -6,9 +6,10 @@
 .pfl-layout {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
-  grid-template-columns: var(--plugin-sidebar-width) 1fr;
+  grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   height: 100%;
   overflow: hidden;
+  transition: grid-template-columns 0.18s ease;
 }
 
 .pfl-layout > .plugin-toolbar {

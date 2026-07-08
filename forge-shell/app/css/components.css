@@ -98,14 +98,17 @@
 /* ── Filter Bar ── */
 .filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .filter-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 600;
@@ -134,6 +137,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .sidebar-search i {
@@ -144,6 +148,7 @@
 
 .sidebar-search input {
   flex: 1;
+  min-width: 0;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -560,3 +565,79 @@
 }
 
 .modal-overlay.visible .modal-content { animation: modalIn 0.25s ease; }
+
+/* ═══════════════════════════════════════════════════════════
+   Sidebar resizer + collapse (shared across all plugin views)
+   (added 2026-07-07 — collapsible + resizable plugin sidebars)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Drag handle on the right edge of every plugin sidebar.
+   Sits in the sidebar grid column and hangs 3px over the divider. */
+.sidebar-resizer {
+  grid-row: 2;
+  grid-column: 1;
+  justify-self: end;
+  width: 6px;
+  margin-right: -3px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  transition: background 0.15s ease;
+}
+.sidebar-resizer:hover,
+.sidebar-resizer:focus-visible,
+.sidebar-resizer.dragging {
+  background: var(--accent);
+  outline: none;
+}
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--border-color);
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer.dragging::after {
+  background: transparent;
+}
+
+/* Hide sidebar + resizer when the layout has the *-sidebar-collapsed class.
+   Attribute selector matches all 7 plugin prefixes (pfl/cf/raf/rf/sf/of/af).
+   Scoped to desktop (min-width: 769px) so the existing mobile (≤768px)
+   slide-over behavior in plugin CSS files is preserved unchanged. */
+@media (min-width: 769px) {
+  [class$="-sidebar-collapsed"] .pfl-sidebar,
+  [class$="-sidebar-collapsed"] .cf-sidebar,
+  [class$="-sidebar-collapsed"] .raf-sidebar,
+  [class$="-sidebar-collapsed"] .rf-sidebar,
+  [class$="-sidebar-collapsed"] .sf-sidebar,
+  [class$="-sidebar-collapsed"] .of-sidebar,
+  [class$="-sidebar-collapsed"] .af-sidebar,
+  [class$="-sidebar-collapsed"] .sidebar-resizer {
+    display: none;
+  }
+
+  /* When the sidebar is collapsed, collapse the first grid column to 0
+     so the detail panel takes the full viewport width. Specificity (0,2,0)
+     beats the per-plugin .X-layout rule (0,1,0). The transition on
+     grid-template-columns in each plugin's layout rule carries through
+     so collapse/expand animates smoothly. No-op for audio-forge
+     (display: flex, no grid-template-columns). */
+  [class$="-sidebar-collapsed"] > [class$="-layout"] {
+    grid-template-columns: 0 1fr;
+  }
+}
+
+/* While dragging, disable text selection on everything and force
+   the resize cursor so it doesn't flicker on hover boundaries. */
+body.sidebar-dragging,
+body.sidebar-dragging * {
+  user-select: none;
+  cursor: col-resize !important;
+}

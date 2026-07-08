@@ -125,6 +125,7 @@ window.ReportForgeView = (function () {
           </div>
           <div class="rf-report-list" data-ref="report-list"></div>
         </div>
+        <div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>
 
         <!-- Detail Panel -->
         <div class="rf-detail-panel" data-ref="detail-panel">
@@ -133,6 +134,15 @@ window.ReportForgeView = (function () {
       </div>
     `;
     initialized = true;
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'report-forge',
+        rootSelector: '#view-report-forge',
+        sidebarSelector: '.rf-sidebar',
+        toggleSelector: '[data-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -142,14 +152,6 @@ window.ReportForgeView = (function () {
     const refreshBtn = $('[data-action="refresh"]');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => refresh());
-    }
-
-    const toggleBtn = $('[data-action="toggle-sidebar"]');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
-        const sidebar = $('.rf-sidebar');
-        if (sidebar) sidebar.classList.toggle('collapsed');
-      });
     }
   }
 
@@ -750,6 +752,17 @@ window.ReportForgeView = (function () {
       bindSearch();
       loadReports();
       startAutoRefresh();
+
+      /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+      if (window.Sidebar) {
+        window.Sidebar.init({
+          pluginId: 'report-forge',
+          rootSelector: '#view-report-forge',
+          sidebarSelector: '.rf-sidebar',
+          toggleSelector: '[data-action="toggle-sidebar"]',
+          resizerSelector: '.sidebar-resizer'
+        });
+      }
 
       // Update folder path
       const folderPathDiv = $('[data-ref="folder-path"]');

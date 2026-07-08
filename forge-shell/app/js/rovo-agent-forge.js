@@ -165,6 +165,7 @@
           '</div>' +
           '<div class="raf-agent-list" data-raf-ref="agent-list"></div>' +
         '</div>' +
+        '<div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>' +
 
         /* Detail Panel */
         '<div class="raf-detail-panel" data-raf-ref="detail-panel"></div>' +
@@ -190,6 +191,15 @@
     bindFilters();
     bindSearch();
     bindModalActions();
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'rovo-agent-forge',
+        rootSelector: '#view-rovo-agent-forge',
+        sidebarSelector: '.raf-sidebar',
+        toggleSelector: '[data-raf-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -847,6 +857,17 @@
     if (folderPath) folderPath.classList.add('hidden');
     renderAgentList();
     renderDetailState();
+
+    /* Re-apply sidebar state on every init. Sidebar.init is idempotent. */
+    if (window.Sidebar) {
+      window.Sidebar.init({
+        pluginId: 'rovo-agent-forge',
+        rootSelector: '#view-rovo-agent-forge',
+        sidebarSelector: '.raf-sidebar',
+        toggleSelector: '[data-raf-action="toggle-sidebar"]',
+        resizerSelector: '.sidebar-resizer'
+      });
+    }
   }
 
   function destroy() {
