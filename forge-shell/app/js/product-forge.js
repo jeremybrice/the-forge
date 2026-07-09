@@ -539,6 +539,7 @@
       if (!card) {
         if (detailEl) detailEl.classList.add('hidden');
         if (emptyState) emptyState.classList.remove('hidden');
+        ctrl._updateToolbarEditBtn();
         return;
       }
       if (emptyState) emptyState.classList.add('hidden');
@@ -1352,6 +1353,7 @@
       this._unbindKeyboard();
       detailPanel.closeOverflow();
       selectedCard = null;
+      this._updateToolbarEditBtn();
       store.clear();
       cardsHandle = null;
       recentsTracker.reset();
@@ -1370,6 +1372,7 @@
       var card = store.get(filename);
       detailPanel.renderCard(card);
       treeView.highlightSelected(filename);
+      this._updateToolbarEditBtn();
 
       /* Acknowledging a card via click clears its NEW badge.
          Re-render so the badge disappears from Recents and from
@@ -1416,6 +1419,9 @@
               '<span>' + ESC(dirName) + '/cards</span>' +
             '</div>' +
             '<div class="spacer"></div>' +
+            '<button class="btn-icon pfl-toolbar-edit hidden" data-pfl-action="toolbar-edit" title="Edit card (E)">' +
+              '<i class="fa-solid fa-pen"></i>' +
+            '</button>' +
             '<div class="pfl-filter-badge">' +
               '<button class="btn-icon" data-pfl-action="toggle-filter" title="Filter"><i class="fa-solid fa-filter"></i></button>' +
             '</div>' +
@@ -1470,6 +1476,15 @@
       var refreshBtn = $q('[data-pfl-action="refresh"]');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function () { ctrl.refresh(); });
+      }
+
+      /* Toolbar Edit — visible when a card is selected; opens edit modal */
+      var toolbarEditBtn = $q('[data-pfl-action="toolbar-edit"]');
+      if (toolbarEditBtn) {
+        toolbarEditBtn.addEventListener('click', function () {
+          if (!selectedCard) return;
+          editModal.open(selectedCard);
+        });
       }
 
       /* Bind filter toggle */
@@ -1895,6 +1910,14 @@
       }
     },
 
+    /* Show toolbar Edit when a card is selected; hide on empty selection */
+    _updateToolbarEditBtn() {
+      var btn = $q('[data-pfl-action="toolbar-edit"]');
+      if (!btn) return;
+      if (selectedCard) btn.classList.remove('hidden');
+      else btn.classList.add('hidden');
+    },
+
     /* ─── Auto Refresh ─── */
     _startAutoRefresh() {
       this._stopAutoRefresh();
@@ -2186,6 +2209,7 @@
       selectedCard = filename;
       var card2 = store.get(filename);
       detailPanel.renderCard(card2);
+      this._updateToolbarEditBtn();
       if (recentsTracker.isNew(filename)) {
         recentsTracker.markSeen(filename);
       }
