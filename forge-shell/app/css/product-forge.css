@@ -324,8 +324,14 @@
   color: var(--text-primary);
 }
 
-.pfl-overflow-menu button:hover {
+.pfl-overflow-menu button:hover,
+.pfl-overflow-menu button:focus-visible {
   background: var(--bg-hover);
+}
+
+.pfl-overflow-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .pfl-detail-scroll {
@@ -374,10 +380,16 @@
   padding: 4px 0 12px;
   cursor: pointer;
   text-align: left;
+  border-radius: var(--radius-sm);
 }
 
 .pfl-meta-toggle:hover {
   text-decoration: underline;
+}
+
+.pfl-meta-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .pfl-meta-full {

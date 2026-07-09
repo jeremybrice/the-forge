@@ -239,3 +239,40 @@ The module writes to:
 - `forge-shell-sidebar-<pluginId>-collapsed` (`'1'` or `'0'`)
 
 Both keys are namespaced by `pluginId` so each plugin's layout is independent.
+
+## Product Forge Detail Sticky Header (added 2026-07-09)
+
+Product Forge Local ships a **sticky identity header** on the card detail panel so Edit and secondary actions stay reachable without scrolling the body. Other plugins may adopt the same shape later; until then keep the pattern plugin-local (`pfl-*` classes only — no `components.css` extraction in v1).
+
+### Layout shape
+
+| Piece | Rule |
+| ----- | ---- |
+| **Layout root** | `.pfl-layout` is a **two-column** CSS grid (`sidebar-width \| 1fr`); toolbar spans both columns. |
+| **Resizer** | `.sidebar-resizer` is **not** a third grid track — it sits on the sidebar column edge as an overlay (shared Sidebar contract). |
+| **Filter panel** | `.pfl-filter-panel` remains a **direct child of `.pfl-layout`** (`position: absolute` slide-over). Do not nest it inside the detail panel. |
+| **Detail flex split** | `.pfl-detail-panel`: `display: flex; flex-direction: column; overflow: hidden`. Non-scrolling header + scroll body. |
+
+```
+.pfl-detail-panel          /* flex column, overflow hidden, padding 0 */
+  .pfl-empty-state         /* permanent sibling; flex:1 when visible */
+  .pfl-card-detail         /* flex column flex:1 min-height:0 when visible */
+    .pfl-detail-header     /* flex-shrink:0 — type · title · status · Edit · ⋯ */
+    .pfl-detail-scroll     /* flex:1 min-height:0 overflow-y:auto — reading surface */
+      .pfl-detail-scroll-inner  /* max-width ~900px content cap */
+```
+
+### Overflow secondary actions
+
+Primary action (**Edit**) stays on the sticky header as a visible button. Secondary actions (**View Raw**, **Copy Filename**) live in a ⋯ overflow menu (`.pfl-overflow` / `.pfl-overflow-trigger` / `.pfl-overflow-menu`).
+
+Minimum a11y (shipped with the sticky header):
+
+- `aria-haspopup="menu"` / `aria-expanded` on the trigger; `role="menu"` / `role="menuitem"` on the panel
+- **Esc** dismiss (after modal close precedence) with focus return to the trigger
+- **Outside pointerdown** dismiss (ignore clicks inside `.pfl-overflow`)
+- Close overflow when opening Edit (header button or keyboard `e`)
+- ArrowDown / ArrowUp / Home / End move focus among open menuitems; open focuses the first item
+- `:focus-visible` on trigger, menuitems, and meta toggle (`.pfl-meta-toggle`)
+
+Use a **plugin-scoped** trigger class (e.g. `.pfl-overflow-trigger`), not bare `.btn-icon` — shared icon-button chrome is only defined under `.plugin-toolbar .btn-icon`.

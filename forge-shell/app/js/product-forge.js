@@ -730,6 +730,31 @@
       this.overflowOpen = true;
       menu.classList.remove('hidden');
       trigger.setAttribute('aria-expanded', 'true');
+      /* Focus first menuitem so ArrowUp/Down nav works immediately */
+      const first = menu.querySelector('[role="menuitem"]');
+      if (first) first.focus();
+    },
+
+    /* Move focus among open overflow menuitems. Returns true if handled. */
+    _navOverflowMenu(key) {
+      if (!this.overflowOpen) return false;
+      const menu = $q('.pfl-overflow-menu');
+      if (!menu) return false;
+      const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+      if (items.length === 0) return false;
+      if (key !== 'ArrowDown' && key !== 'ArrowUp' && key !== 'Home' && key !== 'End') return false;
+
+      let idx = items.indexOf(document.activeElement);
+      if (key === 'Home') {
+        items[0].focus();
+      } else if (key === 'End') {
+        items[items.length - 1].focus();
+      } else if (key === 'ArrowDown') {
+        items[idx < 0 ? 0 : (idx + 1) % items.length].focus();
+      } else {
+        items[idx <= 0 ? items.length - 1 : idx - 1].focus();
+      }
+      return true;
     },
 
     closeOverflow(opts) {
@@ -2139,6 +2164,12 @@
             e.preventDefault();
             return;
           }
+        }
+
+        /* Overflow menu: ArrowDown/Up/Home/End before tree nav (Esc already handled) */
+        if (detailPanel.overflowOpen && detailPanel._navOverflowMenu(e.key)) {
+          e.preventDefault();
+          return;
         }
 
         if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement && document.activeElement.tagName)) return;
