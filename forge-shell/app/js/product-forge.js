@@ -58,14 +58,25 @@
       html += this._renderSection('Orphan Stories', 'orphan-stories', hierarchy.orphanStories.length, () =>
         hierarchy.orphanStories.map(c => this._renderStoryNode(c, 1)).join(''), 'unparent-story');
 
-      html += this._renderSection('Intakes', 'intakes', hierarchy.intakes.length, () =>
-        hierarchy.intakes.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Checkpoints', 'checkpoints', hierarchy.checkpoints.length, () =>
-        hierarchy.checkpoints.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Decisions', 'decisions', hierarchy.decisions.length, () =>
-        hierarchy.decisions.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Release Notes', 'release-notes', hierarchy.releaseNotes.length, () =>
-        hierarchy.releaseNotes.map(c => this._renderLeafNode(c, 1)).join(''));
+      var moreCount = hierarchy.intakes.length + hierarchy.checkpoints.length +
+        hierarchy.decisions.length + hierarchy.releaseNotes.length;
+      var self = this;
+      html += this._renderSection('More', 'more', moreCount, function () {
+        var inner = '';
+        inner += self._renderSection('Intakes', 'intakes', hierarchy.intakes.length, function () {
+          return hierarchy.intakes.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Checkpoints', 'checkpoints', hierarchy.checkpoints.length, function () {
+          return hierarchy.checkpoints.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Decisions', 'decisions', hierarchy.decisions.length, function () {
+          return hierarchy.decisions.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Release Notes', 'release-notes', hierarchy.releaseNotes.length, function () {
+          return hierarchy.releaseNotes.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        return inner;
+      });
 
       container.innerHTML = html;
       this._bindEvents(container);
@@ -95,6 +106,7 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '" data-pfl-node-toggle="' + ESC(card.filename) + '">' +
           (hasChildren ? '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' : '<span class="pfl-toggle"></span>') +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml('initiative') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
@@ -120,6 +132,7 @@
         '<div class="pfl-tree-node-header" draggable="true" data-pfl-drag-type="epic" data-pfl-drag-filename="' + ESC(card.filename) + '" data-pfl-select="' + ESC(card.filename) + '" data-pfl-node-toggle="' + ESC(card.filename) + '" data-pfl-drop-accepts="initiative">' +
           (hasChildren ? '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' : '<span class="pfl-toggle"></span>') +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml('epic') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
@@ -142,6 +155,7 @@
         '<div class="pfl-tree-node-header" draggable="true" data-pfl-drag-type="story" data-pfl-drag-filename="' + ESC(card.filename) + '" data-pfl-select="' + ESC(card.filename) + '" data-pfl-drop-accepts="epic">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml(fm.type || 'story') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
@@ -155,6 +169,7 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml(fm.type || 'unknown') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
@@ -187,6 +202,11 @@
       return recentsTracker.isNew(filename) ? '<span class="pfl-new-badge">NEW</span>' : '';
     },
 
+    _typeChipHtml: function (type) {
+      var t = type || 'unknown';
+      return '<span class="pfl-type-chip" style="background:' + getTypeColor(t) + '" title="' + ESC(t) + '"></span>';
+    },
+
     /* _renderRecentsRow — a leaf row with type chip + optional
        NEW badge. Uses pfl-indent-1 to match other leaf sections. */
     _renderRecentsRow: function (card) {
@@ -196,7 +216,7 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
-          '<span class="pfl-type-chip" style="background:' + getTypeColor(type) + '" title="' + ESC(type) + '"></span>' +
+          this._typeChipHtml(type) +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
@@ -231,6 +251,10 @@
       else if (type === 'release-note') sectionId = 'release-notes';
       if (sectionId) {
         this.collapsedSections.delete(sectionId);
+        if (sectionId === 'intakes' || sectionId === 'checkpoints' ||
+            sectionId === 'decisions' || sectionId === 'release-notes') {
+          this.collapsedSections.delete('more');
+        }
       } else {
         console.warn('expandAncestors: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
       }
@@ -1314,6 +1338,7 @@
         treeView.collapsedSections.add('initiatives');
         treeView.collapsedSections.add('orphan-epics');
         treeView.collapsedSections.add('orphan-stories');
+        treeView.collapsedSections.add('more');
         treeView.collapsedSections.add('intakes');
         treeView.collapsedSections.add('checkpoints');
         treeView.collapsedSections.add('decisions');
