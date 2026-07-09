@@ -528,10 +528,13 @@
      ═══════════════════════════════════════════════════════════════ */
   const detailPanel = {
     showingRaw: false,
+    overflowOpen: false,
 
     renderCard(card) {
       const emptyState = $q('.pfl-empty-state');
       const detailEl = $q('.pfl-card-detail');
+      this.closeOverflow();
+      this.showingRaw = false;
       if (!card) {
         if (detailEl) detailEl.classList.add('hidden');
         if (emptyState) emptyState.classList.remove('hidden');
@@ -540,20 +543,41 @@
       if (emptyState) emptyState.classList.add('hidden');
       if (!detailEl) return;
       detailEl.classList.remove('hidden');
-      this.showingRaw = false;
 
       const fm = card.frontmatter;
       const type = fm.type || 'unknown';
+      const titleText = fm.title || card.filename;
       let html = '';
 
+      /* Sticky header — full panel width; does not scroll */
+      html += '<header class="pfl-detail-header">';
+      html += '<div class="pfl-detail-header-main">';
       html += '<span class="type-badge" style="background:' + getTypeColor(type) + '">' + ESC(type) + '</span>';
+      html += '<h2 class="pfl-card-title-header" title="' + ESC(titleText) + '">' + ESC(titleText) + '</h2>';
+      if (fm.status) {
+        html += '<span class="status-pill" style="background:' + getStatusColor(fm.status) + '">' + ESC(fm.status) + '</span>';
+      }
+      html += '</div>';
+      html += '<div class="pfl-detail-header-actions">';
+      html += '<button type="button" class="primary" data-pfl-action="edit" title="Edit card (E)">Edit</button>';
+      html += '<div class="pfl-overflow">';
+      html += '<button type="button" class="pfl-overflow-trigger" data-pfl-action="overflow" ' +
+        'aria-haspopup="menu" aria-expanded="false" title="More actions" id="pfl-overflow-trigger">' +
+        '<i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>';
+      html += '<div class="pfl-overflow-menu hidden" role="menu" aria-labelledby="pfl-overflow-trigger">';
+      html += '<button type="button" role="menuitem" data-pfl-action="raw">View Raw</button>';
+      html += '<button type="button" role="menuitem" data-pfl-action="copy-filename">Copy Filename</button>';
+      html += '</div></div></div></header>';
+
+      /* Scrollable reading surface */
+      html += '<div class="pfl-detail-scroll"><div class="pfl-detail-scroll-inner">';
+
       if (card.error) {
         html += '<div style="color:#e67e22;margin-bottom:12px;font-size:13px">&#9888; ' + ESC(card.error) + '</div>';
       }
-      html += '<div class="pfl-card-title-header">' + ESC(fm.title || card.filename) + '</div>';
 
+      /* Full metadata grid (Status omitted — header-only when truthy) */
       html += '<div class="metadata-grid">';
-      html += this._metaRow('Status', fm.status ? '<span class="status-pill" style="background:' + getStatusColor(fm.status) + '">' + ESC(fm.status) + '</span>' : '&mdash;');
       html += this._metaRow('Filename', '<code>' + ESC(card.filename) + '.md</code>');
 
       if (fm.release) html += this._metaRow('Release', ESC(fm.release));
@@ -614,31 +638,66 @@
         html += '<div class="rendered-body">' + ForgeUtils.MD.render(card.body) + '</div>';
       }
 
-      html += '<div class="pfl-card-actions">' +
-        '<button class="primary" data-pfl-action="edit">Edit Card</button>' +
-        '<button data-pfl-action="raw">View Raw</button>' +
-        '<button data-pfl-action="copy-filename">Copy Filename</button>' +
-      '</div>';
-
       html += '<div class="pfl-card-raw-content hidden">' + ESC(card.raw) + '</div>';
+      html += '</div></div>';
 
       detailEl.innerHTML = html;
-      detailEl.scrollTop = 0;
 
-      /* Bind navigation links */
+      /* Fix scroll reset: target the actual scrollports, not .pfl-card-detail */
+      const scroll = detailEl.querySelector('.pfl-detail-scroll');
+      if (scroll) scroll.scrollTop = 0;
+      const raw = detailEl.querySelector('.pfl-card-raw-content');
+      if (raw) raw.scrollTop = 0;
+
+      this._bindDetailEvents(detailEl, card);
+    },
+
+    _bindDetailEvents(detailEl, card) {
+      const self = this;
+
       detailEl.querySelectorAll('[data-pfl-nav]').forEach(el => {
         el.addEventListener('click', () => ctrl.selectCard(el.dataset.pflNav));
       });
 
-      /* Bind action buttons */
       detailEl.querySelectorAll('[data-pfl-action]').forEach(el => {
         el.addEventListener('click', () => {
           const action = el.dataset.pflAction;
-          if (action === 'edit') editModal.open(card.filename);
-          else if (action === 'raw') this.toggleRaw();
-          else if (action === 'copy-filename') this.copyFilename(card.filename);
+          if (action === 'edit') {
+            self.closeOverflow();
+            editModal.open(card.filename);
+          } else if (action === 'overflow') {
+            if (self.overflowOpen) self.closeOverflow();
+            else self.openOverflow();
+          } else if (action === 'raw') {
+            self.toggleRaw();
+            self.closeOverflow();
+          } else if (action === 'copy-filename') {
+            self.copyFilename(card.filename);
+            self.closeOverflow();
+          }
         });
       });
+    },
+
+    openOverflow() {
+      const menu = $q('.pfl-overflow-menu');
+      const trigger = $q('.pfl-overflow-trigger');
+      if (!menu || !trigger) return;
+      this.overflowOpen = true;
+      menu.classList.remove('hidden');
+      trigger.setAttribute('aria-expanded', 'true');
+    },
+
+    closeOverflow(opts) {
+      const menu = $q('.pfl-overflow-menu');
+      const trigger = $q('.pfl-overflow-trigger');
+      const wasOpen = this.overflowOpen;
+      this.overflowOpen = false;
+      if (menu) menu.classList.add('hidden');
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+        if (opts && opts.returnFocus && wasOpen) trigger.focus();
+      }
     },
 
     _metaRow(label, value) {
@@ -928,6 +987,8 @@
     showingDiff: false,
 
     open(filename) {
+      /* Always dismiss overflow so menu never sits under the dialog */
+      detailPanel.closeOverflow();
       const card = store.get(filename);
       if (!card) return;
       this.currentFilename = filename;
@@ -1191,6 +1252,7 @@
   var selectedCard = null;
   var taxonomy = { products: [], modules: [], clients: [] };
   var keydownHandler = null;
+  var overflowPointerdownHandler = null;
 
   /* ═══════════════════════════════════════════════════════════════
      Controller (public interface)
@@ -1234,6 +1296,7 @@
     destroy() {
       this._stopAutoRefresh();
       this._unbindKeyboard();
+      detailPanel.closeOverflow();
       selectedCard = null;
       store.clear();
       cardsHandle = null;
@@ -1909,15 +1972,20 @@
       }
     },
 
-    /* ─── Keyboard ─── */
+    /* ─── Keyboard + overflow outside dismiss ─── */
     _bindKeyboard() {
       this._unbindKeyboard();
       keydownHandler = function (e) {
-        /* Escape closes edit modal, or clears search when focused */
+        /* Escape: modal → overflow (returnFocus) → search clear */
         if (e.key === 'Escape') {
           var overlay = $q('.pfl-modal-overlay');
           if (overlay && overlay.classList.contains('pfl-visible')) {
             editModal.close();
+            return;
+          }
+          if (detailPanel.overflowOpen) {
+            detailPanel.closeOverflow({ returnFocus: true });
+            e.preventDefault();
             return;
           }
           var s = $q('[data-pfl-search]');
@@ -1932,6 +2000,7 @@
         if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement && document.activeElement.tagName)) return;
 
         if (e.key === 'e' && selectedCard) {
+          detailPanel.closeOverflow();
           editModal.open(selectedCard);
           return;
         }
@@ -1953,12 +2022,25 @@
         }
       };
       document.addEventListener('keydown', keydownHandler);
+
+      /* Outside pointerdown closes overflow (ignore clicks inside .pfl-overflow) */
+      overflowPointerdownHandler = function (e) {
+        if (!detailPanel.overflowOpen) return;
+        var root = e.target && e.target.closest ? e.target.closest('.pfl-overflow') : null;
+        if (root) return;
+        detailPanel.closeOverflow();
+      };
+      document.addEventListener('pointerdown', overflowPointerdownHandler);
     },
 
     _unbindKeyboard() {
       if (keydownHandler) {
         document.removeEventListener('keydown', keydownHandler);
         keydownHandler = null;
+      }
+      if (overflowPointerdownHandler) {
+        document.removeEventListener('pointerdown', overflowPointerdownHandler);
+        overflowPointerdownHandler = null;
       }
     },
 

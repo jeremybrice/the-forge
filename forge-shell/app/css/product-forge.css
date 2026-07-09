@@ -179,32 +179,153 @@
   outline: 2px dashed #e74c3c;
 }
 
-/* ── Detail Panel ── */
+/* ── Detail Panel (flex split: sticky header + scroll body) ── */
 .pfl-detail-panel {
+  --pfl-detail-content-max: 900px;
   grid-row: 2;
   grid-column: 2;
-  overflow-y: auto;
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
   background: var(--bg-primary);
+  position: relative;
+  min-width: 0;
+}
+
+/* Card detail fills panel; header may span full panel width */
+.pfl-card-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+}
+
+.pfl-detail-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-primary);
+  z-index: 5;
+}
+
+.pfl-detail-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pfl-detail-header .type-badge {
+  margin-bottom: 0;
+}
+
+/* Class-based sizing — h2 semantic element; tighter chrome density */
+.pfl-detail-header .pfl-card-title-header {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.pfl-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/*
+ * ⋯ trigger — MUST be pfl-scoped. Shared .btn-icon is only defined under
+ * .plugin-toolbar .btn-icon; bare .btn-icon has no icon chrome.
+ * Mirror toolbar 32×32 icon button metrics locally.
+ */
+.pfl-overflow-trigger {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.pfl-overflow-trigger:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.pfl-overflow-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pfl-overflow {
   position: relative;
 }
 
-.pfl-card-detail {
-  max-width: 900px;
+.pfl-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 160px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  z-index: 15;
 }
 
-.pfl-card-title-header {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 16px;
-  line-height: 1.3;
+.pfl-overflow-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
 }
 
-.pfl-card-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-light);
+.pfl-overflow-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.pfl-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 32px;
+}
+
+/* Reading column: restore 900px content cap inside the scrollport */
+.pfl-detail-scroll-inner {
+  max-width: var(--pfl-detail-content-max, 900px);
+}
+
+/* Empty state: permanent sibling; flex:1 when visible; .hidden when not */
+.pfl-detail-panel > .pfl-empty-state {
+  flex: 1;
 }
 
 .pfl-card-raw-content {
