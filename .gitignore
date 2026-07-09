@@ -68,3 +68,6 @@ audio-forge/recordings/index.json
 
 # >>> relay >>>
 .session-log/
+
+# Git worktrees (local isolated checkouts)
+.worktrees/

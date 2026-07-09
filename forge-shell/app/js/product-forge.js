@@ -41,7 +41,12 @@
       if (!container) return;
       let html = '';
 
-      /* Recents always renders first when provided */
+      /* Pinned above Recents when present */
+      if (Array.isArray(hierarchy.pinned) && hierarchy.pinned.length > 0) {
+        html += this._renderPinnedSection(hierarchy.pinned);
+      }
+
+      /* Recents below Pinned when provided */
       if (Array.isArray(hierarchy.recents)) {
         html += this._renderRecentsSection(hierarchy.recents);
       }
@@ -58,14 +63,25 @@
       html += this._renderSection('Orphan Stories', 'orphan-stories', hierarchy.orphanStories.length, () =>
         hierarchy.orphanStories.map(c => this._renderStoryNode(c, 1)).join(''), 'unparent-story');
 
-      html += this._renderSection('Intakes', 'intakes', hierarchy.intakes.length, () =>
-        hierarchy.intakes.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Checkpoints', 'checkpoints', hierarchy.checkpoints.length, () =>
-        hierarchy.checkpoints.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Decisions', 'decisions', hierarchy.decisions.length, () =>
-        hierarchy.decisions.map(c => this._renderLeafNode(c, 1)).join(''));
-      html += this._renderSection('Release Notes', 'release-notes', hierarchy.releaseNotes.length, () =>
-        hierarchy.releaseNotes.map(c => this._renderLeafNode(c, 1)).join(''));
+      var moreCount = hierarchy.intakes.length + hierarchy.checkpoints.length +
+        hierarchy.decisions.length + hierarchy.releaseNotes.length;
+      var self = this;
+      html += this._renderSection('More', 'more', moreCount, function () {
+        var inner = '';
+        inner += self._renderSection('Intakes', 'intakes', hierarchy.intakes.length, function () {
+          return hierarchy.intakes.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Checkpoints', 'checkpoints', hierarchy.checkpoints.length, function () {
+          return hierarchy.checkpoints.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Decisions', 'decisions', hierarchy.decisions.length, function () {
+          return hierarchy.decisions.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        inner += self._renderSection('Release Notes', 'release-notes', hierarchy.releaseNotes.length, function () {
+          return hierarchy.releaseNotes.map(function (c) { return self._renderLeafNode(c, 1); }).join('');
+        });
+        return inner;
+      });
 
       container.innerHTML = html;
       this._bindEvents(container);
@@ -95,10 +111,12 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '" data-pfl-node-toggle="' + ESC(card.filename) + '">' +
           (hasChildren ? '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' : '<span class="pfl-toggle"></span>') +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml('initiative') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + initNode.children.length + '</span>' : '') +
+          this._pinButtonHtml(card.filename) +
         '</div>';
 
       if (hasChildren) {
@@ -120,10 +138,12 @@
         '<div class="pfl-tree-node-header" draggable="true" data-pfl-drag-type="epic" data-pfl-drag-filename="' + ESC(card.filename) + '" data-pfl-select="' + ESC(card.filename) + '" data-pfl-node-toggle="' + ESC(card.filename) + '" data-pfl-drop-accepts="initiative">' +
           (hasChildren ? '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' : '<span class="pfl-toggle"></span>') +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml('epic') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + epicNode.children.length + '</span>' : '') +
+          this._pinButtonHtml(card.filename) +
         '</div>';
 
       if (hasChildren) {
@@ -142,9 +162,11 @@
         '<div class="pfl-tree-node-header" draggable="true" data-pfl-drag-type="story" data-pfl-drag-filename="' + ESC(card.filename) + '" data-pfl-select="' + ESC(card.filename) + '" data-pfl-drop-accepts="epic">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml(fm.type || 'story') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -155,10 +177,28 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+          this._typeChipHtml(fm.type || 'unknown') +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
+      '</div>';
+    },
+
+    /* _renderPinnedSection — pinned cards above Recents. Same row
+       chrome as recents + pin control. */
+    _renderPinnedSection: function (cards) {
+      var self = this;
+      var collapsed = this.collapsedSections.has('pinned');
+      var inner = cards.map(function (card) { return self._renderRecentsRow(card); }).join('');
+      return '<div class="pfl-tree-section" data-pfl-section="pinned">' +
+        '<div class="pfl-tree-section-header" data-pfl-toggle-section="pinned">' +
+          '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' +
+          '<span>Pinned</span>' +
+          '<span class="pfl-count">' + cards.length + '</span>' +
+        '</div>' +
+        '<div class="pfl-tree-children' + (collapsed ? ' pfl-collapsed' : '') + '" data-pfl-section-body="pinned">' + inner + '</div>' +
       '</div>';
     },
 
@@ -187,6 +227,19 @@
       return recentsTracker.isNew(filename) ? '<span class="pfl-new-badge">NEW</span>' : '';
     },
 
+    _typeChipHtml: function (type) {
+      var t = type || 'unknown';
+      return '<span class="pfl-type-chip" style="background:' + getTypeColor(t) + '" title="' + ESC(t) + '"></span>';
+    },
+
+    _pinButtonHtml: function (filename) {
+      var pinned = pinStore.list().indexOf(filename) !== -1;
+      return '<button type="button" class="pfl-pin-btn' + (pinned ? ' pinned' : '') +
+        '" data-pfl-pin="' + ESC(filename) + '" title="' + (pinned ? 'Unpin' : 'Pin') +
+        '" aria-label="' + (pinned ? 'Unpin' : 'Pin') + '">' +
+        '<i class="fa-solid fa-thumbtack"></i></button>';
+    },
+
     /* _renderRecentsRow — a leaf row with type chip + optional
        NEW badge. Uses pfl-indent-1 to match other leaf sections. */
     _renderRecentsRow: function (card) {
@@ -196,10 +249,11 @@
         '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
           '<span class="pfl-toggle"></span>' +
           '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
-          '<span class="pfl-type-chip" style="background:' + getTypeColor(type) + '" title="' + ESC(type) + '"></span>' +
+          this._typeChipHtml(type) +
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -231,9 +285,40 @@
       else if (type === 'release-note') sectionId = 'release-notes';
       if (sectionId) {
         this.collapsedSections.delete(sectionId);
+        if (sectionId === 'intakes' || sectionId === 'checkpoints' ||
+            sectionId === 'decisions' || sectionId === 'release-notes') {
+          this.collapsedSections.delete('more');
+        }
       } else {
         console.warn('expandAncestors: unknown card type "' + type + '" for filename ' + filename + ' — section will not be auto-expanded');
       }
+    },
+
+    scrollToFilename: function (filename) {
+      if (!filename) return;
+      var rows = $qa('[data-pfl-select="' + filename + '"]');
+      if (!rows || rows.length === 0) return;
+      /* Prefer structural row over Recents/Pin: last match is usually deeper in DOM after pinned/recents */
+      var structural = null;
+      for (var i = 0; i < rows.length; i++) {
+        var node = rows[i].closest('.pfl-tree-section');
+        var sec = node && node.getAttribute('data-pfl-section');
+        if (sec && sec !== 'recents' && sec !== 'pinned') {
+          structural = rows[i];
+          break;
+        }
+      }
+      var target = structural || rows[rows.length - 1] || rows[0];
+      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return target;
+    },
+
+    flashFilename: function (filename) {
+      var rows = $qa('[data-pfl-select="' + filename + '"]');
+      rows.forEach(function (row) {
+        row.classList.add('pfl-flash-new');
+        setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
+      });
     },
 
     _bindEvents(container) {
@@ -287,6 +372,25 @@
           ctrl.selectCard(filename);
           ctrl._renderTree();
           this.highlightSelected(filename);
+          requestAnimationFrame(function () {
+            treeView.scrollToFilename(filename);
+            treeView.flashFilename(filename);
+          });
+        });
+      });
+
+      /* Pin toggle — stop propagation so pin click does not select */
+      container.querySelectorAll('[data-pfl-pin]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var fn = btn.dataset.pflPin;
+          var result = pinStore.toggle(fn);
+          if (result === 'blocked') {
+            ForgeUtils.Toast.show('Unpin one first', 'error');
+            return;
+          }
+          ctrl._renderTree();
         });
       });
     },
@@ -723,6 +827,16 @@
     return isNaN(t) ? null : t;
   }
 
+  var H = window.ProductForgeHelpers || {};
+  var pinStore = (H.createPinStore || function () {
+    return { filenames: [], load: function () {}, save: function () {}, toggle: function () { return 'blocked'; },
+      add: function () { return 'blocked'; }, remove: function () {}, pruneMissing: function () {}, list: function () { return []; } };
+  })({
+    storage: (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+    key: 'pfl-pinned',
+    max: 3
+  });
+
   var recentsTracker = {
     /* sessionAddedAt — filename → ms timestamp when first observed.
        Drives the NEW badge in render methods (via isNew) and the
@@ -1111,6 +1225,7 @@
       }
 
       this._renderLayout(view, rootHandle);
+      pinStore.load();
       await this._loadCards();
       this._startAutoRefresh();
       this._bindKeyboard();
@@ -1123,6 +1238,7 @@
       store.clear();
       cardsHandle = null;
       recentsTracker.reset();
+      /* pins persist in localStorage across sessions */
       treeView.collapsedSections.clear();
       treeView.collapsedNodes.clear();
     },
@@ -1146,6 +1262,7 @@
         this._renderTree();
         this._updateRefreshIndicator();
       }
+      this._updateContextStrip();
     },
 
     /* ─── Internal ─── */
@@ -1195,6 +1312,8 @@
               '<i class="fa-solid fa-magnifying-glass"></i>' +
               '<input type="text" placeholder="Search cards\u2026" data-pfl-search />' +
             '</div>' +
+            '<div class="pfl-context-strip hidden" data-pfl-context-strip></div>' +
+            '<div class="pfl-search-results hidden" data-pfl-search-results></div>' +
             '<div class="pfl-tree-view"></div>' +
           '</aside>' +
           '<div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>' +
@@ -1309,11 +1428,11 @@
     _renderTree() {
       var hierarchy = buildHierarchy(store);
 
-      // On first render, collapse all sections and parent nodes by default
+      // On first render: Initiatives open; More + orphans + nested More sections collapsed
       if (treeView.collapsedSections.size === 0 && treeView.collapsedNodes.size === 0) {
-        treeView.collapsedSections.add('initiatives');
         treeView.collapsedSections.add('orphan-epics');
         treeView.collapsedSections.add('orphan-stories');
+        treeView.collapsedSections.add('more');
         treeView.collapsedSections.add('intakes');
         treeView.collapsedSections.add('checkpoints');
         treeView.collapsedSections.add('decisions');
@@ -1337,79 +1456,155 @@
         }
       }
 
-      // Search filtering
       var searchEl = $q('[data-pfl-search]');
       var query = searchEl ? searchEl.value.trim().toLowerCase() : '';
       var searching = query.length > 0;
-      var savedSections = null;
+      var resultsEl = $q('[data-pfl-search-results]');
+      var treeEl = $q('.pfl-tree-view');
 
       if (searching) {
-        var matchCard = function (card) {
-          var title = (card.frontmatter.title || '').toLowerCase();
-          var fname = (card.filename || '').toLowerCase();
-          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
-        };
-
-        // Filter leaf arrays
-        hierarchy.orphanStories = hierarchy.orphanStories.filter(matchCard);
-        hierarchy.intakes = hierarchy.intakes.filter(matchCard);
-        hierarchy.checkpoints = hierarchy.checkpoints.filter(matchCard);
-        hierarchy.decisions = hierarchy.decisions.filter(matchCard);
-        hierarchy.releaseNotes = hierarchy.releaseNotes.filter(matchCard);
-
-        // Filter orphan epics (keep if epic matches or any child story matches)
-        hierarchy.orphanEpics = hierarchy.orphanEpics.filter(function (epicNode) {
-          var epicMatch = matchCard(epicNode.card);
-          epicNode.children = epicNode.children.filter(matchCard);
-          return epicMatch || epicNode.children.length > 0;
+        var candidates = store.all().filter(function (c) {
+          return H.cardMatchesStatusFilters
+            ? H.cardMatchesStatusFilters(c, FilterPanel.filters)
+            : true;
         });
-
-        // Filter initiatives (keep if init matches, or any child epic/story matches)
-        hierarchy.tree = hierarchy.tree.filter(function (initNode) {
-          var initMatch = matchCard(initNode.card);
-          initNode.children = initNode.children.filter(function (epicNode) {
-            var epicMatch = matchCard(epicNode.card);
-            epicNode.children = epicNode.children.filter(matchCard);
-            return epicMatch || epicNode.children.length > 0;
-          });
-          return initMatch || initNode.children.length > 0;
-        });
-
-        // Auto-expand all sections while searching
-        savedSections = new Set(treeView.collapsedSections);
-        treeView.collapsedSections.clear();
+        var ranked = H.rankSearchResults
+          ? H.rankSearchResults(candidates, query)
+          : candidates;
+        if (treeEl) treeEl.classList.add('hidden');
+        if (resultsEl) {
+          resultsEl.classList.remove('hidden');
+          resultsEl.innerHTML = this._renderSearchResults(ranked);
+          this._bindSearchResultEvents(resultsEl);
+        }
+        if (selectedCard) treeView.highlightSelected(selectedCard);
+        this._updateContextStrip();
+        this._updateFilterBadge();
+        return;
       }
 
-      /* Build Recents (after structural search filter so titles
-         that don't match are not in the recents either). The
-         recents themselves are then filtered by search query
-         and per-type status filters. */
+      if (treeEl) treeEl.classList.remove('hidden');
+      if (resultsEl) {
+        resultsEl.classList.add('hidden');
+        resultsEl.innerHTML = '';
+      }
+
+      /* Build Recents; then status-filter hierarchy + pins. */
       var allRecents = recentsTracker.getRecents(store, 10);
-      if (searching) {
-        var matchCardLocal = function (card) {
-          var title = (card.frontmatter.title || '').toLowerCase();
-          var fname = (card.filename || '').toLowerCase();
-          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
-        };
-        allRecents = allRecents.filter(matchCardLocal);
-      }
       var filteredRecents = FilterPanel.filterRecents(allRecents);
 
       // Apply status filters
       hierarchy = FilterPanel.filterHierarchy(hierarchy);
-      /* Re-attach recents after filterHierarchy (which returns a new
-         object that doesn't carry recents through). */
+
+      /* Pins: prune gone cards, resolve to store cards, status-filter,
+         de-dupe from recents. Re-attach after filterHierarchy. */
+      pinStore.pruneMissing(function (fn) { return !!store.get(fn); });
+      var pinnedCards = pinStore.list().map(function (fn) { return store.get(fn); }).filter(Boolean);
+      pinnedCards = FilterPanel.filterRecents(pinnedCards);
+      if (H.excludePinnedFromRecents) {
+        filteredRecents = H.excludePinnedFromRecents(filteredRecents, pinStore.list());
+      }
+      hierarchy.pinned = pinnedCards;
       hierarchy.recents = filteredRecents;
 
       treeView.render(hierarchy);
 
-      // Restore collapsed sections after render so user state is preserved
-      if (searching && savedSections) {
-        treeView.collapsedSections = savedSections;
-      }
-
       if (selectedCard) treeView.highlightSelected(selectedCard);
       this._updateFilterBadge();
+      this._updateContextStrip();
+    },
+
+    _renderSearchResults: function (cards) {
+      if (!cards || cards.length === 0) {
+        return '<div class="pfl-search-empty">No cards match</div>';
+      }
+      return cards.map(function (card) {
+        var fm = card.frontmatter || {};
+        var type = fm.type || 'unknown';
+        var parentLabel = '';
+        if (fm.parent && store.get(fm.parent)) {
+          var p = store.get(fm.parent);
+          parentLabel = (p.frontmatter && p.frontmatter.title) || p.filename;
+        }
+        return '<div class="pfl-tree-node pfl-indent-1" data-pfl-filename="' + ESC(card.filename) +
+          '" data-pfl-type="' + ESC(type) + '">' +
+          '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
+            '<span class="pfl-toggle"></span>' +
+            '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+            treeView._typeChipHtml(type) +
+            '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+            (parentLabel ? '<span class="pfl-search-result-meta">' + ESC(parentLabel) + '</span>' : '') +
+            treeView._pinButtonHtml(card.filename) +
+          '</div></div>';
+      }).join('');
+    },
+
+    _bindSearchResultEvents: function (container) {
+      var self = this;
+      container.querySelectorAll('[data-pfl-select]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+          if (e.target.closest('[data-pfl-pin]')) return;
+          var filename = el.dataset.pflSelect;
+          self.selectCard(filename);
+          self._updateContextStrip();
+          treeView.highlightSelected(filename);
+        });
+      });
+      container.querySelectorAll('[data-pfl-pin]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var fn = btn.dataset.pflPin;
+          var result = pinStore.toggle(fn);
+          if (result === 'blocked') {
+            ForgeUtils.Toast.show('Unpin one first', 'error');
+            return;
+          }
+          self._renderTree();
+        });
+      });
+    },
+
+    _updateContextStrip: function () {
+      var el = $q('[data-pfl-context-strip]');
+      if (!el) return;
+      if (!selectedCard) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+      }
+      var card = store.get(selectedCard);
+      if (!card || !H.buildBreadcrumb) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+      }
+      var bc = H.buildBreadcrumb(card, function (fn) { return store.get(fn); });
+      var parts = [];
+      bc.segments.forEach(function (seg, idx) {
+        if (idx > 0) parts.push('<span class="pfl-crumb-sep">›</span>');
+        var isLast = idx === bc.segments.length - 1;
+        if (!isLast && seg.filename) {
+          parts.push('<button type="button" class="pfl-crumb" data-pfl-crumb="' +
+            ESC(seg.filename) + '">' + ESC(seg.label) + '</button>');
+        } else {
+          parts.push('<span class="pfl-crumb-current">' + ESC(seg.label) + '</span>');
+        }
+      });
+      el.innerHTML = parts.join('');
+      el.classList.remove('hidden');
+      el.querySelectorAll('[data-pfl-crumb]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var fn = btn.dataset.pflCrumb;
+          treeView.expandAncestors(fn);
+          ctrl.selectCard(fn);
+          ctrl._renderTree();
+          requestAnimationFrame(function () {
+            treeView.scrollToFilename(fn);
+            treeView.flashFilename(fn);
+          });
+        });
+      });
     },
 
     _updateRefreshIndicator() {
@@ -1718,11 +1913,18 @@
     _bindKeyboard() {
       this._unbindKeyboard();
       keydownHandler = function (e) {
-        /* Escape closes edit modal */
+        /* Escape closes edit modal, or clears search when focused */
         if (e.key === 'Escape') {
           var overlay = $q('.pfl-modal-overlay');
           if (overlay && overlay.classList.contains('pfl-visible')) {
             editModal.close();
+            return;
+          }
+          var s = $q('[data-pfl-search]');
+          if (s && document.activeElement === s && s.value) {
+            s.value = '';
+            ctrl._renderTree();
+            e.preventDefault();
             return;
           }
         }
@@ -1789,17 +1991,10 @@
       this._updateRefreshIndicator();
 
       /* 4. Scroll + flash on next animation frame so the new DOM
-         is in place. There may be multiple rows (Recents + structural)
-         — flash both. */
+         is in place. Prefer structural row; flash all duplicates. */
       requestAnimationFrame(function () {
-        var rows = $qa('[data-pfl-select="' + filename + '"]');
-        if (rows && rows.length > 0) {
-          rows[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-        rows.forEach(function (row) {
-          row.classList.add('pfl-flash-new');
-          setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
-        });
+        treeView.scrollToFilename(filename);
+        treeView.flashFilename(filename);
       });
     },
 
@@ -1828,7 +2023,7 @@
   window.ProductForgeLocalView = ctrl;
   /* Debug-only — exposed for manual smoke testing of pure helpers.
      Not part of the public surface; do not depend on this. */
-  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker };
+  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker, pinStore: pinStore };
   Shell.registerController('product-forge-local', window.ProductForgeLocalView);
 
 })();
