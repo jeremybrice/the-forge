@@ -294,6 +294,33 @@
       }
     },
 
+    scrollToFilename: function (filename) {
+      if (!filename) return;
+      var rows = $qa('[data-pfl-select="' + filename + '"]');
+      if (!rows || rows.length === 0) return;
+      /* Prefer structural row over Recents/Pin: last match is usually deeper in DOM after pinned/recents */
+      var structural = null;
+      for (var i = 0; i < rows.length; i++) {
+        var node = rows[i].closest('.pfl-tree-section');
+        var sec = node && node.getAttribute('data-pfl-section');
+        if (sec && sec !== 'recents' && sec !== 'pinned') {
+          structural = rows[i];
+          break;
+        }
+      }
+      var target = structural || rows[rows.length - 1] || rows[0];
+      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return target;
+    },
+
+    flashFilename: function (filename) {
+      var rows = $qa('[data-pfl-select="' + filename + '"]');
+      rows.forEach(function (row) {
+        row.classList.add('pfl-flash-new');
+        setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
+      });
+    },
+
     _bindEvents(container) {
       /* Section toggle */
       container.querySelectorAll('[data-pfl-toggle-section]').forEach(el => {
@@ -345,6 +372,10 @@
           ctrl.selectCard(filename);
           ctrl._renderTree();
           this.highlightSelected(filename);
+          requestAnimationFrame(function () {
+            treeView.scrollToFilename(filename);
+            treeView.flashFilename(filename);
+          });
         });
       });
 
@@ -1231,6 +1262,7 @@
         this._renderTree();
         this._updateRefreshIndicator();
       }
+      this._updateContextStrip();
     },
 
     /* ─── Internal ─── */
@@ -1280,6 +1312,7 @@
               '<i class="fa-solid fa-magnifying-glass"></i>' +
               '<input type="text" placeholder="Search cards\u2026" data-pfl-search />' +
             '</div>' +
+            '<div class="pfl-context-strip hidden" data-pfl-context-strip></div>' +
             '<div class="pfl-tree-view"></div>' +
           '</aside>' +
           '<div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>' +
@@ -1507,6 +1540,49 @@
 
       if (selectedCard) treeView.highlightSelected(selectedCard);
       this._updateFilterBadge();
+      this._updateContextStrip();
+    },
+
+    _updateContextStrip: function () {
+      var el = $q('[data-pfl-context-strip]');
+      if (!el) return;
+      if (!selectedCard) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+      }
+      var card = store.get(selectedCard);
+      if (!card || !H.buildBreadcrumb) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+      }
+      var bc = H.buildBreadcrumb(card, function (fn) { return store.get(fn); });
+      var parts = [];
+      bc.segments.forEach(function (seg, idx) {
+        if (idx > 0) parts.push('<span class="pfl-crumb-sep">›</span>');
+        var isLast = idx === bc.segments.length - 1;
+        if (!isLast && seg.filename) {
+          parts.push('<button type="button" class="pfl-crumb" data-pfl-crumb="' +
+            ESC(seg.filename) + '">' + ESC(seg.label) + '</button>');
+        } else {
+          parts.push('<span class="pfl-crumb-current">' + ESC(seg.label) + '</span>');
+        }
+      });
+      el.innerHTML = parts.join('');
+      el.classList.remove('hidden');
+      el.querySelectorAll('[data-pfl-crumb]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var fn = btn.dataset.pflCrumb;
+          treeView.expandAncestors(fn);
+          ctrl.selectCard(fn);
+          ctrl._renderTree();
+          requestAnimationFrame(function () {
+            treeView.scrollToFilename(fn);
+            treeView.flashFilename(fn);
+          });
+        });
+      });
     },
 
     _updateRefreshIndicator() {
@@ -1886,17 +1962,10 @@
       this._updateRefreshIndicator();
 
       /* 4. Scroll + flash on next animation frame so the new DOM
-         is in place. There may be multiple rows (Recents + structural)
-         — flash both. */
+         is in place. Prefer structural row; flash all duplicates. */
       requestAnimationFrame(function () {
-        var rows = $qa('[data-pfl-select="' + filename + '"]');
-        if (rows && rows.length > 0) {
-          rows[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-        rows.forEach(function (row) {
-          row.classList.add('pfl-flash-new');
-          setTimeout(function () { row.classList.remove('pfl-flash-new'); }, 1500);
-        });
+        treeView.scrollToFilename(filename);
+        treeView.flashFilename(filename);
       });
     },
 

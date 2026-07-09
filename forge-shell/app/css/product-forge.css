@@ -462,6 +462,53 @@
   text-transform: uppercase;
 }
 
+/* Sticky context breadcrumb under sidebar search */
+.pfl-context-strip {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pfl-context-strip.hidden {
+  display: none;
+}
+.pfl-context-strip .pfl-crumb {
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  max-width: 7em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pfl-context-strip .pfl-crumb:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.pfl-context-strip .pfl-crumb-current {
+  color: var(--text-primary);
+  cursor: default;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pfl-context-strip .pfl-crumb-sep {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* Brief flash applied to a tree row when auto-reveal selects it.
    1.5s, fades out — class removed by setTimeout in JS. */
 @keyframes pfl-flash-new-keyframes {
