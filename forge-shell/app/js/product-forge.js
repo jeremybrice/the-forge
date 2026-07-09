@@ -528,6 +528,7 @@
      ═══════════════════════════════════════════════════════════════ */
   const detailPanel = {
     showingRaw: false,
+    metaExpanded: false, /* session-scoped; persists across card switches */
     overflowOpen: false,
 
     renderCard(card) {
@@ -576,8 +577,18 @@
         html += '<div style="color:#e67e22;margin-bottom:12px;font-size:13px">&#9888; ' + ESC(card.error) + '</div>';
       }
 
-      /* Full metadata grid (Status omitted — header-only when truthy) */
-      html += '<div class="metadata-grid">';
+      /* Key-meta summary row (product · team · parent · updated) — omit if none present */
+      html += this._buildKeyMeta(fm);
+
+      /* Toggle for full metadata (Filename always present → always show) */
+      const metaExpanded = !!this.metaExpanded;
+      html += '<button type="button" class="pfl-meta-toggle" data-pfl-action="toggle-meta" ' +
+        'aria-expanded="' + (metaExpanded ? 'true' : 'false') + '">' +
+        (metaExpanded ? 'Hide metadata \u25B4' : 'Show all metadata \u25BE') +
+        '</button>';
+
+      /* Full metadata grid (Status omitted — header-only when truthy); collapsed by default */
+      html += '<div class="metadata-grid pfl-meta-full' + (metaExpanded ? '' : ' hidden') + '">';
       html += this._metaRow('Filename', '<code>' + ESC(card.filename) + '.md</code>');
 
       if (fm.release) html += this._metaRow('Release', ESC(fm.release));
@@ -652,6 +663,36 @@
       this._bindDetailEvents(detailEl, card);
     },
 
+    _buildKeyMeta(fm) {
+      const items = [];
+      if (fm.product) {
+        items.push(this._keyMetaItem('Product', ESC(fm.product)));
+      }
+      if (fm.team) {
+        items.push(this._keyMetaItem('Team', ESC(fm.team)));
+      }
+      if (fm.parent) {
+        const parentCard = store.get(fm.parent);
+        const parentLabel = parentCard ? (parentCard.frontmatter.title || fm.parent) : fm.parent;
+        items.push(this._keyMetaItem(
+          'Parent',
+          '<span class="meta-link" data-pfl-nav="' + ESC(fm.parent) + '">' + ESC(parentLabel) + '</span>'
+        ));
+      }
+      if (fm.updated) {
+        items.push(this._keyMetaItem('Updated', ESC(fm.updated)));
+      }
+      if (items.length === 0) return '';
+      return '<div class="pfl-key-meta">' + items.join('') + '</div>';
+    },
+
+    _keyMetaItem(label, valueHtml) {
+      return '<span class="pfl-key-meta-item">' +
+        '<span class="pfl-key-meta-label">' + ESC(label) + '</span>' +
+        valueHtml +
+        '</span>';
+    },
+
     _bindDetailEvents(detailEl, card) {
       const self = this;
 
@@ -674,6 +715,8 @@
           } else if (action === 'copy-filename') {
             self.copyFilename(card.filename);
             self.closeOverflow();
+          } else if (action === 'toggle-meta') {
+            self.toggleMeta();
           }
         });
       });
@@ -702,6 +745,17 @@
 
     _metaRow(label, value) {
       return '<div class="meta-label">' + ESC(label) + '</div><div class="meta-value">' + value + '</div>';
+    },
+
+    toggleMeta() {
+      this.metaExpanded = !this.metaExpanded;
+      const grid = $q('.pfl-meta-full');
+      const btn = $q('.pfl-meta-toggle');
+      if (grid) grid.classList.toggle('hidden', !this.metaExpanded);
+      if (btn) {
+        btn.setAttribute('aria-expanded', this.metaExpanded ? 'true' : 'false');
+        btn.textContent = this.metaExpanded ? 'Hide metadata \u25B4' : 'Show all metadata \u25BE';
+      }
     },
 
     toggleRaw() {
