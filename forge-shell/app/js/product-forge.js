@@ -1423,6 +1423,9 @@
             '<button class="btn-icon" data-pfl-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
           '</div>' +
 
+          /* Active status filter chips (layout row 2 when has-filter-chips) */
+          '<div class="pfl-active-filters hidden" data-pfl-active-filters></div>' +
+
           /* Sidebar */
           '<aside class="pfl-sidebar">' +
             '<div class="sidebar-search">' +
@@ -1597,6 +1600,7 @@
         if (selectedCard) treeView.highlightSelected(selectedCard);
         this._updateContextStrip();
         this._updateFilterBadge();
+        this._updateActiveFilterChips();
         return;
       }
 
@@ -1628,6 +1632,7 @@
 
       if (selectedCard) treeView.highlightSelected(selectedCard);
       this._updateFilterBadge();
+      this._updateActiveFilterChips();
       this._updateContextStrip();
     },
 
@@ -1763,6 +1768,7 @@
       if (!panel) return;
       FilterPanel.render(panel);
       this._bindFilterEvents();
+      this._updateActiveFilterChips();
     },
 
     _bindFilterEvents() {
@@ -1782,7 +1788,7 @@
         });
       });
 
-      /* Remove filter chips */
+      /* Remove filter chips (inside filter panel) */
       $qa('[data-pfl-filter-remove]').forEach(function (el) {
         el.addEventListener('click', function () {
           var key = el.dataset.pflFilterRemove;
@@ -1825,6 +1831,67 @@
         span.className = 'pfl-filter-count';
         span.textContent = count;
         badge.appendChild(span);
+      }
+    },
+
+    /* Active status filter chips under toolbar.
+       When count > 0: has-filter-chips on layout + chip strip.
+       When count === 0: remove flag and hide host so it never claims grid-row 2. */
+    _updateActiveFilterChips() {
+      var layout = $q('.pfl-layout');
+      var host = $q('[data-pfl-active-filters]');
+      if (!layout || !host) return;
+
+      var count = FilterPanel.getActiveCount();
+      if (count === 0) {
+        layout.classList.remove('has-filter-chips');
+        host.classList.add('hidden');
+        host.innerHTML = '';
+        return;
+      }
+
+      layout.classList.add('has-filter-chips');
+      host.classList.remove('hidden');
+
+      var typeLabels = {
+        initiative_status: 'Initiative',
+        epic_status: 'Epic',
+        story_status: 'Story'
+      };
+      var keys = ['initiative_status', 'epic_status', 'story_status'];
+      var html = '';
+      keys.forEach(function (key) {
+        (FilterPanel.filters[key] || []).forEach(function (v) {
+          html += '<button type="button" class="pfl-active-filter-chip"' +
+            ' data-pfl-active-filter-remove="' + ESC(key) + '"' +
+            ' data-pfl-active-filter-value="' + ESC(v) + '"' +
+            ' title="Remove ' + ESC(typeLabels[key] + ': ' + v) + '">' +
+            '<span class="pfl-active-filter-type">' + ESC(typeLabels[key]) + '</span>' +
+            '<span class="pfl-active-filter-value">' + ESC(v) + '</span>' +
+            ' <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
+        });
+      });
+      html += '<button type="button" class="pfl-active-filters-clear" data-pfl-active-filters-clear>Clear all</button>';
+      host.innerHTML = html;
+
+      var self = this;
+      host.querySelectorAll('[data-pfl-active-filter-remove]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var key = el.dataset.pflActiveFilterRemove;
+          var val = el.dataset.pflActiveFilterValue;
+          if (!FilterPanel.filters[key]) return;
+          FilterPanel.filters[key] = FilterPanel.filters[key].filter(function (v) { return v !== val; });
+          self._renderFilterPanel();
+          self._renderTree();
+        });
+      });
+      var clearAll = host.querySelector('[data-pfl-active-filters-clear]');
+      if (clearAll) {
+        clearAll.addEventListener('click', function () {
+          FilterPanel.clearAll();
+          self._renderFilterPanel();
+          self._renderTree();
+        });
       }
     },
 
