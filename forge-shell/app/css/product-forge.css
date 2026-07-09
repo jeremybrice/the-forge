@@ -509,6 +509,27 @@
   flex-shrink: 0;
 }
 
+.pfl-search-results {
+  padding: 8px 0;
+}
+.pfl-search-results.hidden {
+  display: none;
+}
+.pfl-search-result-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.pfl-search-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* Brief flash applied to a tree row when auto-reveal selects it.
    1.5s, fades out — class removed by setTimeout in JS. */
 @keyframes pfl-flash-new-keyframes {

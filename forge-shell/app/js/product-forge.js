@@ -1313,6 +1313,7 @@
               '<input type="text" placeholder="Search cards\u2026" data-pfl-search />' +
             '</div>' +
             '<div class="pfl-context-strip hidden" data-pfl-context-strip></div>' +
+            '<div class="pfl-search-results hidden" data-pfl-search-results></div>' +
             '<div class="pfl-tree-view"></div>' +
           '</aside>' +
           '<div class="sidebar-resizer" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize sidebar"></div>' +
@@ -1456,62 +1457,41 @@
         }
       }
 
-      // Search filtering
       var searchEl = $q('[data-pfl-search]');
       var query = searchEl ? searchEl.value.trim().toLowerCase() : '';
       var searching = query.length > 0;
-      var savedSections = null;
+      var resultsEl = $q('[data-pfl-search-results]');
+      var treeEl = $q('.pfl-tree-view');
 
       if (searching) {
-        var matchCard = function (card) {
-          var title = (card.frontmatter.title || '').toLowerCase();
-          var fname = (card.filename || '').toLowerCase();
-          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
-        };
-
-        // Filter leaf arrays
-        hierarchy.orphanStories = hierarchy.orphanStories.filter(matchCard);
-        hierarchy.intakes = hierarchy.intakes.filter(matchCard);
-        hierarchy.checkpoints = hierarchy.checkpoints.filter(matchCard);
-        hierarchy.decisions = hierarchy.decisions.filter(matchCard);
-        hierarchy.releaseNotes = hierarchy.releaseNotes.filter(matchCard);
-
-        // Filter orphan epics (keep if epic matches or any child story matches)
-        hierarchy.orphanEpics = hierarchy.orphanEpics.filter(function (epicNode) {
-          var epicMatch = matchCard(epicNode.card);
-          epicNode.children = epicNode.children.filter(matchCard);
-          return epicMatch || epicNode.children.length > 0;
+        var candidates = store.all().filter(function (c) {
+          return H.cardMatchesStatusFilters
+            ? H.cardMatchesStatusFilters(c, FilterPanel.filters)
+            : true;
         });
-
-        // Filter initiatives (keep if init matches, or any child epic/story matches)
-        hierarchy.tree = hierarchy.tree.filter(function (initNode) {
-          var initMatch = matchCard(initNode.card);
-          initNode.children = initNode.children.filter(function (epicNode) {
-            var epicMatch = matchCard(epicNode.card);
-            epicNode.children = epicNode.children.filter(matchCard);
-            return epicMatch || epicNode.children.length > 0;
-          });
-          return initMatch || initNode.children.length > 0;
-        });
-
-        // Auto-expand all sections while searching
-        savedSections = new Set(treeView.collapsedSections);
-        treeView.collapsedSections.clear();
+        var ranked = H.rankSearchResults
+          ? H.rankSearchResults(candidates, query)
+          : candidates;
+        if (treeEl) treeEl.classList.add('hidden');
+        if (resultsEl) {
+          resultsEl.classList.remove('hidden');
+          resultsEl.innerHTML = this._renderSearchResults(ranked);
+          this._bindSearchResultEvents(resultsEl);
+        }
+        if (selectedCard) treeView.highlightSelected(selectedCard);
+        this._updateContextStrip();
+        this._updateFilterBadge();
+        return;
       }
 
-      /* Build Recents (after structural search filter so titles
-         that don't match are not in the recents either). The
-         recents themselves are then filtered by search query
-         and per-type status filters. */
+      if (treeEl) treeEl.classList.remove('hidden');
+      if (resultsEl) {
+        resultsEl.classList.add('hidden');
+        resultsEl.innerHTML = '';
+      }
+
+      /* Build Recents; then status-filter hierarchy + pins. */
       var allRecents = recentsTracker.getRecents(store, 10);
-      if (searching) {
-        var matchCardLocal = function (card) {
-          var title = (card.frontmatter.title || '').toLowerCase();
-          var fname = (card.filename || '').toLowerCase();
-          return title.indexOf(query) !== -1 || fname.indexOf(query) !== -1;
-        };
-        allRecents = allRecents.filter(matchCardLocal);
-      }
       var filteredRecents = FilterPanel.filterRecents(allRecents);
 
       // Apply status filters
@@ -1521,9 +1501,6 @@
          de-dupe from recents. Re-attach after filterHierarchy. */
       pinStore.pruneMissing(function (fn) { return !!store.get(fn); });
       var pinnedCards = pinStore.list().map(function (fn) { return store.get(fn); }).filter(Boolean);
-      if (searching) {
-        pinnedCards = pinnedCards.filter(matchCardLocal);
-      }
       pinnedCards = FilterPanel.filterRecents(pinnedCards);
       if (H.excludePinnedFromRecents) {
         filteredRecents = H.excludePinnedFromRecents(filteredRecents, pinStore.list());
@@ -1533,14 +1510,60 @@
 
       treeView.render(hierarchy);
 
-      // Restore collapsed sections after render so user state is preserved
-      if (searching && savedSections) {
-        treeView.collapsedSections = savedSections;
-      }
-
       if (selectedCard) treeView.highlightSelected(selectedCard);
       this._updateFilterBadge();
       this._updateContextStrip();
+    },
+
+    _renderSearchResults: function (cards) {
+      if (!cards || cards.length === 0) {
+        return '<div class="pfl-search-empty">No cards match</div>';
+      }
+      return cards.map(function (card) {
+        var fm = card.frontmatter || {};
+        var type = fm.type || 'unknown';
+        var parentLabel = '';
+        if (fm.parent && store.get(fm.parent)) {
+          var p = store.get(fm.parent);
+          parentLabel = (p.frontmatter && p.frontmatter.title) || p.filename;
+        }
+        return '<div class="pfl-tree-node pfl-indent-1" data-pfl-filename="' + ESC(card.filename) +
+          '" data-pfl-type="' + ESC(type) + '">' +
+          '<div class="pfl-tree-node-header" data-pfl-select="' + ESC(card.filename) + '">' +
+            '<span class="pfl-toggle"></span>' +
+            '<span class="pfl-status-dot" style="background:' + getStatusColor(fm.status) + '"></span>' +
+            treeView._typeChipHtml(type) +
+            '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
+            (parentLabel ? '<span class="pfl-search-result-meta">' + ESC(parentLabel) + '</span>' : '') +
+            treeView._pinButtonHtml(card.filename) +
+          '</div></div>';
+      }).join('');
+    },
+
+    _bindSearchResultEvents: function (container) {
+      var self = this;
+      container.querySelectorAll('[data-pfl-select]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+          if (e.target.closest('[data-pfl-pin]')) return;
+          var filename = el.dataset.pflSelect;
+          self.selectCard(filename);
+          self._updateContextStrip();
+          treeView.highlightSelected(filename);
+        });
+      });
+      container.querySelectorAll('[data-pfl-pin]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var fn = btn.dataset.pflPin;
+          var result = pinStore.toggle(fn);
+          if (result === 'blocked') {
+            ForgeUtils.Toast.show('Unpin one first', 'error');
+            return;
+          }
+          self._renderTree();
+        });
+      });
     },
 
     _updateContextStrip: function () {
@@ -1891,11 +1914,18 @@
     _bindKeyboard() {
       this._unbindKeyboard();
       keydownHandler = function (e) {
-        /* Escape closes edit modal */
+        /* Escape closes edit modal, or clears search when focused */
         if (e.key === 'Escape') {
           var overlay = $q('.pfl-modal-overlay');
           if (overlay && overlay.classList.contains('pfl-visible')) {
             editModal.close();
+            return;
+          }
+          var s = $q('[data-pfl-search]');
+          if (s && document.activeElement === s && s.value) {
+            s.value = '';
+            ctrl._renderTree();
+            e.preventDefault();
             return;
           }
         }
