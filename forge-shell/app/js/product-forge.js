@@ -534,6 +534,7 @@
       const emptyState = $q('.pfl-empty-state');
       const detailEl = $q('.pfl-card-detail');
       this.closeOverflow();
+      this.showingRaw = false;
       if (!card) {
         if (detailEl) detailEl.classList.add('hidden');
         if (emptyState) emptyState.classList.remove('hidden');
@@ -542,7 +543,6 @@
       if (emptyState) emptyState.classList.add('hidden');
       if (!detailEl) return;
       detailEl.classList.remove('hidden');
-      this.showingRaw = false;
 
       const fm = card.frontmatter;
       const type = fm.type || 'unknown';
@@ -663,6 +663,7 @@
         el.addEventListener('click', () => {
           const action = el.dataset.pflAction;
           if (action === 'edit') {
+            self.closeOverflow();
             editModal.open(card.filename);
           } else if (action === 'overflow') {
             if (self.overflowOpen) self.closeOverflow();
@@ -986,6 +987,8 @@
     showingDiff: false,
 
     open(filename) {
+      /* Always dismiss overflow so menu never sits under the dialog */
+      detailPanel.closeOverflow();
       const card = store.get(filename);
       if (!card) return;
       this.currentFilename = filename;
@@ -1997,6 +2000,7 @@
         if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement && document.activeElement.tagName)) return;
 
         if (e.key === 'e' && selectedCard) {
+          detailPanel.closeOverflow();
           editModal.open(selectedCard);
           return;
         }
