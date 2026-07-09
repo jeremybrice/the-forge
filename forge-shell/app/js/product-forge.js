@@ -41,6 +41,11 @@
       if (!container) return;
       let html = '';
 
+      /* Pinned above Recents when present */
+      if (Array.isArray(hierarchy.pinned) && hierarchy.pinned.length > 0) {
+        html += this._renderPinnedSection(hierarchy.pinned);
+      }
+
       /* Recents always renders first when provided */
       if (Array.isArray(hierarchy.recents)) {
         html += this._renderRecentsSection(hierarchy.recents);
@@ -111,6 +116,7 @@
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + initNode.children.length + '</span>' : '') +
+          this._pinButtonHtml(card.filename) +
         '</div>';
 
       if (hasChildren) {
@@ -137,6 +143,7 @@
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
           (hasChildren ? '<span class="pfl-node-count">' + epicNode.children.length + '</span>' : '') +
+          this._pinButtonHtml(card.filename) +
         '</div>';
 
       if (hasChildren) {
@@ -159,6 +166,7 @@
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -173,7 +181,24 @@
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
+      '</div>';
+    },
+
+    /* _renderPinnedSection — pinned cards above Recents. Same row
+       chrome as recents + pin control. */
+    _renderPinnedSection: function (cards) {
+      var self = this;
+      var collapsed = this.collapsedSections.has('pinned');
+      var inner = cards.map(function (card) { return self._renderRecentsRow(card); }).join('');
+      return '<div class="pfl-tree-section" data-pfl-section="pinned">' +
+        '<div class="pfl-tree-section-header" data-pfl-toggle-section="pinned">' +
+          '<span class="pfl-toggle ' + (collapsed ? '' : 'open') + '">&#9654;</span>' +
+          '<span>Pinned</span>' +
+          '<span class="pfl-count">' + cards.length + '</span>' +
+        '</div>' +
+        '<div class="pfl-tree-children' + (collapsed ? ' pfl-collapsed' : '') + '" data-pfl-section-body="pinned">' + inner + '</div>' +
       '</div>';
     },
 
@@ -207,6 +232,14 @@
       return '<span class="pfl-type-chip" style="background:' + getTypeColor(t) + '" title="' + ESC(t) + '"></span>';
     },
 
+    _pinButtonHtml: function (filename) {
+      var pinned = pinStore.list().indexOf(filename) !== -1;
+      return '<button type="button" class="pfl-pin-btn' + (pinned ? ' pinned' : '') +
+        '" data-pfl-pin="' + ESC(filename) + '" title="' + (pinned ? 'Unpin' : 'Pin') +
+        '" aria-label="' + (pinned ? 'Unpin' : 'Pin') + '">' +
+        '<i class="fa-solid fa-thumbtack"></i></button>';
+    },
+
     /* _renderRecentsRow — a leaf row with type chip + optional
        NEW badge. Uses pfl-indent-1 to match other leaf sections. */
     _renderRecentsRow: function (card) {
@@ -220,6 +253,7 @@
           (card.error ? '<span class="pfl-error-icon">&#9888;</span>' : '') +
           '<span class="pfl-node-title">' + ESC(fm.title || card.filename) + '</span>' +
           this._newBadgeHtml(card.filename) +
+          this._pinButtonHtml(card.filename) +
         '</div>' +
       '</div>';
     },
@@ -311,6 +345,21 @@
           ctrl.selectCard(filename);
           ctrl._renderTree();
           this.highlightSelected(filename);
+        });
+      });
+
+      /* Pin toggle — stop propagation so pin click does not select */
+      container.querySelectorAll('[data-pfl-pin]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var fn = btn.dataset.pflPin;
+          var result = pinStore.toggle(fn);
+          if (result === 'blocked') {
+            ForgeUtils.Toast.show('Unpin one first', 'error');
+            return;
+          }
+          ctrl._renderTree();
         });
       });
     },
@@ -747,6 +796,16 @@
     return isNaN(t) ? null : t;
   }
 
+  var H = window.ProductForgeHelpers || {};
+  var pinStore = (H.createPinStore || function () {
+    return { filenames: [], load: function () {}, save: function () {}, toggle: function () { return 'blocked'; },
+      add: function () { return 'blocked'; }, remove: function () {}, pruneMissing: function () {}, list: function () { return []; } };
+  })({
+    storage: (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null,
+    key: 'pfl-pinned',
+    max: 3
+  });
+
   var recentsTracker = {
     /* sessionAddedAt — filename → ms timestamp when first observed.
        Drives the NEW badge in render methods (via isNew) and the
@@ -1135,6 +1194,7 @@
       }
 
       this._renderLayout(view, rootHandle);
+      pinStore.load();
       await this._loadCards();
       this._startAutoRefresh();
       this._bindKeyboard();
@@ -1147,6 +1207,7 @@
       store.clear();
       cardsHandle = null;
       recentsTracker.reset();
+      /* pins persist in localStorage across sessions */
       treeView.collapsedSections.clear();
       treeView.collapsedNodes.clear();
     },
@@ -1422,8 +1483,19 @@
 
       // Apply status filters
       hierarchy = FilterPanel.filterHierarchy(hierarchy);
-      /* Re-attach recents after filterHierarchy (which returns a new
-         object that doesn't carry recents through). */
+
+      /* Pins: prune gone cards, resolve to store cards, status-filter,
+         de-dupe from recents. Re-attach after filterHierarchy. */
+      pinStore.pruneMissing(function (fn) { return !!store.get(fn); });
+      var pinnedCards = pinStore.list().map(function (fn) { return store.get(fn); }).filter(Boolean);
+      if (searching) {
+        pinnedCards = pinnedCards.filter(matchCardLocal);
+      }
+      pinnedCards = FilterPanel.filterRecents(pinnedCards);
+      if (H.excludePinnedFromRecents) {
+        filteredRecents = H.excludePinnedFromRecents(filteredRecents, pinStore.list());
+      }
+      hierarchy.pinned = pinnedCards;
       hierarchy.recents = filteredRecents;
 
       treeView.render(hierarchy);
@@ -1853,7 +1925,7 @@
   window.ProductForgeLocalView = ctrl;
   /* Debug-only — exposed for manual smoke testing of pure helpers.
      Not part of the public surface; do not depend on this. */
-  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker };
+  window._pflDebug = { parseDate: parseDate, recentsTracker: recentsTracker, pinStore: pinStore };
   Shell.registerController('product-forge-local', window.ProductForgeLocalView);
 
 })();

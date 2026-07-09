@@ -126,6 +126,7 @@
 
 .pfl-tree-node-header .pfl-node-title {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -484,4 +485,25 @@
 @keyframes pfl-refresh-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.55; }
+}
+
+/* Pin button — hover-reveal; always visible when pinned */
+.pfl-pin-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+.pfl-tree-node-header:hover .pfl-pin-btn,
+.pfl-pin-btn.pinned {
+  opacity: 1;
+}
+.pfl-pin-btn.pinned {
+  color: var(--accent);
 }
