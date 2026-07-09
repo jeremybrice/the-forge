@@ -1428,9 +1428,8 @@
     _renderTree() {
       var hierarchy = buildHierarchy(store);
 
-      // On first render, collapse all sections and parent nodes by default
+      // On first render: Initiatives open; More + orphans + nested More sections collapsed
       if (treeView.collapsedSections.size === 0 && treeView.collapsedNodes.size === 0) {
-        treeView.collapsedSections.add('initiatives');
         treeView.collapsedSections.add('orphan-epics');
         treeView.collapsedSections.add('orphan-stories');
         treeView.collapsedSections.add('more');
