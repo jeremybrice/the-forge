@@ -46,7 +46,7 @@
         html += this._renderPinnedSection(hierarchy.pinned);
       }
 
-      /* Recents always renders first when provided */
+      /* Recents below Pinned when provided */
       if (Array.isArray(hierarchy.recents)) {
         html += this._renderRecentsSection(hierarchy.recents);
       }
