@@ -735,11 +735,13 @@
       if (first) first.focus();
     },
 
-    /* Move focus among open overflow menuitems. Returns true if handled. */
+    /* Move focus among open overflow menuitems. Returns true if handled.
+       Only when focus is already inside the menu so form fields (search, etc.)
+       keep native Home/End/Arrow behavior if the user Shift+Tabs out. */
     _navOverflowMenu(key) {
       if (!this.overflowOpen) return false;
       const menu = $q('.pfl-overflow-menu');
-      if (!menu) return false;
+      if (!menu || !menu.contains(document.activeElement)) return false;
       const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
       if (items.length === 0) return false;
       if (key !== 'ArrowDown' && key !== 'ArrowUp' && key !== 'Home' && key !== 'End') return false;
@@ -2166,8 +2168,9 @@
           }
         }
 
-        /* Overflow menu: ArrowDown/Up/Home/End before tree nav (Esc already handled) */
-        if (detailPanel.overflowOpen && detailPanel._navOverflowMenu(e.key)) {
+        /* Overflow menu: ArrowDown/Up/Home/End only when focus is inside the menu
+           (so Shift+Tab into search keeps caret/native keys). Esc already handled. */
+        if (detailPanel._navOverflowMenu(e.key)) {
           e.preventDefault();
           return;
         }
@@ -2181,6 +2184,11 @@
         }
 
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          /* Menu open but focus left it: do not steer the tree with arrows */
+          if (detailPanel.overflowOpen) {
+            e.preventDefault();
+            return;
+          }
           e.preventDefault();
           var headers = Array.from($qa('.pfl-tree-node-header[data-pfl-select]'));
           if (headers.length === 0) return;
