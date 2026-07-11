@@ -913,6 +913,6 @@ If a smoke test revealed a bug, fix it and commit with a descriptive message. Ot
 
 - **Line numbers drift.** After Task 1 inserts the constants block, every line below shifts down by ~40 lines. Always search by string literal instead of trusting the numbers in this plan.
 - **Devtools reachability.** The `TasksView` module is an IIFE — internal state isn't publicly reachable by default. For verification steps that need to poke state, you may need to temporarily add `window._DEBUG_TASKSVIEW = { tasks, /* etc */ }` inside the IIFE. Remove those hooks before the final smoke-test commit.
-- **Do not touch other `.js` files.** This plan is scoped to `tasks.js`. If you find yourself editing `card-data.js`, `outlook-forge.js`, `productivity.js`, or anything else, stop and re-read the spec's §2 scope section.
+- **Do not touch other `.js` files.** This plan is scoped to `tasks.js`. If you find yourself editing `card-data.js`, ``, `productivity.js`, or anything else, stop and re-read the spec's §2 scope section.
 - **Don't skip manual verification steps.** No test framework means the manual checks are the only safety net. Take 30 seconds per verify step to actually observe the thing; don't guess.
 - **Data at risk.** Task files live in `cowork-database/tasks/` (sibling repo). A bug in the save path could corrupt migrated files. After Task 14 lands, try the save flow on a deliberately-invalid task first (devtools force-set) before letting real edits flow through — that confirms the guard fires before any real write.

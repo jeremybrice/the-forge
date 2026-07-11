@@ -323,11 +323,10 @@ class TestSupportedSchemasList:
             "task",
             "session",
             "report",
-            "harvest",
             "recording",
         ]
         assert set(validator.SUPPORTED_SCHEMAS) == set(expected)
-        assert len(validator.SUPPORTED_SCHEMAS) == 12
+        assert len(validator.SUPPORTED_SCHEMAS) == 11
 
 
 class TestErrorMessages:

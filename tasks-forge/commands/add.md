@@ -83,7 +83,6 @@ Task added: {filename}
 Your task is now tracked in tasks/
 
 If this relates to a Product Forge story, you can link them with the `parent` field.
-For Slack-sourced tasks, consider `/slack-forge:scan` for systematic harvesting.
 ```
 
 ## Notes

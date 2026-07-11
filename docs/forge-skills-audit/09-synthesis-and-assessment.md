@@ -26,7 +26,7 @@ The tiered lookup strategy (Taxonomy → Glossary → Deep Memory → Ask User) 
 ### 2. Tasks Forge (1 skill, 3 commands)
 **Verdict:** Lean and focused, with strong state machine design, but operates in near-total isolation.
 
-The five-state workflow with explicit transitions and threshold-based triage reasoning is well-engineered. At only 4 components, it's the most focused plugin. The critical gap: the CLAUDE.md workspace instructions describe Slack Forge → Tasks Forge promotion as a core flow, but the plugin never mentions Slack Forge.
+The five-state workflow with explicit transitions and threshold-based triage reasoning is well-engineered. At only 4 components, it's the most focused plugin. The critical gap: the CLAUDE.md workspace instructions describe a removed harvest plugin → Tasks Forge promotion as a core flow, but the plugin never mentions a removed harvest plugin.
 
 **Full eval candidates (2):** task-management, update (triage mode)
 **Description optimization (1):** task-management
@@ -55,7 +55,7 @@ The investigator → analyst → synthesizer pipeline is well-conceived. The Inv
 **Full eval candidates (3, conditional):** forge-investigator, forge-analyst, forge-synthesizer
 **Direct fix required first:** Create the 8 missing report type templates referenced by the Synthesizer
 
-### 6. Slack Forge (3 skills, 5 commands, 3 agents)
+### 6. a removed harvest plugin (3 skills, 5 commands, 3 agents)
 **Verdict:** Well-architected capture layer with critical blocking gaps that must be resolved before reliable operation.
 
 The five-stage pipeline (init → scan → capture → review → promote) with human-in-the-loop at every stage is well-designed. Cross-plugin integration with Tasks Forge and Forge Memory is explicitly documented. However, the transcript format contract is ambiguous, subagent dispatch mechanics are undefined, and parsing logic is implicit rather than rule-based.
@@ -83,10 +83,10 @@ Both skills feature structured 4-5 phase workflows with explicit entry/exit crit
 ## Systemic Findings (Cross-Plugin Patterns)
 
 ### 1. Missing Reference Files is the #1 Structural Gap
-Six of eight plugins have zero reference files (Forge Memory, Tasks Forge, Product Forge, Tasks Forge, Report Forge templates missing, Slack Forge). Only Cognitive Forge (techniques.md) and Rovo Forge (10+ reference files) demonstrate the progressive disclosure pattern that the Skills 2.0 framework prescribes. This causes duplication (Jira field mappings repeated across 3 commands), bloated SKILL.md files, and inconsistent information between components that should share a single source of truth.
+Six of eight plugins have zero reference files (Forge Memory, Tasks Forge, Product Forge, Tasks Forge, Report Forge templates missing, a removed harvest plugin). Only Cognitive Forge (techniques.md) and Rovo Forge (10+ reference files) demonstrate the progressive disclosure pattern that the Skills 2.0 framework prescribes. This causes duplication (Jira field mappings repeated across 3 commands), bloated SKILL.md files, and inconsistent information between components that should share a single source of truth.
 
 ### 2. Cross-Plugin Handoff is the #2 Systemic Weakness
-Despite the CLAUDE.md workspace instructions describing explicit cross-plugin flows (Slack Forge → Tasks Forge, Product Forge → Forge Memory, etc.), most plugins operate in isolation. Tasks Forge never mentions Slack Forge. Product Forge never suggests push-to-jira after creation. Forge Memory's commands don't suggest how remembered entries enrich other plugins. The ecosystem's value proposition depends on these handoffs, and they're architecturally absent.
+Despite the CLAUDE.md workspace instructions describing explicit cross-plugin flows (a removed harvest plugin → Tasks Forge, Product Forge → Forge Memory, etc.), most plugins operate in isolation. Tasks Forge never mentions a removed harvest plugin. Product Forge never suggests push-to-jira after creation. Forge Memory's commands don't suggest how remembered entries enrich other plugins. The ecosystem's value proposition depends on these handoffs, and they're architecturally absent.
 
 ### 3. Description Triggering is Consistently Underpowered
 Across all plugins, skill descriptions are functional but not "pushy" enough for independent triggering. They work when invoked by commands or other skills, but wouldn't trigger on natural user prompts like "what does PSR mean?" (memory-management), "what should I work on?" (task-management), or "help me write a story card" (pm-methodology). The Skill Creator's description optimization loop (run_loop.py) should be applied systematically.
@@ -95,7 +95,7 @@ Across all plugins, skill descriptions are functional but not "pushy" enough for
 Every plugin cleanly separates reasoning from execution through forge-lib delegation. JSON response parsing is documented at every call site. Error handling follows a consistent pattern (check success, report error, continue or stop). This is the strongest architectural consistency in the ecosystem.
 
 ### 5. Agent Architecture Quality is High Where Present
-Product Forge's orchestrator/agent pattern, Cognitive Forge's multi-agent debate, Report Forge's investigator pipeline, and Slack Forge's harvester agents all demonstrate sophisticated delegation. Agents are consistently read-only, structurally uniform, and well-differentiated in reasoning. The agent suite is the ecosystem's most mature pattern.
+Product Forge's orchestrator/agent pattern, Cognitive Forge's multi-agent debate, Report Forge's investigator pipeline, and a removed harvest plugin's harvester agents all demonstrate sophisticated delegation. Agents are consistently read-only, structurally uniform, and well-differentiated in reasoning. The agent suite is the ecosystem's most mature pattern.
 
 ---
 
@@ -119,10 +119,10 @@ Product Forge's orchestrator/agent pattern, Cognitive Forge's multi-agent debate
 | 14 | Report Forge | forge-investigator | Data gathering completeness (conditional) |
 | 15 | Report Forge | forge-analyst | Pattern identification accuracy (conditional) |
 | 16 | Report Forge | forge-synthesizer | Narrative assembly quality (conditional) |
-| 17 | Slack Forge | task-harvester (skill + agent) | Task extraction from transcripts |
-| 18 | Slack Forge | knowledge-harvester (skill + agent) | Knowledge capture from transcripts |
-| 19 | Slack Forge | jira-digest (skill + agent) | JIRA event parsing from transcripts |
-| 20 | Slack Forge | scan command | MCP retrieval and transcript writing |
+| 17 | a removed harvest plugin | task-harvester (skill + agent) | Task extraction from transcripts |
+| 18 | a removed harvest plugin | knowledge-harvester (skill + agent) | Knowledge capture from transcripts |
+| 19 | a removed harvest plugin | jira-digest (skill + agent) | JIRA event parsing from transcripts |
+| 20 | a removed harvest plugin | scan command | MCP retrieval and transcript writing |
 | 21 | Rovo Forge | Validation remediation | Fixing validation failures |
 | 22 | Rovo Forge | Permission model config | Safety-critical feature |
 | 23 | Rovo Forge | Deep research surfacing | Capability not surfaced in config flow |
@@ -158,7 +158,7 @@ Product Forge create orchestrator, forge-story, forge-intake. These are the most
 Forge Memory memory-management, recall, org-context. Everything depends on memory resolution working correctly. Failures here cascade across all plugins.
 
 **Tier 3 (Integration, Do After Fixing Blockers):**
-Slack Forge harvesters (after formalizing transcript format). Product Forge Jira sync system. These are integration-heavy flows where environmental errors and behavioral errors must be distinguished.
+a removed harvest plugin harvesters (after formalizing transcript format). Product Forge Jira sync system. These are integration-heavy flows where environmental errors and behavioral errors must be distinguished.
 
 **Tier 4 (Specialized, Do When Ready):**
 Cognitive Forge debate and explore. Report Forge pipeline (after creating missing templates). Rovo Forge gaps. Cowork Plugin Management.
@@ -177,5 +177,5 @@ These are structural fixes that can be made without running evals:
 3. **Add pre-save confirmation gates** to Forge Memory remember and Product Forge checkpoint
 4. **Clarify product-context vs. org-context boundary** (merge or explicitly delineate)
 5. **Create 8 missing report type templates** for Report Forge synthesizer
-6. **Formalize Slack Forge transcript format** as a parseable specification
+6. **Formalize a removed harvest plugin transcript format** as a parseable specification
 7. **Add error handling guidance** to Cowork Plugin Management for validation failures

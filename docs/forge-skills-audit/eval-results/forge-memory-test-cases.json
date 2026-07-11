@@ -426,12 +426,12 @@
       "component": "remember",
       "category": "ecosystem",
       "contract": "Contract 1",
-      "description": "Remembered knowledge acknowledges availability for Slack Forge context",
+      "description": "Remembered knowledge acknowledges availability for a removed harvest plugin context",
       "user_prompt": "Remember that Todd owns the billing module",
       "setup_context": "Memory system initialized. No existing entry for Todd.",
       "grading": {
         "ecosystem_awareness": {
-          "assertion": "After saving, output acknowledges: 'This is now available for Product Forge card enrichment and Report Forge scoping' or mentions Slack Forge context enrichment during future harvests.",
+          "assertion": "After saving, output acknowledges: 'This is now available for Product Forge card enrichment and Report Forge scoping' or mentions a removed harvest plugin context enrichment during future harvests.",
           "level": "awareness",
           "weight": 0.3
         },

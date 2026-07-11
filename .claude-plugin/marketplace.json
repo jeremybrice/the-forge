@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "the-forge",
   "description": "A curated suite for product management and productivity tools with deterministic Python data layer (forge-lib) and LLM reasoning layer. Commands simplified 60% from v1.",
-  "version": "2.2.1",
+  "version": "2.4.0",
   "owner": {
     "name": "Jeremy Brice"
   },
@@ -36,11 +36,6 @@
       "name": "rovo-forge",
       "source": "./rovo-forge",
       "description": "Interactive builders for Atlassian Rovo agents. Guides through Jira and Confluence agent configuration via adaptive interview. Outputs structured agent configs with copy-ready sections for Rovo Studio."
-    },
-    {
-      "name": "slack-forge",
-      "source": "./slack-forge",
-      "description": "Slack intelligence harvester — scans channels for tasks, knowledge, and JIRA activity. Creates review-first harvest records. Delegates all file operations to forge-lib."
     }
   ]
 }

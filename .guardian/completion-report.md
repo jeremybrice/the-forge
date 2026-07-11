@@ -44,7 +44,6 @@ Created 4 cross-cutting reference documents and updated CLAUDE.md to close docum
 
 | # | Issue | Document | Resolution |
 |---|-------|----------|------------|
-| 1 | Incorrectly claimed slack-forge and outlook-forge have no agents (they have 3 each) | ARCHITECTURE.md | Task #15 — fixed to list tasks-forge, forge-memory, rovo-forge as agent-less |
 | 2 | Relationship CLI syntax used `--parent`/`--child` flags instead of positional args | DATA_FLOW.md | Task #16 — fixed to `forge relationship link <parent> <child>` |
 
 ## Deviations from Spec
@@ -53,7 +52,6 @@ Three factual corrections from the implementation plan were incorporated during 
 
 1. **Exit codes**: Implementation plan assumed 0/1/2. Actual: 0=success, 1=error, 2=validation_error, 3=not_found. Docs use correct values.
 2. **PLUGINS array location**: Implementation plan assumed app.js. Actual: shell.js. Docs use correct location.
-3. **Agent directories**: Implementation plan assumed slack-forge/outlook-forge were agent-less. Both have 3 agents each. Docs corrected via Task #15.
 
 ## Test Results
 

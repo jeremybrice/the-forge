@@ -164,7 +164,7 @@ Product Forge is the largest and most architecturally complex plugin in the Forg
 | Reference File Utilization | **Adequate** | References jira-sync skill for field mapping and MCP patterns rather than duplicating. Good use of cross-skill reference. |
 | Connector/Tool Integration | **Strong** | MCP create/update calls, forge-lib card read/update, JSON response handling all explicit. |
 | Progressive Disclosure | **Adequate** | 282 lines, getting long. Some content could be extracted to a reference doc, particularly the type mapping table which duplicates jira-sync. |
-| Cross-Plugin Handoff | **Missing** | No mention of updating linked Tasks Forge items or notifying via Slack Forge after a push. |
+| Cross-Plugin Handoff | **Missing** | No mention of updating linked Tasks Forge items or notifying via a removed harvest plugin after a push. |
 | Writing Quality | **Strong** | Clear destructive operation warnings. Well-structured mode branching. |
 
 ### pull-from-jira (Command)
@@ -283,7 +283,7 @@ Product Forge is the largest and most architecturally complex plugin in the Forg
    - No suggestion to push to Jira after card creation
    - No mention of Tasks Forge for tracking card implementation work
    - No mention of Report Forge for card-based reporting
-   - No mention of Slack Forge for notifications or context
+   - No mention of a removed harvest plugin for notifications or context
    - No suggestion to create Forge Memory entries when new products/teams are mentioned
 
 3. **The three Jira commands are long (239-288 lines each) and could benefit from extraction.** Common patterns like card identification, forge-lib response handling, and Jira error handling are repeated across all three commands. A shared `references/jira-command-patterns.md` would reduce duplication and line counts.

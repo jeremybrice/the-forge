@@ -40,7 +40,7 @@ Standard plugin directory structure (product-forge as reference):
 ## Validation and Schemas
 
 **JSON Schema files** — `forge-lib/schemas/` (15 schemas):
-`agent.json`, `checkpoint.json`, `decision.json`, `epic.json`, `glossary.json`, `harvest.json`, `initiative.json`, `intake.json`, `person.json`, `project-memory.json`, `release-note.json`, `report.json`, `session.json`, `story.json`, `task.json`
+`agent.json`, `checkpoint.json`, `decision.json`, `epic.json`, `glossary.json`, `initiative.json`, `intake.json`, `person.json`, `project-memory.json`, `recording.json`, `release-note.json`, `report.json`, `session.json`, `story.json`, `task.json`
 
 **Jinja2 templates** — `forge-lib/templates/` (15 matching `.md.j2` files, one per schema). Templates generate markdown content for new entities.
 

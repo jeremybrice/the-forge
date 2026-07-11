@@ -219,9 +219,9 @@ To verify ecosystem awareness, I searched for explicit mentions of other Forge p
 | Forge Memory | forge-synthesizer.md line 131, 263 | "Validate taxonomy" and "Check related_entities against memory files" |
 | Cognitive Forge | Nowhere | Not referenced anywhere in the plugin |
 | Tasks Forge | Nowhere | Not referenced anywhere in the plugin |
-| Slack Forge | Nowhere | Not referenced anywhere in the plugin |
+| a removed harvest plugin | Nowhere | Not referenced anywhere in the plugin |
 
-**Finding:** Product Forge and Forge Memory have awareness-level references. Cognitive Forge, Tasks Forge, and Slack Forge are completely absent from the plugin.
+**Finding:** Product Forge and Forge Memory have awareness-level references. Cognitive Forge, Tasks Forge, and a removed harvest plugin are completely absent from the plugin.
 
 ---
 

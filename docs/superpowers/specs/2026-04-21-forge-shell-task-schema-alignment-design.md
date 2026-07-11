@@ -23,7 +23,7 @@ Every shell edit coerced tasks into the non-canonical vocabulary. `cowork-databa
 
 **Out of scope (verified):**
 - `card-data.js` uses card lifecycle vocabulary (`complete`, `current`, `superseded`) — different schema, unaffected.
-- `outlook-forge.js` contains no legacy task-vocabulary literals.
+- `` contains no legacy task-vocabulary literals.
 - `roadmap.js` does not touch tasks.
 - No shared `task-schema.js` module — constants live at top of `tasks.js`. Single-consumer YAGNI.
 - Operational safety (banner / launch-block) — sole-user repo, pause edits until fix lands; no mitigation scaffolding.

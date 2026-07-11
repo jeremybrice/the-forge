@@ -53,7 +53,6 @@ Create an agent team with 8 teammates plus yourself as team lead. Each teammate 
 | product-eval | Product Forge | `forge-skills-audit/03-product-forge-audit.md` | 2, 3, 4, 5, 6, IF1 |
 | cognitive-eval | Cognitive Forge | `forge-skills-audit/04-cognitive-forge-audit.md` | 4, 5, 6, IF2, IF3 |
 | report-eval | Report Forge | `forge-skills-audit/05-report-forge-audit.md` | 3, 5, 6, IF3, IF4 |
-| slack-eval | Slack Forge | `forge-skills-audit/06-slack-forge-audit.md` | 1, 5, 6, IF2 |
 | rovo-eval | Rovo Forge | `forge-skills-audit/07-rovo-forge-audit.md` | 5, 6 |
 | cowork-eval | Cowork Plugin Mgmt | `forge-skills-audit/08-cowork-plugin-mgmt-audit.md` | 5 |
 
@@ -118,7 +117,7 @@ When done, message the lead with a summary of your results and any broken handof
 - Product Forge: `.local-plugins/cache/the-forge/product-forge/2.2.1/`
 - Cognitive Forge: `.local-plugins/cache/the-forge/cognitive-forge/2.2.0/`
 - Report Forge: `.local-plugins/cache/the-forge/report-forge/2.2.0/`
-- Slack Forge: `.local-plugins/cache/the-forge/slack-forge/2.2.0/`
+- a removed harvest plugin: `.local-plugins/cache/the-forge/2.2.0/`
 - Rovo Forge: `.local-plugins/cache/the-forge/rovo-forge/2.2.0/`
 - Cowork Plugin Mgmt: `.local-plugins/cache/knowledge-work-plugins/cowork-plugin-management/0.2.2/`
 
@@ -129,7 +128,7 @@ This is what makes agent teams valuable over sub-agents. Teammates must actively
 **memory-eval should message:**
 - product-eval: "I'm testing taxonomy resolution. Here are the terms I'm using in my test cases: [list]. Test whether your card creation resolves these same terms consistently. Let me know if you find resolution failures so I can check whether it's a memory-side or product-side issue."
 - slack-eval: "I'm testing knowledge storage. What format does your promote command use when pushing knowledge entries to Forge Memory? I need to verify my skill handles that input format."
-- tasks-eval: "Contract 1 says you receive promoted tasks from Slack Forge. Do you acknowledge Slack as a task source anywhere? I'm testing whether my taxonomy entries are available when you create tasks."
+- tasks-eval: "Contract 1 says you receive promoted tasks from a removed harvest plugin. Do you acknowledge Slack as a task source anywhere? I'm testing whether my taxonomy entries are available when you create tasks."
 - report-eval: "Contract 3 says you pull context from memory. What entity resolution do you expect from me? I'll test whether my recall output matches what your investigator needs."
 
 **tasks-eval should message:**
@@ -205,7 +204,6 @@ PHASE 4 TASKS (depends on Phase 3 for same teammate):
 - [product-eval] Run evals and write results to forge-skills-audit/eval-results/product-forge-eval-results.md
 - [cognitive-eval] Run evals and write results to forge-skills-audit/eval-results/cognitive-forge-eval-results.md
 - [report-eval] Run evals and write results to forge-skills-audit/eval-results/report-forge-eval-results.md
-- [slack-eval] Run evals and write results to forge-skills-audit/eval-results/slack-forge-eval-results.md
 - [rovo-eval] Run evals and write results to forge-skills-audit/eval-results/rovo-forge-eval-results.md
 - [cowork-eval] Run evals and write results to forge-skills-audit/eval-results/cowork-plugin-mgmt-eval-results.md
 
@@ -272,7 +270,6 @@ forge-skills-audit/
 │   ├── product-forge-eval-results.md           (NEW — from product-eval teammate)
 │   ├── cognitive-forge-eval-results.md         (NEW — from cognitive-eval teammate)
 │   ├── report-forge-eval-results.md            (NEW — from report-eval teammate)
-│   ├── slack-forge-eval-results.md             (NEW — from slack-eval teammate)
 │   ├── rovo-forge-eval-results.md              (NEW — from rovo-eval teammate)
 │   ├── cowork-plugin-mgmt-eval-results.md      (NEW — from cowork-eval teammate)
 │   └── description-optimization-results.md     (NEW — from lead)

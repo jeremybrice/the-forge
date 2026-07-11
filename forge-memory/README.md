@@ -324,7 +324,7 @@ CLI equivalents: `forge memory triage-keep`, `forge memory triage-archive`, `for
 forge memory decay --directory .
 
 # Record a harvest signal
-forge memory harvest --entity "Todd" --source "slack-forge" --type person --context "mentioned Acme renewal" --directory .
+forge memory harvest --entity "Todd" --source "product-forge" --type person --context "mentioned Acme renewal" --directory .
 
 # Promote pending items that meet the threshold
 forge memory promote --directory .

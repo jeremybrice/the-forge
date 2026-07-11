@@ -12,8 +12,7 @@ All plugins write through forge-lib CLI. Data directories and index files are cr
 | `sessions/` (debates/, explorations/) | cognitive-forge | forge-shell (cognitive-forge.js), report-forge | `sessions/index.json` |
 | `reports/` | report-forge | forge-shell (report-forge.js) | `reports/index.json` |
 | `rovo-agents/` ({slug}/agent.md) | rovo-forge | forge-shell (rovo-agent-forge.js) | `rovo-agents/index.json` |
-| `slack-forge/harvests/` | slack-forge | forge-shell (slack-forge.js) | `slack-forge/harvests/index.json` |
-| `outlook-forge/harvests/` | outlook-forge | forge-shell (outlook-forge.js) | `outlook-forge/harvests/index.json` |
+| `audio-forge/recordings/` | audio-forge | forge-shell (audio-forge.js) | `audio-forge/recordings/index.json` |
 
 ## Data Flow Diagram
 
@@ -26,8 +25,7 @@ flowchart LR
         RF[report-forge]
         FM[forge-memory]
         RV[rovo-forge]
-        SF[slack-forge]
-        OF[outlook-forge]
+        AF[audio-forge]
     end
 
     FL[forge-lib CLI]
@@ -39,15 +37,14 @@ flowchart LR
         reports[reports/]
         memory[memory/]
         rovo[rovo-agents/]
-        slack[slack-forge/harvests/]
-        outlook[outlook-forge/harvests/]
+        audio[audio-forge/recordings/]
     end
 
     FS[forge-shell via ForgeFS]
 
-    PF & TF & CF & RF & FM & RV & SF & OF --> FL
-    FL --> cards & tasks & sessions & reports & memory & rovo & slack & outlook
-    cards & tasks & sessions & reports & memory & rovo & slack & outlook --> FS
+    PF & TF & CF & RF & FM & RV & AF --> FL
+    FL --> cards & tasks & sessions & reports & memory & rovo & audio
+    cards & tasks & sessions & reports & memory & rovo & audio --> FS
     RF -.->|reads via forge-lib| cards & tasks & sessions
 ```
 

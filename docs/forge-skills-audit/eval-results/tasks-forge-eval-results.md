@@ -169,9 +169,9 @@ The triage mode action application (lines 100-107) does not reference the transi
 
 ## Ecosystem Test Results — task-management
 
-### ecosystem-task-mgmt-c1-001: Slack Forge awareness during task listing — FAIL (Level 0)
+### ecosystem-task-mgmt-c1-001: a removed harvest plugin awareness during task listing — FAIL (Level 0)
 
-**Contract:** 1 (Slack Forge → Tasks Forge harvest promotion)
+**Contract:** 1 (a removed harvest plugin → Tasks Forge harvest promotion)
 
 **Evidence:** The entire SKILL.md (159 lines) contains zero mentions of:
 - "Slack" (0 occurrences)
@@ -180,19 +180,19 @@ The triage mode action application (lines 100-107) does not reference the transi
 - "source" as a task origin field (0 occurrences)
 - Any upstream plugin by name (0 occurrences)
 
-The skill has no awareness that tasks can originate from Slack Forge harvest promotion. When listing tasks, there is no guidance to surface provenance metadata.
+The skill has no awareness that tasks can originate from a removed harvest plugin harvest promotion. When listing tasks, there is no guidance to surface provenance metadata.
 
 **Grade:** FAIL — Level 0 (below Awareness). Contract 1 is architecturally absent from the Tasks Forge side.
 
 ---
 
-### ecosystem-task-mgmt-c1-002: Slack Forge suggested for Slack-sourced tasks — FAIL (Level 0)
+### ecosystem-task-mgmt-c1-002: a removed harvest plugin suggested for Slack-sourced tasks — FAIL (Level 0)
 
 **Contract:** 1
 
-**Evidence:** Same as above. The task creation reasoning section (lines 87-105) lists "Action item identified in meeting notes, emails, or chat" as a valid trigger but never mentions `/slack-forge:scan` or `/slack-forge:capture` as the systematic alternative to manual entry for Slack-sourced tasks.
+**Evidence:** Same as above. The task creation reasoning section (lines 87-105) lists "Action item identified in meeting notes, emails, or chat" as a valid trigger but never mentions `` or `` as the systematic alternative to manual entry for Slack-sourced tasks.
 
-**Grade:** FAIL — Level 0. No Slack Forge command reference anywhere.
+**Grade:** FAIL — Level 0. No a removed harvest plugin command reference anywhere.
 
 ---
 
@@ -280,7 +280,7 @@ No mention of Report Forge, `/report-forge:generate`, or any downstream suggesti
 
 | Contract | Level | Evidence |
 |----------|-------|----------|
-| **Contract 1** (Slack → Tasks) | **Level 0 — Absent** | Zero mentions of Slack Forge in any component. The CLAUDE.md-defined harvest promotion flow is architecturally missing from the receiving side. |
+| **Contract 1** (Slack → Tasks) | **Level 0 — Absent** | Zero mentions of a removed harvest plugin in any component. The CLAUDE.md-defined harvest promotion flow is architecturally missing from the receiving side. |
 | **Contract 4** (Cognitive → Tasks) | **Level 0 — Absent** | Zero mentions of Cognitive Forge. Priority guidance uses only static criteria, not decision records. |
 | **Contract 5** (Proactive Handoff) | **Level 0 — Absent** | No component suggests any downstream plugin after completing its action. The add command's confirmation says only "Your task is now tracked in tasks/" with no handoff. The triage summary is a dead end. |
 | **Contract 6** (Memory-First) | **Level 0 — Absent** | Zero mentions of Forge Memory. The CLAUDE.md behavioral directive to check memory for shorthand/acronyms is completely unimplemented. |
@@ -315,7 +315,7 @@ No pattern analysis, no structured findings, no Report Forge suggestion. **IF4 i
 report-eval confirmed IF4 is **bilateral Level 0**. Key details from the Report Forge side: (a) `quarterly-review` and `executive-summary` report types are natural semantic fits for triage data, (b) the generate command has NO structured task data input — the Investigator would need to scan `tasks/` itself, (c) the Investigator has no task-aware investigation strategy (its metric collection focuses on git metrics and code features, not task status counts), (d) the best available flow would be a topic-string hint like `/report-forge:generate --type quarterly-review "Q1 Task Status"` and hope the Investigator picks up the context. Four changes needed across both plugins to enable IF4.
 
 ### From slack-eval (Contract 1)
-slack-eval shared the exact promote command schema. The promote command calls `forge task create` directly (batch operation, not user-interactive). Slack provenance is embedded in the description field as text prefix ("Harvested from #channel by @author on date") — no structured `source` field. Tags from the harvest pass through but no automatic `slack-harvest` tag is added. **Asymmetric handoff: Slack Forge implements Contract 1 at Level 3 (Context Passing) on its side, but Tasks Forge is Level 0 (Absent).** Additionally, a **priority type mismatch bug** was discovered: promote passes priority as strings ("High"/"Medium"/"Low") but the task schema requires integers (1-5). This would cause runtime validation failure on every promoted task. See "Cross-Plugin Interoperability Bug" section below.
+slack-eval shared the exact promote command schema. The promote command calls `forge task create` directly (batch operation, not user-interactive). Slack provenance is embedded in the description field as text prefix ("Harvested from #channel by @author on date") — no structured `source` field. Tags from the harvest pass through but no automatic `slack-harvest` tag is added. **Asymmetric handoff: a removed harvest plugin implements Contract 1 at Level 3 (Context Passing) on its side, but Tasks Forge is Level 0 (Absent).** Additionally, a **priority type mismatch bug** was discovered: promote passes priority as strings ("High"/"Medium"/"Low") but the task schema requires integers (1-5). This would cause runtime validation failure on every promoted task. See "Cross-Plugin Interoperability Bug" section below.
 
 ---
 
@@ -346,7 +346,7 @@ During collaboration with cognitive-eval on Contract 4, I checked the actual for
 The External System Integration section of the skill (lines 107-119) is effectively dead code — the schema prevents the fields it describes from being stored.
 
 Additionally, there is no `source` or `provenance` field in the schema, which means:
-- Tasks promoted from Slack Forge (Contract 1) cannot record their origin
+- Tasks promoted from a removed harvest plugin (Contract 1) cannot record their origin
 - Tasks created from Cognitive Forge action items (Contract 4) cannot reference the session
 - Cross-plugin provenance tracking is structurally impossible without a schema change
 
@@ -356,7 +356,7 @@ Additionally, there is no `source` or `provenance` field in the schema, which me
 
 ## Cross-Plugin Interoperability Bug (discovered during slack-eval collaboration)
 
-slack-eval shared the exact `forge task create` call used by Slack Forge's promote command for Contract 1. The promote command passes priority as **string values** ("High", "Medium", "Low"):
+slack-eval shared the exact `forge task create` call used by a removed harvest plugin's promote command for Contract 1. The promote command passes priority as **string values** ("High", "Medium", "Low"):
 
 ```bash
 forge task create "{title}" --data '{"priority": "High", "status": "Open", ...}'
@@ -368,7 +368,7 @@ The task schema requires priority as an **integer** (1-5):
 "priority": {"type": "integer", "minimum": 1, "maximum": 5}
 ```
 
-**This is a runtime bug:** every task promoted from Slack Forge would fail JSON Schema validation. `"High"` is a string, not an integer. forge-lib would return `{"success": false, "error": "Validation failed: ..."}` and no task would be created.
+**This is a runtime bug:** every task promoted from a removed harvest plugin would fail JSON Schema validation. `"High"` is a string, not an integer. forge-lib would return `{"success": false, "error": "Validation failed: ..."}` and no task would be created.
 
 **Correct mapping should be:**
 - high confidence → `"priority": 2`
@@ -390,7 +390,7 @@ Minimum content:
 
 **Task Sources:**
 - Manual creation via `/tasks-forge:add`
-- Slack Forge harvest promotion (`/slack-forge:promote` creates tasks from Slack discussions)
+- a removed harvest plugin harvest promotion (`` creates tasks from Slack discussions)
 - Cognitive Forge action items (debate/explore sessions may produce tasks)
 
 **Downstream Consumers:**
@@ -404,7 +404,7 @@ first (`/forge-memory:recall`) to resolve to canonical names before creating or 
 **Post-Action Suggestions:**
 - After task creation: "If this relates to a Product Forge story, you can link them."
 - After triage: "Consider generating a status report with `/report-forge:generate` to share outcomes."
-- When user mentions Slack as source: "You can systematically harvest tasks from Slack with `/slack-forge:scan`."
+- When user mentions Slack as source: "You can systematically harvest tasks from Slack with ``."
 ```
 
 ### Priority 2: Integrate Transition Validation into Triage Mode

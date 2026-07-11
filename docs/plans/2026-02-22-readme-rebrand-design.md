@@ -43,7 +43,7 @@ Table with emoji icons, plugin names in bold, and one-line descriptions:
 | :bulb: | Forge Memory | Organizational knowledge with taxonomy — products, modules, teams, integrations |
 | :bar_chart: | Report Forge | 8 report types generated via multi-agent orchestration |
 | :robot: | Rovo Forge | Interactive builders for Atlassian Rovo Jira & Confluence agents |
-| :speech_balloon: | Slack Forge | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
+| :speech_balloon: | a removed harvest plugin | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
 
 ### Section 4: Architecture Diagram
 

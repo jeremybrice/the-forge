@@ -23,7 +23,7 @@
     },
     "source": {
       "type": "string",
-      "enum": ["manual", "frontmatter", "auto-matched", "threshold-promoted", "slack-forge", "outlook-forge"],
+      "enum": ["manual", "frontmatter", "auto-matched", "threshold-promoted"],
       "default": "frontmatter"
     },
     "harvested_from": {

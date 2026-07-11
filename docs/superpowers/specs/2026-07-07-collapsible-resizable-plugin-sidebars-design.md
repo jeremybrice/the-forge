@@ -3,7 +3,6 @@
 - **Date:** 2026-07-07
 - **Status:** Draft → user approval pending
 - **Owner:** Forge Shell (`forge-shell/app/js/sidebar.js` + per-plugin integration)
-- **Related plugins:** product-forge, cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge, audio-forge
 
 ## 1. Background
 
@@ -15,7 +14,6 @@ Today there is no way to either:
 - **Resize** it (the width is hardcoded to a single CSS variable).
 - **Persist** a user's preferred width/collapsed state across sessions.
 
-Five of the seven plugins (cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge) already have a `data-*-action="toggle-sidebar"` button in their toolbar, but it is hidden on desktop (`display: none !important` in each plugin's CSS) and only used as a mobile slide-over toggle below 768px (`@media (max-width: 768px)`). The remaining two — **product-forge-local** and **audio-forge** — do not yet have a toggle button at all and need one added. (Verified by grepping for `toggle-sidebar` in `app/js/*.js`: present in cognitive, raf, rf, sf, of; absent in pfl and af.)
 
 This change makes the collapse + resize behavior work on desktop, makes the toggle button visible on desktop, and wires a draggable right-edge handle for resizing.
 
@@ -127,7 +125,7 @@ body.sidebar-dragging * {
 }
 ```
 
-Each plugin's layout class (`.pfl-layout`, `.cf-layout`, `.raf-layout`, `.rf-layout`, `.sf-layout`, `.of-layout`, `.af-layout`) gets:
+Each plugin's layout class (`.pfl-layout`, `.cf-layout`, `.raf-layout`, `.rf-layout`, ``, ``, `.af-layout`) gets:
 
 ```css
 grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
@@ -157,8 +155,8 @@ Rather than enumerate seven plugin classes, a single attribute selector covers a
 [class$="-sidebar-collapsed"] .cf-sidebar,
 [class$="-sidebar-collapsed"] .raf-sidebar,
 [class$="-sidebar-collapsed"] .rf-sidebar,
-[class$="-sidebar-collapsed"] .sf-sidebar,
-[class$="-sidebar-collapsed"] .of-sidebar,
+[class$="-sidebar-collapsed"] ,
+[class$="-sidebar-collapsed"] ,
 [class$="-sidebar-collapsed"] .af-sidebar,
 [class$="-sidebar-collapsed"] .sidebar-resizer {
   display: none;
@@ -296,15 +294,15 @@ For each of the 7 plugins:
 | `app/css/cognitive-forge.css` | same | +3 / −3 |
 | `app/css/rovo-agent-forge.css` | same | +3 / −3 |
 | `app/css/report-forge.css` | same | +3 / −3 |
-| `app/css/slack-forge.css` | same | +3 / −3 |
-| `app/css/outlook-forge.css` | same | +3 / −3 |
+| `app/css/` | same | +3 / −3 |
+| `app/css/` | same | +3 / −3 |
 | `app/css/audio-forge.css` | same | +3 / −3 |
 | `app/js/product-forge.js` | add toolbar toggle button (see §4.4); resizer `<div>`; call `Sidebar.init` | +18 |
 | `app/js/cognitive-forge.js` | same | +10 |
 | `app/js/rovo-agent-forge.js` | same | +10 |
 | `app/js/report-forge.js` | same | +10 |
-| `app/js/slack-forge.js` | same | +10 |
-| `app/js/outlook-forge.js` | same | +10 |
+| `app/js/` | same | +10 |
+| `app/js/` | same | +10 |
 | `app/js/audio-forge.js` | add toolbar toggle button + resizer + `Sidebar.init` | +15 |
 | `STYLE_GUIDE.md` | document `--plugin-sidebar-current` token + sidebar contract | +20 |
 

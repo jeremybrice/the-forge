@@ -1,6 +1,0 @@
-{
-  "name": "outlook-forge",
-  "version": "2.2.0",
-  "description": "Outlook intelligence harvester — scans calendar and inbox via Chrome for tasks, knowledge, and meeting context. Creates review-first harvest records. Delegates all file operations to forge-lib.",
-  "author": { "name": "Jeremy Brice" }
-}

@@ -18,7 +18,7 @@ The evaluation surfaced three categories of findings:
 
 2. **Forge-lib schema limitations** (data model changes required): Task schema lacks provenance fields, memory taxonomy is flat (no entity relationships), priority type mismatch between Slack promote and task schema. These require forge-lib changes before downstream skill fixes can be effective.
 
-3. **Missing features** (new code required): Rovo Forge has no agent testing framework, Report Forge references 8 non-existent template files, Slack Forge harvesters have no unresolved-discussion detection.
+3. **Missing features** (new code required): Rovo Forge has no agent testing framework, Report Forge references 8 non-existent template files, a removed harvest plugin harvesters have no unresolved-discussion detection.
 
 The agent team methodology proved its value: **12 findings were discovered exclusively through bilateral teammate collaboration** that would have been invisible to isolated evaluation, including the runtime priority type mismatch bug, the hidden `parent` field in the task schema, and the flat taxonomy ceiling that three independent evaluators converged on.
 
@@ -33,7 +33,7 @@ The agent team methodology proved its value: **12 findings were discovered exclu
 | **Product Forge** | 100% (32/32) | 21% (5.5/17) | 71% | 5 | 32 isolation + 15 ecosystem |
 | **Cognitive Forge** | 100% (all pass) | 0% (0/6) | ~70% | 3 | 18 isolation + 10 ecosystem |
 | **Report Forge** | 88% (avg 8.8/10) | 16% (avg 1.6/10) | 66% | 3 | 15 isolation + 7 ecosystem |
-| **Slack Forge** | 83% (avg 8.3/10) | 25% (avg 2.5/10) | 63% | 5 | 19 isolation + 12 ecosystem |
+| **a removed harvest plugin** | 83% (avg 8.3/10) | 25% (avg 2.5/10) | 63% | 5 | 19 isolation + 12 ecosystem |
 | **Rovo Forge** | 34% (2 pass/4 partial/5 fail) | 0% (0/6) | 25% | 5 | 11 isolation + 6 ecosystem |
 | **Ecosystem Average** | **82%** | **7%** | **59%** | **26** | **123 isolation + 66 ecosystem** |
 
@@ -46,7 +46,7 @@ The agent team methodology proved its value: **12 findings were discovered exclu
 
 ### Ecosystem Highlights
 
-- **Slack Forge promote command** is the only component that achieved Context Passing (Level 3) intent — though this was downgraded after bilateral verification revealed runtime bugs
+- **a removed harvest plugin promote command** is the only component that achieved Context Passing (Level 3) intent — though this was downgraded after bilateral verification revealed runtime bugs
 - **Product Forge** achieves partial credit on Contract 2 (taxonomy reference via product-context skill indirection)
 - **Every other plugin** scores Level 0 (Missing) or Level 1 (Awareness) on all ecosystem contracts
 
@@ -65,8 +65,8 @@ The agent team methodology proved its value: **12 findings were discovered exclu
 
 | Contract | Description | Side A | Level | Side B | Level | Status |
 |----------|-------------|--------|-------|--------|-------|--------|
-| **C1** | Slack → Tasks (task promotion) | Slack Forge promote | **BROKEN** (runtime bug: priority string/int mismatch) | Tasks Forge | Level 0 (absent) | **Runtime bug + absent** |
-| **C1** | Slack → Memory (knowledge promotion) | Slack Forge promote | Level 1 (provenance uncertain, general type gap) | Forge Memory | Level 1 (no receive pathway) | **Weak both sides** |
+| **C1** | Slack → Tasks (task promotion) | a removed harvest plugin promote | **BROKEN** (runtime bug: priority string/int mismatch) | Tasks Forge | Level 0 (absent) | **Runtime bug + absent** |
+| **C1** | Slack → Memory (knowledge promotion) | a removed harvest plugin promote | Level 1 (provenance uncertain, general type gap) | Forge Memory | Level 1 (no receive pathway) | **Weak both sides** |
 | **C2** | Memory → Product (taxonomy reference) | Forge Memory org-context | Level 2 (static docs, not dynamic) | Product Forge product-context | Level 1 (queries taxonomy but misses glossary) | **Partial, inconsistent** |
 | **C3** | Report → Product+Memory (context pull) | Report Forge investigator | Level 1 (mentions cards, no paths) | Product Forge | Level 0 (no Report Forge mention) | **Weak + absent** |
 | **C3** | Report → Memory (taxonomy scoping) | Report Forge investigator | Level 1 (mentions limiting scope) | Forge Memory | Level 1 (single-line mention) | **Weak both sides** |
@@ -80,7 +80,7 @@ The agent team methodology proved its value: **12 findings were discovered exclu
 | Contract | Description | Side A | Level | Side B | Level | Status |
 |----------|-------------|--------|-------|--------|-------|--------|
 | **IF1** | Jira Sync Loop (Product self) | push-to-jira | Level 0 | pull-from-jira | Level 0 | **Absent (self-contract)** |
-| **IF2** | Slack → Cognitive (discussion → debate) | Slack Forge knowledge-harvester | Level 0 | Cognitive Forge debate | Level 0 | **Absent both sides** |
+| **IF2** | Slack → Cognitive (discussion → debate) | a removed harvest plugin knowledge-harvester | Level 0 | Cognitive Forge debate | Level 0 | **Absent both sides** |
 | **IF3** | Report → Cognitive (analysis → exploration) | Report Forge synthesizer | Level 0 | Cognitive Forge | Level 0 | **Absent both sides** |
 | **IF4** | Tasks → Report (triage → status reports) | Tasks Forge triage | Level 0 | Report Forge generate | Level 1 (flexible intake) | **Absent + incidental** |
 | **IF5** | Memory → All (taxonomy propagation) | Forge Memory | Level 0 | — | — | **Absent** |
@@ -116,7 +116,7 @@ The agent team methodology proved its value: **12 findings were discovered exclu
 | 4 | **Contract 6 — Memory-First Resolution** | CLAUDE.md directive unimplemented across 5 of 7 plugins. Both supply-side (Memory triggering too weak) and demand-side (consumers don't query). | Bilateral: pushier Memory descriptions + memory-first instructions in all consumer plugins | All plugins |
 | 5 | **Contract 5 — Proactive Handoff** | Zero plugins suggest downstream actions after completing work. Every command is a dead end. | Add post-action next-step suggestions to all command confirmation templates | All plugins |
 | 6 | **Contract 4 — Decision → Action** | Cognitive Forge debate synthesis maps naturally to decision cards and tasks, but neither side connects. forge-decision agent can't read session files. Task schema blocks provenance. | Handoff text in Cognitive commands + session reading in forge-decision agent | Cognitive + Product + Tasks |
-| 7 | **Contract 1 — Tasks Forge side** | Tasks Forge has zero awareness of Slack Forge as a task source across ~484 lines. Even the `parent` field (which could link to stories) is undocumented in the skill. | Add ecosystem connections section to task-management SKILL.md | Tasks Forge |
+| 7 | **Contract 1 — Tasks Forge side** | Tasks Forge has zero awareness of a removed harvest plugin as a task source across ~484 lines. Even the `parent` field (which could link to stories) is undocumented in the skill. | Add ecosystem connections section to task-management SKILL.md | Tasks Forge |
 
 ### Medium Priority (Data Model Limitations)
 
@@ -158,7 +158,7 @@ Ordered by maximum ecosystem impact, accounting for fix effort and dependency ch
 
 | Priority | Fix | Effort | Impact | Plugins Affected |
 |----------|-----|--------|--------|-----------------|
-| **P1** | Fix Slack promote priority type mismatch (string→integer) | Trivial (1 line) | Unblocks entire task promotion pipeline | Slack Forge |
+| **P1** | Fix Slack promote priority type mismatch (string→integer) | Trivial (1 line) | Unblocks entire task promotion pipeline | a removed harvest plugin |
 | **P2** | Add `source` field to task schema in forge-lib | Low (schema change) | Unblocks provenance tracking for Contracts 1, 4 | forge-lib → all |
 | **P3** | Verify forge-lib preserves extra `--data` fields in knowledge creation | Investigation | Determines if Contract 1 knowledge provenance is preserved or lost | forge-lib |
 
@@ -210,14 +210,14 @@ The behavioral evaluation **confirms, expands, and in one case contradicts** the
 | Structural Audit Finding | Behavioral Expansion |
 |--------------------------|---------------------|
 | "Tasks Forge operates in near-total isolation" | **Expanded:** Not just missing handoff text — the task schema structurally blocks provenance tracking. `external_id`/`external_link` in SKILL.md are dead code rejected by schema. But `parent` field exists undocumented. |
-| "Slack Forge cross-plugin integration is documented" | **Expanded then contradicted:** The promote command's integration appeared to be Level 3, but bilateral verification revealed priority type mismatch (runtime bug), uncertain provenance preservation, and `general` type gap. The "best" ecosystem integration is actually broken. |
+| "a removed harvest plugin cross-plugin integration is documented" | **Expanded then contradicted:** The promote command's integration appeared to be Level 3, but bilateral verification revealed priority type mismatch (runtime bug), uncertain provenance preservation, and `general` type gap. The "best" ecosystem integration is actually broken. |
 | "product-context overlaps with org-context" | **Expanded:** Both use same forge-lib interface (consistent results), but product-context only queries `products` taxonomy — misses glossary terms like PSR. A user asking about "PSR" gets different behavior depending on which skill fires. |
 
 ### Contradicted
 
 | Structural Audit Finding | Behavioral Contradiction |
 |--------------------------|------------------------|
-| "Slack Forge has critical blocking gaps that must be resolved before reliable operation" | **Partially contradicted.** Isolation scores are 83-90% for the harvesters — they operate reliably for their core extraction job. The "critical" gaps are ecosystem gaps (no memory resolution, no cognitive handoff), not operational ones. The one true operational blocker is the promote command's priority type mismatch, which the structural audit did not identify. |
+| "a removed harvest plugin has critical blocking gaps that must be resolved before reliable operation" | **Partially contradicted.** Isolation scores are 83-90% for the harvesters — they operate reliably for their core extraction job. The "critical" gaps are ecosystem gaps (no memory resolution, no cognitive handoff), not operational ones. The one true operational blocker is the promote command's priority type mismatch, which the structural audit did not identify. |
 
 ### New Findings (not in structural audit)
 
@@ -265,7 +265,7 @@ The team approach produced **12 bilateral findings** that no single evaluator co
 
 The agent team approach costs more than isolated sub-agents (7 full evaluators × 4 phases + extensive messaging) but produced categorically different results:
 
-- **Isolated evaluation** would have scored Slack Forge's promote command at Level 3 (Context Passing) and called it the ecosystem's success story. Bilateral verification revealed it's broken at runtime.
+- **Isolated evaluation** would have scored a removed harvest plugin's promote command at Level 3 (Context Passing) and called it the ecosystem's success story. Bilateral verification revealed it's broken at runtime.
 - **Isolated evaluation** would have recommended "add handoff text" for Contract 4 without discovering the task schema blocker that makes Level 3 structurally impossible.
 - **Isolated evaluation** would have missed the `parent` field entirely — a positive finding that enables Product→Tasks linking with zero schema changes.
 
@@ -302,5 +302,4 @@ The collaboration overhead (Phase 3 messaging) added approximately 20% to total 
 | Product Forge | `eval-results/product-forge-eval-results.md` | `eval-results/product-forge-test-cases.json` |
 | Cognitive Forge | `eval-results/cognitive-forge-eval-results.md` | `eval-results/cognitive-forge-test-cases.json` |
 | Report Forge | `eval-results/report-forge-eval-results.md` | `eval-results/report-forge-test-cases.json` |
-| Slack Forge | `eval-results/slack-forge-eval-results.md` | `eval-results/slack-forge-test-cases.json` |
 | Rovo Forge | `eval-results/rovo-forge-eval-results.md` | `eval-results/rovo-forge-test-cases.json` |

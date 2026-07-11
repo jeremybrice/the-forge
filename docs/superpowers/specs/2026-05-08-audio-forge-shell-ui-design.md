@@ -38,8 +38,8 @@ Each non-goal is a clean follow-up phase.
 
 ## Architecture
 
-The view follows the established Forge Shell pattern (`slack-forge.js`,
-`outlook-forge.js`): a single self-contained IIFE view controller that owns its
+The view follows the established Forge Shell pattern (``,
+``): a single self-contained IIFE view controller that owns its
 DOM, scans its plugin directory via `ForgeFS`, and invokes Tauri commands /
 listens to Tauri events.
 
@@ -66,7 +66,7 @@ already shipped in Phase 2A: `start_recording`, `stop_recording`,
 
 ### Layout
 
-List + detail (Slack Forge pattern). Toolbar holds the only recording controls.
+List + detail (a removed harvest plugin pattern). Toolbar holds the only recording controls.
 
 ```
 ┌─ Audio Forge ─────────────────────────────────────────────────┐

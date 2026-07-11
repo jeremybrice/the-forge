@@ -6,7 +6,7 @@ Commands orchestrate conversation flow and delegate all persistence to forge-lib
 
 **Flow:** Gather user input → call `forge.py` subcommand → parse JSON output → guide next step.
 
-**Used by:** product-forge (6 agents), cognitive-forge (5 agents), report-forge (3 agents), slack-forge (3 agents), outlook-forge (3 agents)
+**Used by:** product-forge (6 agents), cognitive-forge (5 agents), report-forge (3 agents)
 
 **Anti-pattern:** Commands that read/write files directly instead of through forge-lib.
 
@@ -54,10 +54,6 @@ The `create.md` command detects card type via the `pm-methodology` skill, then r
 
 Investigator → Analyst → Synthesizer (sequential).
 For `executive-summary` and `quarterly-review`: skips Analyst (Investigator → Synthesizer only).
-
-### slack-forge / outlook-forge — Harvest Specialists
-
-Each has 3 specialized harvester agents for different content types (tasks, knowledge, digests for slack-forge; calendar, email, meetings for outlook-forge).
 
 ## forge-lib CLI Integration
 
@@ -113,7 +109,7 @@ Each entity type has an `index.json` for fast queries, maintained automatically 
 | Why | Fast structured queries | Avoids index drift |
 | Implication | Index changes affect CLI queries | Frontmatter changes affect dashboards |
 
-**Directories with indexes:** cards/, tasks/, sessions/, reports/, rovo-agents/, slack-forge/harvests/, outlook-forge/harvests/
+**Directories with indexes:** cards/, tasks/, sessions/, reports/, rovo-agents/, audio-forge/recordings/
 
 **Note:** Index files are runtime artifacts maintained by forge-lib, not checked into the repo.
 

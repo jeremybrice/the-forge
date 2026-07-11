@@ -181,7 +181,7 @@ All plugins use the same CSS custom property names for theming:
 
 ## Sidebar Contract (collapsible + resizable, added 2026-07-07)
 
-All Forge plugin views that show a left-hand list panel (sidebar) **must** use the shared `Sidebar.init(...)` module to enable collapse and resize. This applies to: product-forge, cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge, audio-forge.
+All Forge plugin views that show a left-hand list panel (sidebar) **must** use the shared `Sidebar.init(...)` module to enable collapse and resize. This applies to: product-forge, cognitive-forge, rovo-agent-forge, report-forge, audio-forge.
 
 ### Required HTML structure
 
