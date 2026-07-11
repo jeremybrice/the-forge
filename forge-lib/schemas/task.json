@@ -55,7 +55,7 @@
     },
     "source": {
       "type": ["string", "null"],
-      "description": "Origin plugin or system that created this task (e.g., 'slack-forge', 'cognitive-forge')",
+      "description": "Origin plugin or system that created this task (e.g., 'manual', 'cognitive-forge')",
       "default": null
     },
     "created": {

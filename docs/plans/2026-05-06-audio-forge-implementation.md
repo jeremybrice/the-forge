@@ -2858,7 +2858,6 @@ sed -n '1,40p' forge-lib/README.md
 
 - [ ] **Step 2: Add `audio-forge` to `CLAUDE.md` plugin table**
 
-In `CLAUDE.md`, locate the table that begins `| Plugin | Primary Commands | Data Location |`. Add the following row at the bottom of that table (just above the `outlook-forge` row already there is fine — alphabetical order is loose in this file):
 
 ```markdown
 | **audio-forge** | `/audio-forge:list`, `/audio-forge:transcribe` | `audio-forge/recordings/` + `audio-forge/recordings/index.json` |

@@ -10,7 +10,7 @@
 
 ## Summary
 
-Cognitive Forge's three eval candidates are **strong in isolation** — the debate orchestration protocol is well-specified, explore's dialogue governance is thoughtful, and forge-evaluator's evidence grounding structure is solid. However, the plugin has **zero ecosystem awareness**. Not a single line across any of the 9 component files references Product Forge, Tasks Forge, Forge Memory, Report Forge, or Slack Forge. All five ecosystem contracts (4, 5, 6, IF2, IF3) fail at the minimum bar (Level 1: Awareness).
+Cognitive Forge's three eval candidates are **strong in isolation** — the debate orchestration protocol is well-specified, explore's dialogue governance is thoughtful, and forge-evaluator's evidence grounding structure is solid. However, the plugin has **zero ecosystem awareness**. Not a single line across any of the 9 component files references Product Forge, Tasks Forge, Forge Memory, Report Forge, or a removed harvest plugin. All five ecosystem contracts (4, 5, 6, IF2, IF3) fail at the minimum bar (Level 1: Awareness).
 
 ---
 
@@ -39,7 +39,7 @@ Cognitive Forge's three eval candidates are **strong in isolation** — the deba
 | ecosystem-cognitive-c4-003 (Both card + task suggestion) | FAIL | Neither Product Forge nor Tasks Forge is mentioned. The "Be actionable" synthesis principle (line 241) says "the user should leave with specific next steps" but does not connect next steps to task tracking. |
 | ecosystem-cognitive-c5-001 (Proactive handoff) | FAIL | After Phase 6 session persistence, the command ends. No proactive suggestions for downstream plugins. The entire post-synthesis flow is: persist session → report filepath → done. |
 | ecosystem-cognitive-c6-001 (Memory-first resolution) | FAIL | No mention of Forge Memory, `/forge-memory:recall`, or any memory lookup during intake. When the user provides domain terms like "SOAP endpoints," the debate proceeds without checking organizational memory for context. No reference to acronym resolution or taxonomy lookup. |
-| ecosystem-cognitive-if2-001 (Slack discussion origin) | FAIL | No mention of Slack Forge as a potential concept source. Debate command does not acknowledge that topics may originate from harvested discussions. |
+| ecosystem-cognitive-if2-001 (Slack discussion origin) | FAIL | No mention of a removed harvest plugin as a potential concept source. Debate command does not acknowledge that topics may originate from harvested discussions. |
 | ecosystem-cognitive-if3-001 (Report finding origin) | FAIL | No mention of Report Forge as a potential concept source. No awareness that debates may be triggered by report analysis findings. |
 
 ---
@@ -129,15 +129,15 @@ Cognitive Forge's three eval candidates are **strong in isolation** — the deba
 
 ---
 
-### Implied Flow 2: Slack Forge -> Cognitive Forge (Complex Discussions -> Debate)
+### Implied Flow 2: a removed harvest plugin -> Cognitive Forge (Complex Discussions -> Debate)
 
 **Grade: Missing (Level 0)**
 
-**Evidence:** No Cognitive Forge component mentions Slack Forge. The debate command does not acknowledge that concepts may originate from Slack discussions.
+**Evidence:** No Cognitive Forge component mentions a removed harvest plugin. The debate command does not acknowledge that concepts may originate from Slack discussions.
 
-**Bilateral confirmation from slack-eval:** Slack Forge has zero references to Cognitive Forge across all 11 files (3 skills, 3 agents, 5 commands). The knowledge-harvester identifies "Decisions and rationale" as a knowledge signal but makes no distinction between resolved decisions and unresolved discussions. There is no detection heuristic for "no clear consensus" anywhere in the Slack Forge pipeline. IF2 is completely absent from both sides.
+**Bilateral confirmation from slack-eval:** a removed harvest plugin has zero references to Cognitive Forge across all 11 files (3 skills, 3 agents, 5 commands). The knowledge-harvester identifies "Decisions and rationale" as a knowledge signal but makes no distinction between resolved decisions and unresolved discussions. There is no detection heuristic for "no clear consensus" anywhere in the a removed harvest plugin pipeline. IF2 is completely absent from both sides.
 
-**Fix requires both sides:** Slack Forge needs an "unresolved multi-person discussion" signal in the knowledge-harvester that suggests `/cognitive-forge:debate`. Cognitive Forge needs intake-level awareness that debate topics can originate from Slack discussions.
+**Fix requires both sides:** a removed harvest plugin needs an "unresolved multi-person discussion" signal in the knowledge-harvester that suggests `/cognitive-forge:debate`. Cognitive Forge needs intake-level awareness that debate topics can originate from Slack discussions.
 
 ---
 
@@ -162,7 +162,7 @@ Cognitive Forge's three eval candidates are **strong in isolation** — the deba
    - Response: Tasks Forge task-management skill has no mention of Cognitive Forge sessions or debate outcomes. The `next_steps` array in Cognitive Forge session records is freeform text, not structured task objects. **Contract 4 is broken bilaterally.**
 
 3. **slack-eval (IF2 — Complex Discussions -> Debate):**
-   - Asked whether Slack Forge flags unresolved discussions and mentions Cognitive Forge.
+   - Asked whether a removed harvest plugin flags unresolved discussions and mentions Cognitive Forge.
    - Response: Knowledge-harvester identifies "Decisions and rationale" as a knowledge signal but has NO guidance for detecting unresolved discussions or suggesting `/cognitive-forge:debate`. Zero cross-plugin awareness. **IF2 is broken bilaterally.**
 
 4. **report-eval (IF3 — Analysis -> Deeper Exploration):**
@@ -243,7 +243,7 @@ add it with `/forge-memory:remember`.
 Add a brief note in both commands' intake phases:
 
 ```markdown
-Concepts may come from various sources: direct user ideas, Slack Forge harvested
+Concepts may come from various sources: direct user ideas, a removed harvest plugin harvested
 discussions, Report Forge analysis findings, or Product Forge card reviews. If the
 user mentions a source, incorporate that context into the concept brief.
 ```

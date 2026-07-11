@@ -4,7 +4,7 @@
 
 **Goal:** Add a view-only Audio Forge dashboard to Forge Shell that records system + microphone audio, automatically creates a recording entity on stop, automatically transcribes via local Whisper, and lets the user browse/play/re-transcribe prior recordings — all without leaving the desktop app.
 
-**Architecture:** Single IIFE view controller (`audio-forge.js`) following the established `slack-forge.js` / `outlook-forge.js` pattern. Pure-logic helpers extracted to `audio-forge.helpers.js` (UMD-style dual-export, unit-testable under `node:test`). Pure state-machine reducer in `audio-forge.reducer.js`, also unit-tested. The view scans `audio-forge/recordings/` via `ForgeFS`, listens to `audio-forge://*` Tauri events, and invokes the six Tauri commands shipped in Phase 2A. No new Rust/backend code.
+**Architecture:** Single IIFE view controller (`audio-forge.js`) following the established `` / `` pattern. Pure-logic helpers extracted to `audio-forge.helpers.js` (UMD-style dual-export, unit-testable under `node:test`). Pure state-machine reducer in `audio-forge.reducer.js`, also unit-tested. The view scans `audio-forge/recordings/` via `ForgeFS`, listens to `audio-forge://*` Tauri events, and invokes the six Tauri commands shipped in Phase 2A. No new Rust/backend code.
 
 **Tech Stack:** Vanilla JS (IIFE + `window.*` exports), HTML5 `<audio>`, Tauri 2.x (`@tauri-apps/api/core` `invoke` and `convertFileSrc`, `@tauri-apps/api/event` `listen`), `node:test` for unit tests.
 
@@ -13,7 +13,7 @@
 **Branch:** `feat/audio-forge-phase-2b` (cut from `feat/audio-forge-phase-2a` once that branch is merged to main, OR cut from main if 2A has merged by execution time).
 
 **Reference patterns to mirror:**
-- View controller IIFE shape: `forge-shell/app/js/slack-forge.js`
+- View controller IIFE shape: `forge-shell/app/js/`
 - Toolbar HTML pattern: `forge-shell/STYLE_GUIDE.md`
 - Plugin nav registration: `forge-shell/app/js/shell.js:9-20`
 - Controller registration: `forge-shell/app/js/shell.js:35-42`, lines `:447-452`
@@ -799,11 +799,8 @@ This task wires the new view into the shell so the nav item appears, the empty v
 
 - [ ] **Step 1: Add the plugin entry to shell.js**
 
-In `forge-shell/app/js/shell.js`, locate the `plugins` array (around line 9). Append a new entry **after** the `outlook-forge` entry:
 
 ```diff
-   { id: 'slack-forge',         label: 'Slack Forge',      icon: 'fa-brands fa-slack',         requiredDir: 'slack-forge' },
-   { id: 'outlook-forge',       label: 'Outlook Forge',    icon: 'fa-solid fa-envelope',       requiredDir: 'outlook-forge' },
 +  { id: 'audio-forge',         label: 'Audio Forge',      icon: 'fa-solid fa-microphone',     requiredDir: 'audio-forge' },
  ];
 ```
@@ -812,13 +809,13 @@ In `forge-shell/app/js/shell.js`, locate the `plugins` array (around line 9). Ap
 
 In `forge-shell/app/index.html`:
 
-1. After the existing `<link rel="stylesheet" href="css/outlook-forge.css">` (around line 21), add:
+1. After the existing `<link rel="stylesheet" href="css/">` (around line 21), add:
 
 ```html
   <link rel="stylesheet" href="css/audio-forge.css">
 ```
 
-2. After the existing `<!-- Outlook Forge View -->` div block (around line 99), add:
+2. After the existing `<!-- a removed harvest plugin View -->` div block (around line 99), add:
 
 ```html
       <!-- Audio Forge View -->
@@ -827,7 +824,7 @@ In `forge-shell/app/index.html`:
       </div>
 ```
 
-3. After the script tag for `outlook-forge.js` (around line 134), add:
+3. After the script tag for `` (around line 134), add:
 
 ```html
   <script src="js/audio-forge.helpers.js"></script>
@@ -1132,7 +1129,7 @@ Create `forge-shell/app/js/audio-forge.js`:
 /* ═══════════════════════════════════════════════════════════════
    Audio Forge View Controller
    Records system + mic via Tauri sidecar, browses + transcribes recordings.
-   Pattern matches slack-forge.js / outlook-forge.js.
+   Pattern matches  / .
    ═══════════════════════════════════════════════════════════════ */
 window.AudioForgeView = (function () {
   'use strict';

@@ -1,6 +1,6 @@
 # CLAUDE.md — The Forge Marketplace v2
 
-Claude Code plugin marketplace with 6 plugins + 1 desktop app + shared forge-lib Python CLI. See [README.md](README.md) for architecture overview and installation.
+Claude Code plugin marketplace with 7 plugins + 1 desktop app + shared forge-lib Python CLI. See [README.md](README.md) for architecture overview and installation.
 
 ## Quick Start
 
@@ -27,8 +27,6 @@ python forge.py --help
 | **cognitive-forge** | `/cognitive-forge:debate`, `/cognitive-forge:explore` | `sessions/` + `sessions/index.json` |
 | **report-forge** | `/report-forge:generate`, `/report-forge:list`, `/report-forge:update` | `reports/` + `reports/index.json` |
 | **rovo-forge** | `/rovo-forge:jira-agent`, `/rovo-forge:confluence-agent` | `rovo-agents/` + `rovo-agents/index.json` |
-| **slack-forge** | `/slack-forge:init`, `/slack-forge:scan`, `/slack-forge:review`, `/slack-forge:promote` | `slack-forge/harvests/` + `slack-forge/harvests/index.json` + `slack-forge/config.json` |
-| **outlook-forge** | `/outlook-forge:init`, `/outlook-forge:scan`, `/outlook-forge:capture`, `/outlook-forge:review`, `/outlook-forge:promote` | `outlook-forge/harvests/` + `outlook-forge/harvests/index.json` |
 | **audio-forge** | `/audio-forge:list`, `/audio-forge:transcribe` | `audio-forge/recordings/` + `audio-forge/recordings/index.json` |
 
 ## Architecture
@@ -58,7 +56,6 @@ python forge.py --help
 | Report | `YYYY-MM-DD-{slug}.md` | `2026-02-14-q1-performance-review.md` |
 | Checkpoint | `checkpoint-YYYY-MM-DD-{slug}.md` | `checkpoint-2026-02-14-architecture-decisions.md` |
 | Rovo Agent | `{slug}/agent.md` | `ticket-triage-agent/agent.md` |
-| Harvest | `YYYY-MM-DD-{harvest_type}-NNN.md` | `2026-02-17-task-harvest-001.md` |
 | Recording | `YYYY-MM-DD-{slug}.md` | `2026-05-06-sprint-standup.md` |
 
 ## Forge Shell Desktop App
@@ -76,8 +73,7 @@ python forge.py --help
 - `cognitive-forge.js` — Session history
 - `report-forge.js` — Report archive
 - `rovo-agent-forge.js` — Agent config viewer
-- `slack-forge.js` — Harvest dashboard with review workflow
-- `outlook-forge.js` — Outlook harvest dashboard with calendar integration
+- `audio-forge.js` — Recording list and transcription UI
 - `roadmap.js` — Roadmap timeline view
 
 **Launch (desktop app):**
@@ -115,7 +111,7 @@ See `forge-shell/README.md` for details.
 
 ## Version
 
-**v2.3.0** — Audio-forge plugin (Phase 1: CLI for transcribing system+mic WAVs via local Whisper). Phase 2 adds Forge Shell recording UI.
+**v2.4.0** — Removed channel/email harvest plugins, their Forge Shell UIs, and the forge-lib harvest/transcript CLI. Suite is product, tasks, memory, cognitive, report, rovo, and audio-forge.
 
 # >>> relay >>>
 <!-- adapters/claude-code/CLAUDE.relay.md -->

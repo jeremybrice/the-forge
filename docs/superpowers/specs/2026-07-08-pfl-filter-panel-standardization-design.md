@@ -11,11 +11,11 @@ The Product Forge filter panel (`.pfl-filter-panel`) is visible even when closed
 ### Root cause
 
 1. **Wrong DOM context.** The panel is rendered inside `<main class="pfl-detail-panel">` (`product-forge.js:1209`), which is the horizontally-scrollable board surface. With `position: absolute; right: 0`, the panel anchors to that wide scroll content, so the closed-state `transform: translateX(100%)` only shifts it ~280px past the content's far right edge — still reachable by horizontal scroll.
-2. **Missing positioning context.** `.pfl-layout` has no `position: relative` (it is missing the declaration that `.sf-layout` has at `slack-forge.css:12`), so absolute children do not anchor to the layout grid.
+2. **Missing positioning context.** `.pfl-layout` has no `position: relative` (it is missing the declaration that `` has at `:12`), so absolute children do not anchor to the layout grid.
 
 ### Reference pattern (Slack/Outlook)
 
-- Panel is a **direct child of `.X-layout`** (`slack-forge.js:140`), placed after the detail panel.
+- Panel is a **direct child of `.X-layout`** (`:140`), placed after the detail panel.
 - `.X-layout { position: relative }` anchors it.
 - Toggle button: `data-X-action="toggle-filter"` (toolbar) plus a second identical-action close button inside the panel header.
 - Open state: `.open` class on the panel; tracked by a boolean (`filterPanelOpen`).
@@ -29,7 +29,7 @@ Make Product Forge's filter panel open/close behave identically to Slack/Outlook
 
 ### `product-forge.css`
 
-- `.pfl-layout`: add `position: relative;` (mirrors `.sf-layout`).
+- `.pfl-layout`: add `position: relative;` (mirrors ``).
 - `.pfl-filter-panel` base rule: replace `top: 0; … height: 100%;` with `top: var(--toolbar-height); right: 0; bottom: 0;` and add `overflow-y: auto;`. Keep `transform: translateX(100%); transition: transform 0.2s ease;` and all other declarations (width, background, border-left, box-shadow, z-index, display/flex).
 - Rename the open modifier: `.pfl-filter-panel.pfl-open` → `.pfl-filter-panel.open` (body unchanged: `transform: translateX(0);`).
 

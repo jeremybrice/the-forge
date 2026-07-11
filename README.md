@@ -9,10 +9,10 @@
 Manage products, track tasks, capture knowledge, debate decisions, generate reports,
 and configure Atlassian agents — all from your terminal.
 
-[![Version](https://img.shields.io/badge/version-2.3.0-orange)]()
+[![Version](https://img.shields.io/badge/version-2.4.0-orange)]()
 [![Python](https://img.shields.io/badge/python-3.8+-blue)]()
-[![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen)]()
-[![Plugins](https://img.shields.io/badge/plugins-9-blueviolet)]()
+[![Tests](https://img.shields.io/badge/tests-371%20passing-brightgreen)]()
+[![Plugins](https://img.shields.io/badge/plugins-7-blueviolet)]()
 
 </div>
 
@@ -20,7 +20,7 @@ and configure Atlassian agents — all from your terminal.
 
 ## What is The Forge?
 
-The Forge is a suite of **9 Claude Code plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
+The Forge is a suite of **7 Claude Code plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
 
 Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib`) handles all file operations, validation, and indexing. Forge Shell gives you a desktop GUI to browse everything the plugins create.
 
@@ -38,9 +38,7 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/brain-solid-white.svg"><img src="docs/images/lightbulb-regular.svg" width="20" /></picture> | **[Forge Memory](forge-memory/README.md)** | Organizational knowledge with taxonomy — products, modules, teams, integrations |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/chart-bar-regular-white.svg"><img src="docs/images/chart-bar-regular.svg" width="20" /></picture> | **[Report Forge](report-forge/README.md)** | 8 report types generated via multi-agent orchestration |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/robot-solid-white.svg"><img src="docs/images/robot-solid.svg" width="20" /></picture> | **[Rovo Forge](rovo-forge/README.md)** | Interactive builders for Atlassian Rovo Jira & Confluence agents |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/slack-brands-solid-white.svg"><img src="docs/images/slack-brands-solid.svg" width="20" /></picture> | **[Slack Forge](slack-forge/README.md)** | Channel intelligence harvester — surfaces tasks, knowledge, and JIRA activity |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/envelope-regular-white.svg"><img src="docs/images/envelope-regular.svg" width="20" /></picture> | **[Outlook Forge](outlook-forge/README.md)** | Outlook intelligence harvester — surfaces tasks, knowledge, and meeting context |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/microphone-solid-white.svg"><img src="docs/images/microphone-solid.svg" width="20" /></picture> | **[Audio Forge](audio-forge/README.md)** | Record system audio + microphone on macOS and transcribe with local Whisper. Phase 1 ships the CLI; the Forge Shell record button arrives in Phase 2. |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/microphone-solid-white.svg"><img src="docs/images/microphone-solid.svg" width="20" /></picture> | **[Audio Forge](audio-forge/README.md)** | Record system audio + microphone on macOS and transcribe with local Whisper. |
 
 ---
 
@@ -65,8 +63,7 @@ graph TB
         subgraph col2 [" "]
             C5["Report Forge"]
             C6["Rovo Forge"]
-            C7["Slack Forge"]
-            C8["Outlook Forge"]
+            C7["Audio Forge"]
         end
     end
 
@@ -78,7 +75,7 @@ graph TB
 
     PL --> FL
 
-    FL --> F["cards/ · tasks/ · sessions/ · memory/ · reports/"]
+    FL --> F["cards/ · tasks/ · sessions/ · memory/ · reports/ · recordings/"]
 
     G["Forge Shell · Tauri Desktop App"] -.->|reads| F
 ```
@@ -130,8 +127,6 @@ See individual plugin READMEs for detailed workflows and command references.
 | [Forge Memory](forge-memory/README.md) | Knowledge taxonomy and recall |
 | [Report Forge](report-forge/README.md) | 8 report types, multi-agent generation |
 | [Rovo Forge](rovo-forge/README.md) | Atlassian Rovo agent builders |
-| [Slack Forge](slack-forge/README.md) | Slack channel intelligence harvester |
-| [Outlook Forge](outlook-forge/README.md) | Outlook intelligence harvester |
 | [Audio Forge](audio-forge/README.md) | macOS audio recording and Whisper transcription |
 | [Forge Shell](forge-shell/README.md) | Desktop app build and usage |
 

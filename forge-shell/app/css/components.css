@@ -608,7 +608,7 @@
 }
 
 /* Hide sidebar + resizer when the layout has the *-sidebar-collapsed class.
-   Attribute selector matches all 7 plugin prefixes (pfl/cf/raf/rf/sf/of/af).
+   Attribute selector matches plugin prefixes (pfl/cf/raf/rf/af).
    Scoped to desktop (min-width: 769px) so the existing mobile (≤768px)
    slide-over behavior in plugin CSS files is preserved unchanged. */
 @media (min-width: 769px) {
@@ -616,8 +616,6 @@
   [class$="-sidebar-collapsed"] .cf-sidebar,
   [class$="-sidebar-collapsed"] .raf-sidebar,
   [class$="-sidebar-collapsed"] .rf-sidebar,
-  [class$="-sidebar-collapsed"] .sf-sidebar,
-  [class$="-sidebar-collapsed"] .of-sidebar,
   [class$="-sidebar-collapsed"] .af-sidebar,
   [class$="-sidebar-collapsed"] .sidebar-resizer {
     display: none;

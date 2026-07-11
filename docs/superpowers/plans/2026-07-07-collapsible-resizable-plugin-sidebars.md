@@ -25,15 +25,13 @@
 | `forge-shell/app/css/cognitive-forge.css` | Same pattern for `.cf-layout` and `.cf-toolbar-toggle`. | **Modify** |
 | `forge-shell/app/css/rovo-agent-forge.css` | Same for `.raf-layout` and `.raf-toolbar-toggle`. | **Modify** |
 | `forge-shell/app/css/report-forge.css` | Same for `.rf-layout` and `.rf-toolbar-toggle`. | **Modify** |
-| `forge-shell/app/css/slack-forge.css` | Same for `.sf-layout` and `.sf-toolbar-toggle`. | **Modify** |
-| `forge-shell/app/css/outlook-forge.css` | Same for `.of-layout` and `.of-toolbar-toggle`. | **Modify** |
 | `forge-shell/app/css/audio-forge.css` | Same for `.af-layout`. No `.af-toolbar-toggle` rule exists yet (added in audio-forge.js). | **Modify** |
 | `forge-shell/app/js/product-forge.js` | Add toolbar toggle button (none exists today) + resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
 | `forge-shell/app/js/cognitive-forge.js` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
 | `forge-shell/app/js/rovo-agent-forge.js` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
 | `forge-shell/app/js/report-forge.js` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
-| `forge-shell/app/js/slack-forge.js` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
-| `forge-shell/app/js/outlook-forge.js` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
+| `forge-shell/app/js/` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
+| `forge-shell/app/js/` | Add resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
 | `forge-shell/app/js/audio-forge.js` | Add toolbar toggle button (none exists today) + resizer `<div>` + `Sidebar.init(...)` call. | **Modify** |
 | `forge-shell/STYLE_GUIDE.md` | Document `--plugin-sidebar-current` token + the `Sidebar.init` contract for new plugins. | **Modify (append)** |
 
@@ -611,8 +609,8 @@ Append to `forge-shell/app/css/components.css`:
 [class$="-sidebar-collapsed"] .cf-sidebar,
 [class$="-sidebar-collapsed"] .raf-sidebar,
 [class$="-sidebar-collapsed"] .rf-sidebar,
-[class$="-sidebar-collapsed"] .sf-sidebar,
-[class$="-sidebar-collapsed"] .of-sidebar,
+[class$="-sidebar-collapsed"] ,
+[class$="-sidebar-collapsed"] ,
 [class$="-sidebar-collapsed"] .af-sidebar,
 [class$="-sidebar-collapsed"] .sidebar-resizer {
   display: none;
@@ -685,8 +683,8 @@ This task bundles 5 file edits because they follow the same shape. Do each edit,
 - Modify: `cognitive-forge.css` (around line 6 + lines 97-108)
 - Modify: `rovo-agent-forge.css` (around line 21 + lines 306-336)
 - Modify: `report-forge.css` (lines 6-25)
-- Modify: `slack-forge.css` (around line 9 + lines 242-260)
-- Modify: `outlook-forge.css` (around line 9 + lines 242-260)
+- Modify: `` (around line 9 + lines 242-260)
+- Modify: `` (around line 9 + lines 242-260)
 
 The two CSS changes per file:
 1. **Layout grid uses `var(--plugin-sidebar-current, var(--plugin-sidebar-width))`** with a `transition` for smooth resize.
@@ -794,56 +792,54 @@ Replace with:
 /* Sidebar toggle is visible on both desktop and mobile. */
 ```
 
-- [ ] **Step 4: Edit `slack-forge.css`**
+- [ ] **Step 4: Edit ``**
 
 **Edit A** — find:
 ```css
-.sf-layout {
+ {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
   grid-template-columns: var(--plugin-sidebar-width) 1fr;
 ```
 Replace with:
 ```css
-.sf-layout {
+ {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
   grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   transition: grid-template-columns 0.18s ease;
 ```
 
-**Edit B** — find the `.sf-toolbar-toggle { display: none !important; }` rule and the `@media (max-width: 768px) { .sf-toolbar-toggle { display: inline-flex !important; } }` rule. Delete both.
 
-- [ ] **Step 5: Edit `outlook-forge.css`**
+- [ ] **Step 5: Edit ``**
 
 **Edit A** — find:
 ```css
-.of-layout {
+ {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
   grid-template-columns: var(--plugin-sidebar-width) 1fr;
 ```
 Replace with:
 ```css
-.of-layout {
+ {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr;
   grid-template-columns: var(--plugin-sidebar-current, var(--plugin-sidebar-width)) 1fr;
   transition: grid-template-columns 0.18s ease;
 ```
 
-**Edit B** — find the `.of-toolbar-toggle { display: none !important; }` rule and the `@media (max-width: 768px) { .of-toolbar-toggle { display: inline-flex !important; } }` rule. Delete both.
 
 - [ ] **Step 6: Sanity-check each file**
 
-Run: `grep -n 'plugin-sidebar-current\|toolbar-toggle' forge-shell/app/css/cognitive-forge.css forge-shell/app/css/rovo-agent-forge.css forge-shell/app/css/report-forge.css forge-shell/app/css/slack-forge.css forge-shell/app/css/outlook-forge.css`
+Run: `grep -n 'plugin-sidebar-current\|toolbar-toggle' forge-shell/app/css/cognitive-forge.css forge-shell/app/css/rovo-agent-forge.css forge-shell/app/css/report-forge.css forge-shell/app/css/ forge-shell/app/css/`
 Expected: each file shows one `plugin-sidebar-current` line in its layout block; each file no longer has a `display: none` for its toolbar toggle.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 cd /Users/jeremybrice/Documents/GitHub/the-forge
-git add forge-shell/app/css/cognitive-forge.css forge-shell/app/css/rovo-agent-forge.css forge-shell/app/css/report-forge.css forge-shell/app/css/slack-forge.css forge-shell/app/css/outlook-forge.css
+git add forge-shell/app/css/cognitive-forge.css forge-shell/app/css/rovo-agent-forge.css forge-shell/app/css/report-forge.css forge-shell/app/css/ forge-shell/app/css/
 git commit -m "style(5 plugins): use --plugin-sidebar-current; show toolbar toggle on desktop"
 ```
 
@@ -860,8 +856,8 @@ This task bundles 5 nearly-identical file edits. For each plugin, two changes:
 - Modify: `forge-shell/app/js/cognitive-forge.js`
 - Modify: `forge-shell/app/js/rovo-agent-forge.js`
 - Modify: `forge-shell/app/js/report-forge.js`
-- Modify: `forge-shell/app/js/slack-forge.js`
-- Modify: `forge-shell/app/js/outlook-forge.js`
+- Modify: `forge-shell/app/js/`
+- Modify: `forge-shell/app/js/`
 
 - [ ] **Step 1: Edit `cognitive-forge.js`**
 
@@ -923,37 +919,31 @@ immediately **after** the `</aside>` close and **before** the next `<div>`. (Adj
       }
 ```
 
-- [ ] **Step 4: Edit `slack-forge.js`**
+- [ ] **Step 4: Edit ``**
 
-**Edit A** — same as above, after `.sf-sidebar` `</aside>`.
+**Edit A** — same as above, after `` `</aside>`.
 
 **Edit B** — append:
 
 ```js
       if (root.Sidebar) {
         root.Sidebar.init({
-          pluginId: 'slack-forge',
-          rootSelector: '#view-slack-forge',
-          sidebarSelector: '.sf-sidebar',
-          toggleSelector: '[data-sf-action="toggle-sidebar"]',
+          sidebarSelector: '',
           resizerSelector: '.sidebar-resizer'
         });
       }
 ```
 
-- [ ] **Step 5: Edit `outlook-forge.js`**
+- [ ] **Step 5: Edit ``**
 
-**Edit A** — same, after `.of-sidebar` `</aside>`.
+**Edit A** — same, after `` `</aside>`.
 
 **Edit B** — append:
 
 ```js
       if (root.Sidebar) {
         root.Sidebar.init({
-          pluginId: 'outlook-forge',
-          rootSelector: '#view-outlook-forge',
-          sidebarSelector: '.of-sidebar',
-          toggleSelector: '[data-of-action="toggle-sidebar"]',
+          sidebarSelector: '',
           resizerSelector: '.sidebar-resizer'
         });
       }
@@ -967,8 +957,8 @@ grep -n 'Sidebar.init\|sidebar-resizer' \
   forge-shell/app/js/cognitive-forge.js \
   forge-shell/app/js/rovo-agent-forge.js \
   forge-shell/app/js/report-forge.js \
-  forge-shell/app/js/slack-forge.js \
-  forge-shell/app/js/outlook-forge.js
+  forge-shell/app/js/ \
+  forge-shell/app/js/
 ```
 Expected: each file has exactly one `Sidebar.init(` call and one `sidebar-resizer` line.
 
@@ -976,7 +966,7 @@ Expected: each file has exactly one `Sidebar.init(` call and one `sidebar-resize
 
 ```bash
 cd /Users/jeremybrice/Documents/GitHub/the-forge
-git add forge-shell/app/js/cognitive-forge.js forge-shell/app/js/rovo-agent-forge.js forge-shell/app/js/report-forge.js forge-shell/app/js/slack-forge.js forge-shell/app/js/outlook-forge.js
+git add forge-shell/app/js/cognitive-forge.js forge-shell/app/js/rovo-agent-forge.js forge-shell/app/js/report-forge.js forge-shell/app/js/ forge-shell/app/js/
 git commit -m "feat(5 plugins): wire collapsible + resizable sidebar"
 ```
 
@@ -1172,7 +1162,6 @@ Append to `forge-shell/STYLE_GUIDE.md`:
 
 ## Sidebar Contract (collapsible + resizable, added 2026-07-07)
 
-All Forge plugin views that show a left-hand list panel (sidebar) **must** use the shared `Sidebar.init(...)` module to enable collapse and resize. This applies to: product-forge, cognitive-forge, rovo-agent-forge, report-forge, slack-forge, outlook-forge, audio-forge.
 
 ### Required HTML structure
 

@@ -148,12 +148,12 @@
       "component": "task-management",
       "category": "ecosystem",
       "contract": "Contract 1",
-      "description": "Skill acknowledges Slack Forge as a task source during task listing",
+      "description": "Skill acknowledges a removed harvest plugin as a task source during task listing",
       "user_prompt": "What tasks do I have?",
       "setup_context": "tasks/ contains tasks, some with source metadata indicating Slack harvest origin",
       "grading": {
         "ecosystem_awareness": {
-          "assertion": "Skill should acknowledge that tasks can originate from Slack Forge harvest promotion. If tasks have Slack provenance metadata, it should be visible. At minimum, the skill text should mention Slack Forge as a possible task source.",
+          "assertion": "Skill should acknowledge that tasks can originate from a removed harvest plugin harvest promotion. If tasks have Slack provenance metadata, it should be visible. At minimum, the skill text should mention a removed harvest plugin as a possible task source.",
           "level": "awareness",
           "weight": 0.3
         },
@@ -268,12 +268,12 @@
       "component": "task-management",
       "category": "ecosystem",
       "contract": "Contract 1",
-      "description": "Task management skill mentions Slack Forge promotion as intake path",
+      "description": "Task management skill mentions a removed harvest plugin promotion as intake path",
       "user_prompt": "I have some tasks from a Slack discussion that need tracking",
       "setup_context": "User mentions Slack as the source of tasks",
       "grading": {
         "ecosystem_awareness": {
-          "assertion": "Skill should suggest using `/slack-forge:scan` and `/slack-forge:capture` to harvest tasks from Slack systematically, rather than manual re-entry. This is the Contract 1 flow.",
+          "assertion": "Skill should suggest using `` and `` to harvest tasks from Slack systematically, rather than manual re-entry. This is the Contract 1 flow.",
           "level": "specificity",
           "weight": 0.5
         },

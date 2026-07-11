@@ -30,7 +30,7 @@ Tasks Forge provides lightweight, folder-based task management with status lifec
 | Reference File Utilization | **Missing** | No reference files. The triage decision trees (overdue/stale/stuck/forgotten) are substantial enough to warrant extraction, especially since the update command's triage mode needs the same logic. |
 | Connector/Tool Integration | **Adequate** | Notes that forge-lib handles all file operations and that task_ops.py validates transitions, but doesn't list these as formal dependencies or provide fallback behavior. The external sync section mentions MCP tools but is vague. |
 | Progressive Disclosure | **Strong** | 159 lines, appropriately sized. Content is focused on reasoning rather than implementation. |
-| Cross-Plugin Handoff | **Missing** | No mention of how tasks relate to Product Forge cards (stories are often tracked as tasks), Slack Forge harvested tasks (the promote flow feeds into Tasks Forge), or Forge Memory context. This is a significant gap given the CLAUDE.md workspace instructions explicitly describe Slack Forge → Tasks Forge promotion. |
+| Cross-Plugin Handoff | **Missing** | No mention of how tasks relate to Product Forge cards (stories are often tracked as tasks), a removed harvest plugin harvested tasks (the promote flow feeds into Tasks Forge), or Forge Memory context. This is a significant gap given the CLAUDE.md workspace instructions explicitly describe a removed harvest plugin → Tasks Forge promotion. |
 | Writing Quality | **Strong** | Clean, well-organized. The state machine diagram is elegant. Decision trees in the triage section use conditional logic naturally. "Never delete completed tasks (they provide history)" is a well-reasoned convention. |
 
 ### start (Command)
@@ -75,7 +75,7 @@ Tasks Forge provides lightweight, folder-based task management with status lifec
 | Reference File Utilization | **Missing** | No reference files. Triage thresholds (30 days stale, 14 days stuck, 7 days forgotten) duplicate the task-management skill's values. |
 | Connector/Tool Integration | **Adequate** | forge-lib commands are explicit. External sync section mentions MCP tools but notes it as "Future Enhancement" with a graceful fallback message. |
 | Progressive Disclosure | **Strong** | 146 lines, reasonable size. |
-| Cross-Plugin Handoff | **Weak** | External sync mentions Asana, Linear, Jira, GitHub generically. No mention of Slack Forge as a task source (despite the CLAUDE.md workflow describing exactly this). No mention that completed tasks might inform Report Forge. |
+| Cross-Plugin Handoff | **Weak** | External sync mentions Asana, Linear, Jira, GitHub generically. No mention of a removed harvest plugin as a task source (despite the CLAUDE.md workflow describing exactly this). No mention that completed tasks might inform Report Forge. |
 | Writing Quality | **Strong** | Well-structured with clear mode separation. Error handling is consistent. |
 
 ---
@@ -92,7 +92,7 @@ Tasks Forge provides lightweight, folder-based task management with status lifec
 
 ## Critical Gaps
 
-1. **Cross-plugin handoff awareness is the biggest gap.** The CLAUDE.md workspace instructions explicitly describe Slack Forge → Tasks Forge promotion as a core workflow, but neither the skill nor any command mentions Slack Forge. Similarly, there's no connection to Product Forge cards (stories as tasks), Forge Memory context (task-related people/projects), or Report Forge (completed tasks informing reports). For a plugin that sits at the center of the "do the work" layer, this isolation is a significant architectural miss.
+1. **Cross-plugin handoff awareness is the biggest gap.** The CLAUDE.md workspace instructions explicitly describe a removed harvest plugin → Tasks Forge promotion as a core workflow, but neither the skill nor any command mentions a removed harvest plugin. Similarly, there's no connection to Product Forge cards (stories as tasks), Forge Memory context (task-related people/projects), or Report Forge (completed tasks informing reports). For a plugin that sits at the center of the "do the work" layer, this isolation is a significant architectural miss.
 
 2. **No reference files anywhere.** Triage thresholds and decision logic appear in both the task-management skill and the update command. A shared reference would ensure consistency and reduce duplication.
 
@@ -114,7 +114,7 @@ Tasks Forge provides lightweight, folder-based task management with status lifec
 - **task-management** — would benefit from the Skill Creator's description optimization loop to capture conversational triggers like "what should I work on?" and "triage my tasks."
 
 **Direct improvement candidates (edit without full eval):**
-- Add cross-plugin handoff awareness to task-management skill (Slack Forge as source, Product Forge for card linking, Report Forge as consumer)
+- Add cross-plugin handoff awareness to task-management skill (a removed harvest plugin as source, Product Forge for card linking, Report Forge as consumer)
 - Extract shared `references/triage-thresholds.md` with day-count logic and decision trees
 - Add pre-create confirmation gate to add command
 - Improve update command description to mention triage mode

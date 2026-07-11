@@ -144,7 +144,7 @@ Forge Memory is the foundational plugin in the Forge ecosystem. It provides orga
 
 1. **No reference files anywhere.** This is the most significant structural gap. The lifecycle scoring rules (importance decay, boost mechanics, sunset/probationary thresholds) appear in memory-management but are also needed by triage and recall. This should be a shared reference doc. The forge-lib command catalog could also be a reference rather than repeated inline in every command.
 
-2. **Cross-plugin handoff awareness is weak to missing.** org-context is the only component that explicitly names downstream consumers. The commands (remember, recall, triage) operate in isolation despite being foundational to every other plugin. After remembering a person or project, the system should suggest how that knowledge enriches Product Forge card creation, Report Forge scoping, and Slack Forge context.
+2. **Cross-plugin handoff awareness is weak to missing.** org-context is the only component that explicitly names downstream consumers. The commands (remember, recall, triage) operate in isolation despite being foundational to every other plugin. After remembering a person or project, the system should suggest how that knowledge enriches Product Forge card creation, Report Forge scoping, and a removed harvest plugin context.
 
 3. **Skill descriptions need "pushy" triggering improvements.** Both memory-management and org-context have descriptions that work when other commands invoke them, but they wouldn't independently trigger on user prompts like "what does [acronym] mean?" or "who is [person]?" The descriptions should explicitly capture these natural-language patterns.
 

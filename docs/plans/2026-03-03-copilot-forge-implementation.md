@@ -1228,7 +1228,6 @@ git commit -m "feat(copilot-forge): integrate copilot-forge view into forge-shel
 
 **Step 1: Add copilot-forge to the Plugins table**
 
-In the `## Plugins` table, add a new row after the slack-forge entry:
 
 ```markdown
 | **copilot-forge** | `/copilot-forge:agent` | `copilot-agents/` + `copilot-agents/index.json` |

@@ -188,7 +188,6 @@ SUPPORTED_SCHEMAS = [
     "task",
     "session",
     "report",
-    "harvest",
     "recording",
 ]
 

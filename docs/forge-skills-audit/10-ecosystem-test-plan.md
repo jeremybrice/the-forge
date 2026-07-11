@@ -30,23 +30,23 @@ For grading assertions on ecosystem test cases, the eval team checks for:
 
 These are the five cross-plugin flows that the workspace instructions explicitly define. Every one of these MUST be testable, and failure on these is a critical ecosystem deficiency.
 
-### Contract 1: Slack Forge → Tasks Forge + Forge Memory (Harvest Promotion)
+### Contract 1: a removed harvest plugin → Tasks Forge + Forge Memory (Harvest Promotion)
 
-**CLAUDE.md source:** "Slack Forge harvests promote into Tasks Forge (tasks) and Forge Memory (knowledge)"
+**CLAUDE.md source:** "a removed harvest plugin harvests promote into Tasks Forge (tasks) and Forge Memory (knowledge)"
 
-**What should happen:** When Slack Forge completes a harvest cycle (scan → capture → review → promote), approved task items flow into Tasks Forge as new tasks, and approved knowledge items flow into Forge Memory as new entries.
+**What should happen:** When a removed harvest plugin completes a harvest cycle (scan → capture → review → promote), approved task items flow into Tasks Forge as new tasks, and approved knowledge items flow into Forge Memory as new entries.
 
 **Test scenarios by plugin:**
 
 | Plugin Under Test | Test Scenario | User Prompt | Ecosystem Assertion |
 |---|---|---|---|
-| Slack Forge (capture) | Task extraction suggests downstream promotion | "Capture tasks from the #engineering channel transcript" | Output mentions that approved tasks can be promoted to Tasks Forge via `/slack-forge:promote` |
-| Slack Forge (promote) | Promotion creates correctly formatted Tasks Forge entries | "Promote the approved harvest items" | Promoted tasks reference Tasks Forge schema (title, status=Open, priority, source=slack-harvest). Promoted knowledge references Forge Memory schema (type, importance, content). |
-| Tasks Forge (task-management) | Awareness of Slack Forge as a task source | "What tasks do I have?" or "Triage my tasks" | If tasks originated from Slack harvest, their provenance is visible. The skill acknowledges that tasks can come from Slack Forge promotion. |
-| Tasks Forge (add) | Manual task creation suggests Slack as alternative source | "Add a task from the discussion in #product" | Suggests using `/slack-forge:scan` and `/slack-forge:capture` as an alternative to manual entry for Slack-sourced tasks |
-| Forge Memory (remember) | Awareness that knowledge can come from Slack harvest | "Remember that Todd owns the billing module" | Output acknowledges this is now available to Slack Forge for context enrichment during future harvests |
+| a removed harvest plugin (capture) | Task extraction suggests downstream promotion | "Capture tasks from the #engineering channel transcript" | Output mentions that approved tasks can be promoted to Tasks Forge via `` |
+| a removed harvest plugin (promote) | Promotion creates correctly formatted Tasks Forge entries | "Promote the approved harvest items" | Promoted tasks reference Tasks Forge schema (title, status=Open, priority, source=slack-harvest). Promoted knowledge references Forge Memory schema (type, importance, content). |
+| Tasks Forge (task-management) | Awareness of a removed harvest plugin as a task source | "What tasks do I have?" or "Triage my tasks" | If tasks originated from Slack harvest, their provenance is visible. The skill acknowledges that tasks can come from a removed harvest plugin promotion. |
+| Tasks Forge (add) | Manual task creation suggests Slack as alternative source | "Add a task from the discussion in #product" | Suggests using `` and `` as an alternative to manual entry for Slack-sourced tasks |
+| Forge Memory (remember) | Awareness that knowledge can come from Slack harvest | "Remember that Todd owns the billing module" | Output acknowledges this is now available to a removed harvest plugin for context enrichment during future harvests |
 
-**Critical gap found in audit:** Tasks Forge never mentions Slack Forge anywhere. This contract is architecturally absent from one side.
+**Critical gap found in audit:** Tasks Forge never mentions a removed harvest plugin anywhere. This contract is architecturally absent from one side.
 
 ---
 
@@ -125,7 +125,7 @@ These are the five cross-plugin flows that the workspace instructions explicitly
 | Product Forge (checkpoint) | Knowledge captured | "Any decisions in this checkpoint could become decision cards. Any open items could become tasks." |
 | Cognitive Forge (debate) | Debate completed | Suggest decision card and/or task creation (see Contract 4). |
 | Report Forge (generate) | Report generated | "Action items in this report could be tracked as tasks. Recommendations could inform product card updates." |
-| Slack Forge (capture) | Harvest completed | "Review pending items with `/slack-forge:review`, then promote to Tasks Forge and Forge Memory." |
+| a removed harvest plugin (capture) | Harvest completed | "Review pending items with ``, then promote to Tasks Forge and Forge Memory." |
 | Rovo Forge (jira-agent) | Agent config produced | "You can test this agent against Jira issues referenced in your Product Forge cards." |
 
 ---
@@ -144,7 +144,7 @@ These are the five cross-plugin flows that the workspace instructions explicitly
 | Tasks Forge (add) | Shorthand in task description | "Add a task: fix the WPA auth bug for Acme" | Checks Forge Memory for "WPA" and "Acme" before creating the task. Uses canonical names in the task description. |
 | Report Forge (generate) | Informal reference in report request | "Generate a deep-dive on the mobile app performance issues" | Checks Forge Memory to resolve "mobile app" to canonical product name before scoping the investigation. |
 | Cognitive Forge (debate) | Domain term in debate topic | "Debate whether we should sunset the legacy SOAP endpoints" | Checks Forge Memory for "SOAP endpoints" and any related product/module context to inform the debate. |
-| Slack Forge (capture) | Shorthand in transcript content | Transcript contains "Todd mentioned the CRM is down" | During harvest, checks Forge Memory to resolve "Todd" (person) and "CRM" (product/module) for proper attribution and categorization. |
+| a removed harvest plugin (capture) | Shorthand in transcript content | Transcript contains "Todd mentioned the CRM is down" | During harvest, checks Forge Memory to resolve "Todd" (person) and "CRM" (product/module) for proper attribution and categorization. |
 
 ---
 
@@ -168,17 +168,17 @@ These flows are not explicitly stated in CLAUDE.md but were identified during th
 
 ---
 
-### Implied Flow 2: Slack Forge → Cognitive Forge (Complex Discussions → Debate)
+### Implied Flow 2: a removed harvest plugin → Cognitive Forge (Complex Discussions → Debate)
 
-**Source:** Cross-referencing Slack Forge's knowledge harvester with Cognitive Forge's debate capability
+**Source:** Cross-referencing a removed harvest plugin's knowledge harvester with Cognitive Forge's debate capability
 
-**What should happen:** When Slack Forge's knowledge harvester identifies a complex, unresolved discussion (multiple viewpoints, no clear consensus), it should suggest a Cognitive Forge debate to properly analyze the topic.
+**What should happen:** When a removed harvest plugin's knowledge harvester identifies a complex, unresolved discussion (multiple viewpoints, no clear consensus), it should suggest a Cognitive Forge debate to properly analyze the topic.
 
 **Test scenarios:**
 
 | Plugin Under Test | Test Scenario | User Prompt | Ecosystem Assertion |
 |---|---|---|---|
-| Slack Forge (capture) | Complex discussion flagged | Transcript contains a multi-person debate about architecture choices | Knowledge harvester tags the item as "unresolved discussion" and suggests: "This looks like a decision that could benefit from structured analysis with `/cognitive-forge:debate`." |
+| a removed harvest plugin (capture) | Complex discussion flagged | Transcript contains a multi-person debate about architecture choices | Knowledge harvester tags the item as "unresolved discussion" and suggests: "This looks like a decision that could benefit from structured analysis with `/cognitive-forge:debate`." |
 
 ---
 
@@ -231,12 +231,12 @@ This matrix shows which ecosystem contracts each plugin participates in. Eval te
 
 | Plugin | Produces For | Consumes From | Contracts Involved |
 |---|---|---|---|
-| **Forge Memory** | All plugins (taxonomy, knowledge) | Slack Forge (promoted knowledge) | 1, 2, 3, 5, 6, IF5 |
-| **Tasks Forge** | Report Forge (status data) | Slack Forge (promoted tasks), Cognitive Forge (priority input) | 1, 4, 5, 6, IF4 |
+| **Forge Memory** | All plugins (taxonomy, knowledge) | a removed harvest plugin (promoted knowledge) | 1, 2, 3, 5, 6, IF5 |
+| **Tasks Forge** | Report Forge (status data) | a removed harvest plugin (promoted tasks), Cognitive Forge (priority input) | 1, 4, 5, 6, IF4 |
 | **Product Forge** | Report Forge (card references), Tasks Forge (implementation work) | Forge Memory (taxonomy) | 2, 3, 4, 5, 6, IF1 |
 | **Cognitive Forge** | Product Forge (decisions), Tasks Forge (priorities) | Forge Memory (domain context) | 4, 5, 6, IF2, IF3 |
 | **Report Forge** | Tasks Forge (action items), Product Forge (card updates) | Product Forge (cards), Forge Memory (taxonomy) | 3, 5, 6, IF3, IF4 |
-| **Slack Forge** | Tasks Forge (harvested tasks), Forge Memory (harvested knowledge) | Forge Memory (context for harvesting) | 1, 5, 6, IF2 |
+| **a removed harvest plugin** | Tasks Forge (harvested tasks), Forge Memory (harvested knowledge) | Forge Memory (context for harvesting) | 1, 5, 6, IF2 |
 | **Rovo Forge** | External (Rovo agent configs) | Forge Memory (org context for agent scoping) | 5, 6 |
 | **Cowork Plugin Mgmt** | External (plugin packages) | None (standalone) | 5 |
 
@@ -299,7 +299,7 @@ Each eval team should produce ecosystem test cases in this format (compatible wi
 }
 ```
 
-**Weighting guidance:** Ecosystem assertions should carry 20-30% of the total grade for most test cases. The primary grade (70-80%) still goes to whether the skill does its own job correctly. The exception is skills whose primary job IS cross-plugin flow (like Slack Forge promote or Product Forge push-to-jira), where ecosystem assertions should carry 50%+ weight.
+**Weighting guidance:** Ecosystem assertions should carry 20-30% of the total grade for most test cases. The primary grade (70-80%) still goes to whether the skill does its own job correctly. The exception is skills whose primary job IS cross-plugin flow (like a removed harvest plugin promote or Product Forge push-to-jira), where ecosystem assertions should carry 50%+ weight.
 
 ---
 
@@ -347,14 +347,14 @@ These are the highest-priority ecosystem test cases to include when evaluating T
 
 | Contract | Source Plugin | Target Plugin(s) | CLAUDE.md Reference | Audit Status |
 |---|---|---|---|---|
-| 1. Harvest Promotion | Slack Forge | Tasks Forge, Forge Memory | Explicit | Tasks Forge side is MISSING |
+| 1. Harvest Promotion | a removed harvest plugin | Tasks Forge, Forge Memory | Explicit | Tasks Forge side is MISSING |
 | 2. Taxonomy Reference | Forge Memory | Product Forge | Explicit | product-context/org-context overlap |
 | 3. Context Pull | Product Forge, Forge Memory | Report Forge | Explicit | Partially implemented |
 | 4. Decision → Action | Cognitive Forge | Product Forge, Tasks Forge | Explicit | MISSING on Cognitive Forge side |
 | 5. Proactive Handoff | All | All | Explicit directive | WEAK across most plugins |
 | 6. Memory-First Resolution | All | Forge Memory | Explicit directive | Only Product Forge partially implements |
 | IF1. Jira Sync Loop | Product Forge | Product Forge (self) | Implied | Post-action suggestions MISSING |
-| IF2. Complex Discussion → Debate | Slack Forge | Cognitive Forge | Implied | Not implemented |
+| IF2. Complex Discussion → Debate | a removed harvest plugin | Cognitive Forge | Implied | Not implemented |
 | IF3. Analysis → Exploration | Report Forge | Cognitive Forge | Implied | Not implemented |
 | IF4. Status → Reports | Tasks Forge | Report Forge | Implied | Not implemented |
 | IF5. Taxonomy Propagation | Forge Memory | All | Implied | Not implemented |

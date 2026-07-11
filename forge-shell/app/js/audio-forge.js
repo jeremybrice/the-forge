@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    Audio Forge View Controller
    Records system + mic via Tauri sidecar, browses + transcribes recordings.
-   Pattern matches slack-forge.js / outlook-forge.js.
+   Pattern matches report-forge.js / product-forge.js.
    ═══════════════════════════════════════════════════════════════ */
 window.AudioForgeView = (function () {
   'use strict';

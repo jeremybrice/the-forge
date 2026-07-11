@@ -128,7 +128,6 @@ Target ~130 lines. Structure:
 ## Orchestrator Pattern
 
 **Used by:** product-forge, report-forge, cognitive-forge
-**Not used by:** tasks-forge (agent-less), forge-memory, slack-forge, outlook-forge
 
 [How it works: LLM command orchestrates conversation flow, delegates all
 persistence to forge-lib CLI. Command structure: gather input → call forge.py
@@ -242,8 +241,6 @@ Target ~140 lines. Structure:
 | `sessions/` | cognitive-forge (via forge-lib) | forge-shell, report-forge | `sessions/index.json` |
 | `reports/` | report-forge (via forge-lib) | forge-shell | `reports/index.json` |
 | `rovo-agents/` | rovo-forge (via forge-lib) | forge-shell | `rovo-agents/index.json` |
-| `slack-forge/harvests/` | slack-forge (via forge-lib) | forge-shell | `slack-forge/harvests/index.json` |
-| `outlook-forge/harvests/` | outlook-forge (via forge-lib) | forge-shell | `outlook-forge/harvests/index.json` |
 
 ## Data Flow Diagram
 
@@ -290,7 +287,7 @@ Target ~140 lines. Structure:
 
 **Step 3: Verify accuracy**
 
-- Confirm all data directories exist: `ls -d cards/ tasks/ memory/ sessions/ reports/ rovo-agents/ slack-forge/harvests/ outlook-forge/harvests/ 2>/dev/null`
+- Confirm all data directories exist: `ls -d cards/ tasks/ memory/ sessions/ reports/ rovo-agents/   2>/dev/null`
 - Confirm index.json files: `find . -name "index.json" -not -path "*/node_modules/*" | sort`
 - Confirm ForgeFS parses frontmatter: `grep -n "frontmatter\|parseFrontmatter\|parseMarkdown" forge-shell/app/js/utils.js | head -5`
 - Confirm card-data.js reads specific frontmatter keys: `grep -n "status\|type\|title\|jira_card\|parent\|children" forge-shell/app/js/card-data.js | head -10`
@@ -341,9 +338,6 @@ Index of design decisions. Each entry links to the full design doc in `docs/plan
 | 2026-03-05 | Tasks search bugfixes | tasks-forge, forge-shell | [link](plans/2026-03-05-tasks-search-bugfixes.md) |
 | 2026-03-04 | Tasks search frontend design | tasks-forge, forge-shell | [link](plans/2026-03-04-tasks-search-frontend-design.md) |
 | 2026-03-04 | Tasks search backend design | tasks-forge, forge-lib | [link](plans/2026-03-04-tasks-search-design.md) |
-| 2026-03-04 | Outlook forge config field fix | outlook-forge | [link](plans/2026-03-04-outlook-forge-config-field-fix-design.md) |
-| 2026-03-04 | Outlook forge post-launch fixes | outlook-forge | [link](plans/2026-03-04-outlook-forge-fixes-design.md) |
-| 2026-03-03 | Outlook forge plugin design | outlook-forge | [link](plans/2026-03-03-outlook-forge-design.md) |
 | 2026-03-03 | Copilot forge plugin design | copilot-forge | [link](plans/2026-03-03-copilot-forge-design.md) |
 | 2026-03-03 | Forge shell sidebar scroll/filter fix | forge-shell | [link](plans/2026-03-03-forge-shell-sidebar-scroll-filter-fix.md) |
 
@@ -351,7 +345,6 @@ Index of design decisions. Each entry links to the full design doc in `docs/plan
 
 | Date | Decision | Scope | Design Doc |
 |------|----------|-------|------------|
-| 2026-02-28 | Harvest output consistency | slack-forge | [link](plans/2026-02-28-harvest-output-consistency.md) |
 | 2026-02-28 | PR #14 code review fixes | repo-wide | [link](plans/2026-02-28-pr14-cr-fixes.md) |
 | 2026-02-27 | Living memory documentation | forge-memory | [link](plans/2026-02-27-living-memory-documentation-design.md) |
 | 2026-02-26 | Living memory system design | forge-memory | [link](plans/2026-02-26-living-memory-system-design.md) |
@@ -359,7 +352,6 @@ Index of design decisions. Each entry links to the full design doc in `docs/plan
 | 2026-02-22 | README rebrand | repo-wide | [link](plans/2026-02-22-readme-rebrand-design.md) |
 | 2026-02-22 | Tasks page toolbar refinements | forge-shell | [link](plans/2026-02-22-tasks-page-toolbar-refinements-design.md) |
 | 2026-02-19 | Jira transcript cleanup | product-forge | [link](plans/2026-02-19-jira-transcript-cleanup-design.md) |
-| 2026-02-17 | Slack forge plugin design | slack-forge | [link](plans/2026-02-17-slack-forge-design.md) |
 | 2026-02-17 | Marketplace standardization audit | repo-wide | [link](plans/2026-02-17-marketplace-standardization-audit.md) |
 | 2026-02-17 | Product forge restructuring | product-forge | [link](plans/2026-02-17-product-forge-restructuring-design.md) |
 ```
@@ -440,7 +432,6 @@ DATA_FLOW.md:
 - Verify frontmatter parsing: `grep -n "frontmatter" forge-shell/app/js/utils.js`
 
 DECISION_LOG.md:
-- Spot check 3 links resolve: `ls docs/plans/2026-02-26-living-memory-system-design.md docs/plans/2026-03-03-outlook-forge-design.md docs/plans/2026-02-17-slack-forge-design.md`
 
 **Step 2: Success criteria check**
 

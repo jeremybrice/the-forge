@@ -118,7 +118,6 @@ Plugin Action → Memory Signal → Harvester → Instant Track (reinforce)
 | tasks-forge | related product/module, assigned person | Task references module: Billing |
 | cognitive-forge | agents, topic terms | Debate session about "memory decay" |
 | report-forge | scope product/module, stakeholders | Report scoped to product: MobileApp |
-| slack-forge | harvested entities from Slack messages | Slack mention of "Todd" and "Phoenix project" |
 | forge-memory | explicit /remember entries | User stores "Todd is Finance Lead" |
 
 ### Harvester Logic (Per Entity Detected)

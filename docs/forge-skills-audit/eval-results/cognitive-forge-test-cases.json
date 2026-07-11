@@ -401,9 +401,9 @@
       "component": "debate",
       "category": "ecosystem",
       "contract": "Implied Flow 2",
-      "description": "Debate command is discoverable as a destination from Slack Forge complex discussions",
+      "description": "Debate command is discoverable as a destination from a removed harvest plugin complex discussions",
       "user_prompt": "/cognitive-forge:debate [topic surfaced from a Slack discussion]",
-      "setup_context": "User was directed here from a Slack Forge capture that flagged an unresolved multi-person discussion.",
+      "setup_context": "User was directed here from a a removed harvest plugin capture that flagged an unresolved multi-person discussion.",
       "grading": {
         "ecosystem_awareness": {
           "assertion": "Debate command's description or intake phase acknowledges that concepts may originate from Slack discussions. If session_log or context references a Slack harvest, the debate framing incorporates that provenance.",

@@ -133,12 +133,12 @@ The tiered lookup strategy is thoroughly specified with clear sequencing, thresh
 
 ## Ecosystem Contract Compliance
 
-### Contract 1: Slack Forge → Forge Memory (Harvest Promotion)
+### Contract 1: a removed harvest plugin → Forge Memory (Harvest Promotion)
 
 **Grade: Awareness**
 
-- **Evidence:** The remember command (lines 114-118) handles knowledge entries generically — it would accept a promoted knowledge entry from Slack Forge since it uses the same `forge memory create-knowledge` interface. Slack-eval confirmed promote calls `forge memory create-knowledge {type} "{name}" --data '...'` with person/project/glossary types that match Forge Memory's supported types.
-- **Gap:** No explicit acknowledgment that knowledge can come from Slack harvest. The remember command doesn't mention Slack Forge as an input source. The format compatibility is implicit (shared forge-lib), not explicit. Detailed gaps from slack-eval collaboration: (1) provenance fields (source, harvested_on) may not survive forge-lib schema validation since remember only documents type-specific fields, (2) even if provenance survives storage, memory-management never surfaces it during recall — no indication whether an entry came from Slack harvest vs. manual entry, (3) no importance score set during promotion (relies on forge-lib defaults), (4) Contract 6 broken bilaterally — knowledge flows OUT to Memory via promote but nothing flows back IN during Slack capture. Note: the "general" type gap is resolved — promote defaults general→project.
+- **Evidence:** The remember command (lines 114-118) handles knowledge entries generically — it would accept a promoted knowledge entry from a removed harvest plugin since it uses the same `forge memory create-knowledge` interface. Slack-eval confirmed promote calls `forge memory create-knowledge {type} "{name}" --data '...'` with person/project/glossary types that match Forge Memory's supported types.
+- **Gap:** No explicit acknowledgment that knowledge can come from Slack harvest. The remember command doesn't mention a removed harvest plugin as an input source. The format compatibility is implicit (shared forge-lib), not explicit. Detailed gaps from slack-eval collaboration: (1) provenance fields (source, harvested_on) may not survive forge-lib schema validation since remember only documents type-specific fields, (2) even if provenance survives storage, memory-management never surfaces it during recall — no indication whether an entry came from Slack harvest vs. manual entry, (3) no importance score set during promotion (relies on forge-lib defaults), (4) Contract 6 broken bilaterally — knowledge flows OUT to Memory via promote but nothing flows back IN during Slack capture. Note: the "general" type gap is resolved — promote defaults general→project.
 - **Severity:** Medium-High. The contract works by accident (shared forge-lib interface), not by design. The data path functions but provenance is likely lost, importance is uncontrolled, and the round-trip is broken.
 - **Slack-eval assessment:** Downgraded from Context Passing (Level 3) to Awareness (Level 1) on their side. Both evaluators agree on the "works by accident" framing. Notably, the memory-hint tag system in the knowledge-harvester (person/project/glossary tags that map to Forge Memory types) shows *architectural intent* to connect these systems — the implementation stopped at the promote command and never reached into the harvester skills (Contract 6) or the memory skills (source awareness). The architecture is ~70% there; the remaining 30% is skill-level awareness on both sides.
 
@@ -181,8 +181,8 @@ The tiered lookup strategy is thoroughly specified with clear sequencing, thresh
 - **Evidence:** memory-management's description mentions "decoding workplace shorthand, acronyms, and internal language" which covers the memory-first resolution intent. The tiered lookup strategy is exactly what Contract 6 requires.
 - **Gap:** The description isn't "pushy" enough to independently trigger when other plugins encounter unknown terms. It works when explicitly invoked but wouldn't reliably fire on "Create a story for the PSR dashboard" — the model would more likely trigger Product Forge directly.
 - **Bilateral confirmation from tasks-eval:** Tasks Forge has zero memory awareness — no taxonomy queries, no recall checks, no mention of Forge Memory anywhere in ~484 lines. Contract 6 graded Level 0 (Absent) on the Tasks Forge side. Even if memory-management's triggering were fixed, Tasks Forge has no mechanism to consume the resolved context.
-- **Bilateral confirmation from slack-eval:** Neither task-harvester nor knowledge-harvester checks Forge Memory during extraction. Contract 6 broken on the Slack Forge side as well.
-- **Severity:** High. This is both a triggering issue (Forge Memory side) AND an implementation absence (Tasks Forge, Slack Forge sides). Contract 6 is the most broadly broken contract in the ecosystem — the directive exists in CLAUDE.md but is unimplemented across most plugins.
+- **Bilateral confirmation from slack-eval:** Neither task-harvester nor knowledge-harvester checks Forge Memory during extraction. Contract 6 broken on the a removed harvest plugin side as well.
+- **Severity:** High. This is both a triggering issue (Forge Memory side) AND an implementation absence (Tasks Forge, a removed harvest plugin sides). Contract 6 is the most broadly broken contract in the ecosystem — the directive exists in CLAUDE.md but is unimplemented across most plugins.
 
 ### IF5: Taxonomy Change Propagation
 
@@ -232,7 +232,6 @@ Additionally, product-eval confirmed that PSR (a glossary term) would NOT be fou
 
 ### Collaboration Finding 2: Contract 1 Schema Alignment (slack-eval)
 
-Slack Forge's promote command calls `forge memory create-knowledge {type} "{name}" --data '{"source": "slack-forge harvest from #{channel}", "harvested_on": "{date}"}'`. Detailed schema from slack-eval's second message:
 
 - **Type mapping:** The knowledge-harvester sets the FIRST tag as a memory-hint destination (person, project, glossary, or general). The promote command maps: person→person, project→project, glossary→glossary, **general→defaults to project**. This resolves the "general has no target" gap — the promote command handles the fallback itself.
 - **All 4 type mappings now accounted for:** 3 direct matches + general→project fallback
@@ -240,7 +239,7 @@ Slack Forge's promote command calls `forge memory create-knowledge {type} "{name
 - **Provenance fields (source, harvested_on) are uncertain:** Forge Memory's remember command only documents type-specific fields (role/team/context for person, description/status/people for project, definition/context for glossary). Whether `create-knowledge` accepts and preserves arbitrary extra fields depends on forge-lib's schema validation — if strict, provenance is silently dropped.
 - **Provenance surfacing gap:** Even if source/harvested_on survive storage, memory-management's recall flow (lines 78-100) never mentions surfacing provenance metadata. When a user asks "who is Todd?" and gets a recalled entry, there's no indication it came from a Slack harvest vs. manual entry.
 - **Bilateral Contract 6 gap confirmed:** Slack harvesters don't check Memory during extraction (no round-trip). Knowledge flows OUT to Forge Memory via promote, but nothing flows back IN during capture.
-- **One-sided awareness risk:** If Forge Memory adds Slack Forge acknowledgments but Slack harvesters aren't fixed, the ecosystem has asymmetric awareness — Memory knows about Slack but Slack doesn't know about Memory.
+- **One-sided awareness risk:** If Forge Memory adds a removed harvest plugin acknowledgments but Slack harvesters aren't fixed, the ecosystem has asymmetric awareness — Memory knows about Slack but Slack doesn't know about Memory.
 
 ### Collaboration Finding 3: Flat Taxonomy Limitation (rovo-eval, report-eval)
 
@@ -276,7 +275,7 @@ This means org-context's claim that "Tasks Forge: Related product/module for tas
 This [person/project/term] is now available for:
 - Product Forge card enrichment
 - Report Forge scoping
-- Slack Forge context during harvests
+- a removed harvest plugin context during harvests
 - Rovo Forge agent scoping (team/product context)
 ```
 
@@ -379,4 +378,4 @@ The knowledge tier (people profiles, project files in `memory/`) contains some o
 | 6 (Memory-First) | Awareness | Triggering too weak for independent activation |
 | IF5 (Taxonomy Propagation) | Missing | No downstream impact notification |
 
-**Bottom line:** Forge Memory's core competency — the tiered lookup strategy — is excellent. Every isolation test passes. The plugin knows how to decode, resolve, search, and manage knowledge. But it operates as an island: it never tells users how its outputs flow into Product Forge cards, Report Forge reports, Tasks Forge tasks, or Slack Forge harvests. For the "shared brain" of the ecosystem, this isolation is the critical gap to fix.
+**Bottom line:** Forge Memory's core competency — the tiered lookup strategy — is excellent. Every isolation test passes. The plugin knows how to decode, resolve, search, and manage knowledge. But it operates as an island: it never tells users how its outputs flow into Product Forge cards, Report Forge reports, Tasks Forge tasks, or a removed harvest plugin harvests. For the "shared brain" of the ecosystem, this isolation is the critical gap to fix.
