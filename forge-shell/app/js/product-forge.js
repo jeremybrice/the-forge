@@ -1313,7 +1313,7 @@
      ═══════════════════════════════════════════════════════════════ */
   var ctrl = {
 
-    async init(rootHandle) {
+    async init(rootHandle, options) {
       this.destroy();
       var view = $view();
       if (!view) return;
@@ -1343,6 +1343,11 @@
       this._renderLayout(view, rootHandle);
       pinStore.load();
       await this._loadCards();
+      /* Deep-link from Roadmap (or others): select only after cards load.
+         Single apply point — no applyPendingOptions dual path. */
+      if (options && options.selectCard) {
+        this._revealCard(options.selectCard);
+      }
       this._startAutoRefresh();
       this._bindKeyboard();
     },

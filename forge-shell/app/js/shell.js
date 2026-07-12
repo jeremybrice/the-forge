@@ -99,10 +99,15 @@ const Shell = {
     });
   },
 
-  /* ── Select a plugin view ── */
-  selectPlugin(pluginId) {
-    // If the plugin is hidden, ignore
-    if (!this.visibility[pluginId]) return;
+  /* ── Select a plugin view ──
+   * @param {string} pluginId
+   * @param {object} [options] — forwarded to controller init (e.g. { selectCard })
+   * @returns {boolean} false if plugin hidden or unknown; true if switch started
+   */
+  selectPlugin(pluginId, options) {
+    // If the plugin is hidden or unknown, do not switch
+    if (!this.visibility[pluginId]) return false;
+    if (!PLUGINS.some(p => p.id === pluginId)) return false;
 
     const prev = this.activePlugin;
     this.activePlugin = pluginId;
@@ -123,14 +128,17 @@ const Shell = {
       el.classList.toggle('active', el.dataset.pluginId === pluginId);
     });
 
-    // Initialize the controller
+    // Initialize the controller (async init may consume options after load)
     const ctrl = this._controllers[pluginId];
     if (ctrl && ctrl.init) {
-      ctrl.init(this.rootHandle);
+      Promise.resolve(ctrl.init(this.rootHandle, options || {})).catch(err => {
+        console.error('[Shell] Plugin init failed:', pluginId, err);
+      });
     }
 
     // Close sidebar on mobile
     document.getElementById('shell-sidebar').classList.remove('open');
+    return true;
   },
 
   /* ── Edit mode toggle ── */
