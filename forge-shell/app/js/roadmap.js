@@ -914,10 +914,14 @@
       this._sortRows(rows);
 
       if (rows.length === 0) {
+        var filtersActive = typeof FilterPanel !== 'undefined' && FilterPanel.getActiveCount && FilterPanel.getActiveCount() > 0;
+        var emptyMsg = filtersActive
+          ? 'No initiative cards match the current filters.'
+          : 'No initiative cards found. Create some cards to see the table.';
         container.innerHTML =
           '<div class="rm-table-empty">' +
           '<i class="fa-solid fa-table" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px"></i>' +
-          'No initiative cards match the current filters.' +
+          emptyMsg +
           '</div>';
         return;
       }
@@ -940,16 +944,17 @@
       for (var ri = 0; ri < rows.length; ri++) {
         var row = rows[ri];
         var card = row.card;
+        var releaseDisplay = this._dash(row.release);
         html += '<tr class="rm-table-row"' + cardIdentityAttrs(card) + '>';
-        html += '<td class="rm-td-title">' + ESC(row.title) + '</td>';
+        html += '<td class="rm-td-title" title="' + ESC(row.title) + '">' + ESC(row.title) + '</td>';
         html += '<td class="rm-td-type"><span class="rm-type-pill" style="background:' +
           CardData.getTypeColor(row.type) + '">' + ESC(row.type) + '</span></td>';
         html += '<td class="rm-td-status">' + renderStatusHit(row.status) + '</td>';
         html += '<td>' + ESC(this._dash(row.product)) + '</td>';
         html += '<td>' + ESC(this._dash(row.client)) + '</td>';
         html += '<td>' + ESC(this._dash(row.module)) + '</td>';
-        html += '<td>' + ESC(this._dash(row.release)) + '</td>';
-        html += '<td>' + ESC(row.period) + '</td>';
+        html += '<td title="' + ESC(releaseDisplay) + '">' + ESC(releaseDisplay) + '</td>';
+        html += '<td title="' + ESC(row.period) + '">' + ESC(row.period) + '</td>';
         html += '<td class="rm-td-epics">' + row.epics + '</td>';
         html += '</tr>';
       }
@@ -1211,7 +1216,7 @@
   function coerceGranularity(g) {
     return g === 'monthly' ? 'monthly' : 'quarterly';
   }
-  /** default_view value to write: preserve disk 'table' while UI is coerced to card */
+  /** default_view for write; if table not implemented, preserve disk 'table' while UI shows card */
   function resolveDefaultViewForWrite() {
     if (activeView === 'card' && !TABLE_IMPLEMENTED && rmConfig && rmConfig.default_view === 'table') {
       return 'table';
@@ -1553,7 +1558,7 @@
       /* Load roadmap config */
       rmConfig = await RoadmapConfigManager.load(cardsHandle);
       CardData.roadmapConfig = rmConfig;
-      /* Coerce UI view; leave rmConfig.default_view as loaded so disk 'table' survives until table PR */
+      /* Coerce UI view against allowlist / TABLE_IMPLEMENTED */
       activeView = coerceView(rmConfig.default_view, TABLE_IMPLEMENTED);
       granularity = coerceGranularity(rmConfig.time_granularity);
       currentYear = rmConfig.current_year || new Date().getFullYear();

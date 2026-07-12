@@ -751,6 +751,10 @@
 .rm-table-row:hover {
   background: var(--bg-hover, var(--bg-tertiary, rgba(0, 0, 0, 0.04)));
 }
+/* Keep selection fill when hovering a selected row (equal specificity to :hover alone) */
+.rm-table-row.rm-selected:hover {
+  background: var(--accent-light, rgba(74, 108, 247, 0.12));
+}
 
 .rm-td-title {
   font-weight: 600;
