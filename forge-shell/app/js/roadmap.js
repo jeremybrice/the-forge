@@ -1054,6 +1054,19 @@
      DetailDrawer — summary slide-over (PR4); not a full editor
      ═══════════════════════════════════════════════════════════════ */
   var DetailDrawer = {
+    /** Sync ARIA exposure with open state (avoid aria-hidden while focusable). */
+    _setAriaOpen: function (drawer, isOpen) {
+      if (!drawer) return;
+      drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+      if (isOpen) {
+        drawer.setAttribute('role', 'dialog');
+        drawer.setAttribute('aria-label', 'Card detail');
+      } else {
+        drawer.removeAttribute('role');
+        drawer.removeAttribute('aria-label');
+      }
+    },
+
     open: function (filename) {
       if (!filename || !store.get(filename)) return;
       selectedFilename = filename;
@@ -1069,7 +1082,10 @@
       this.render();
       this.applySelectionChrome();
       var drawer = $q('[data-rm-detail-drawer]');
-      if (drawer) drawer.classList.add('rm-open');
+      if (drawer) {
+        drawer.classList.add('rm-open');
+        this._setAriaOpen(drawer, true);
+      }
     },
 
     close: function () {
@@ -1079,6 +1095,7 @@
       if (drawer) {
         drawer.classList.remove('rm-open');
         drawer.innerHTML = '';
+        this._setAriaOpen(drawer, false);
       }
       this.clearSelectionChrome();
     },
@@ -1140,6 +1157,7 @@
       if (!drawerOpen || !selectedFilename) {
         drawer.innerHTML = '';
         drawer.classList.remove('rm-open');
+        this._setAriaOpen(drawer, false);
         return;
       }
 
@@ -1267,6 +1285,7 @@
 
       drawer.innerHTML = html;
       drawer.classList.add('rm-open');
+      this._setAriaOpen(drawer, true);
       this._bindEvents(drawer);
     },
 
