@@ -199,6 +199,26 @@
   box-shadow: var(--shadow-sm);
 }
 
+.rm-initiative-card[draggable="true"] {
+  cursor: grab;
+}
+.rm-initiative-card.rm-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+/* Column drag-over feedback (schedule DnD — column only, not cards) */
+.rm-column.rm-drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.rm-column.rm-drag-over > .rm-column-body {
+  background: rgba(74, 108, 247, 0.08);
+}
+[data-theme="dark"] .rm-column.rm-drag-over > .rm-column-body {
+  background: rgba(102, 129, 255, 0.1);
+}
+
 .rm-initiative-card .rm-card-title {
   font-weight: 600;
   font-size: 13px;
@@ -843,4 +863,80 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Multi-release picker (ambiguous period drop)
+   ═══════════════════════════════════════════════════════════ */
+.rm-release-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.rm-release-picker-overlay.rm-visible {
+  display: flex;
+}
+
+.rm-release-picker {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 360px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rm-release-picker-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.rm-release-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.rm-release-picker-option {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  line-height: 1.35;
+}
+.rm-release-picker-option:hover {
+  border-color: var(--accent);
+  background: rgba(74, 108, 247, 0.08);
+}
+
+.rm-release-picker-cancel {
+  align-self: flex-end;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.rm-release-picker-cancel:hover {
+  color: var(--text-primary);
 }

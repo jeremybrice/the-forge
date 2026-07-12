@@ -606,7 +606,7 @@
       var card = initNode.card;
       var fm = card.frontmatter;
       var borderColor = bucketColor || 'var(--type-initiative)';
-      var html = '<div class="rm-initiative-card" style="border-left-color:' + ESC(borderColor) + '"' +
+      var html = '<div class="rm-initiative-card" draggable="true" style="border-left-color:' + ESC(borderColor) + '"' +
         cardIdentityAttrs(card) + '>';
       html += '<div class="rm-card-title">' + ESC(fm.title || card.filename) + '</div>';
       html += '<div class="rm-card-meta">';
@@ -1037,6 +1037,8 @@
   var keydownHandler = null;
   var prefsSaveTimer = null; // debounced roadmap.md write for toolbar prefs
   var prefsSaveInFlight = false; // true during await RoadmapConfigManager.save from prefs path
+  /** True after dragstart until next tick — suppresses click-as-open (future drawer). */
+  var dragOccurred = false;
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -1073,6 +1075,7 @@
       this._stopAutoRefresh();
       this._unbindKeyboard();
       StatusMenu.close();
+      this._closeReleasePicker();
       OptimisticGuard.clearAll();
       var hadPending = !!prefsSaveTimer;
       if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
@@ -1085,6 +1088,7 @@
       store.clear();
       cardsHandle = null;
       rmConfig = null;
+      dragOccurred = false;
     },
 
     /**
@@ -1513,6 +1517,7 @@
 
     _bindCardViewEvents: function () {
       var self = this;
+
       $qa('[data-rm-bucket-toggle]').forEach(function (el) {
         el.addEventListener('click', function () {
           var idx = el.dataset.rmBucketToggle;
@@ -1537,6 +1542,240 @@
           StatusMenu.open(btn, filename, type, status);
         });
       });
+
+      /* Initiative drag sources (schedule unit only — not epics/stories) */
+      $qa('.rm-initiative-card').forEach(function (cardEl) {
+        cardEl.setAttribute('draggable', 'true');
+        cardEl.addEventListener('dragstart', function (e) {
+          var filename = cardEl.getAttribute('data-rm-filename');
+          if (!filename) {
+            e.preventDefault();
+            return;
+          }
+          dragOccurred = true;
+          e.dataTransfer.setData('text/plain', filename);
+          e.dataTransfer.effectAllowed = 'move';
+          cardEl.classList.add('rm-dragging');
+        });
+        cardEl.addEventListener('dragend', function () {
+          cardEl.classList.remove('rm-dragging');
+          self._clearColumnDragOver();
+          /* Keep dragOccurred true through the synthetic click after a drag */
+          setTimeout(function () { dragOccurred = false; }, 0);
+        });
+        /* Future drawer: ignore click if a drag just occurred */
+        cardEl.addEventListener('click', function (e) {
+          if (dragOccurred) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        });
+      });
+
+      /* Column drop targets — hit-test via closest('.rm-column') so nested cards/buckets work */
+      $qa('.rm-column').forEach(function (col) {
+        col.addEventListener('dragover', function (e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          var target = e.target.closest('.rm-column');
+          $qa('.rm-column.rm-drag-over').forEach(function (c) {
+            if (c !== target) c.classList.remove('rm-drag-over');
+          });
+          if (target) target.classList.add('rm-drag-over');
+        });
+        col.addEventListener('dragleave', function (e) {
+          if (!col.contains(e.relatedTarget)) {
+            col.classList.remove('rm-drag-over');
+          }
+        });
+        col.addEventListener('drop', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var target = e.target.closest('.rm-column') || col;
+          target.classList.remove('rm-drag-over');
+          self._clearColumnDragOver();
+          var filename = e.dataTransfer.getData('text/plain');
+          if (!filename) return;
+          self._onColumnDrop(filename, target);
+        });
+      });
+    },
+
+    _clearColumnDragOver: function () {
+      $qa('.rm-column.rm-drag-over').forEach(function (c) {
+        c.classList.remove('rm-drag-over');
+      });
+    },
+
+    /**
+     * Handle drop of an initiative onto a period column or Unscheduled.
+     * Drop-on-card / epic resolves to the same column period — never reparents.
+     */
+    _onColumnDrop: function (filename, columnEl) {
+      var card = store.get(filename);
+      if (!card) return;
+      if ((card.frontmatter.type || '') !== 'initiative') return;
+
+      var periodIndex = columnEl.getAttribute('data-rm-period-index');
+      var releases = (rmConfig && rmConfig.releases) || [];
+      var preferredName = card.frontmatter.release;
+      var period;
+
+      if (periodIndex === 'unscheduled') {
+        period = { index: 'unscheduled' };
+      } else {
+        period = {
+          index: periodIndex,
+          start: columnEl.getAttribute('data-rm-period-start') || '',
+          end: columnEl.getAttribute('data-rm-period-end') || ''
+        };
+      }
+
+      var resolve = typeof RH.resolveDropToRelease === 'function'
+        ? RH.resolveDropToRelease
+        : null;
+      if (!resolve) {
+        ForgeUtils.Toast.show('Release resolver unavailable', 'error');
+        return;
+      }
+
+      var result = resolve(period, releases, preferredName);
+
+      if (result.kind === 'noop') return;
+
+      if (result.kind === 'none') {
+        ForgeUtils.Toast.show(
+          'No release covers this period. Define a release in Roadmap Settings.',
+          'error'
+        );
+        return;
+      }
+
+      if (result.kind === 'clear') {
+        this.assignRelease(filename, null);
+        return;
+      }
+
+      if (result.kind === 'single') {
+        this.assignRelease(filename, result.releaseName);
+        return;
+      }
+
+      if (result.kind === 'ambiguous') {
+        this._showReleasePicker(filename, result.releases || []);
+      }
+    },
+
+    /**
+     * Shared schedule assign/clear. releaseName null → clearReleaseFm (release: null).
+     * Optimistic: patch mutates store then writes; full re-render after.
+     */
+    assignRelease: async function (filename, releaseName) {
+      var self = this;
+      try {
+        await CardWriteService.patchCardFrontmatter(filename, function (fm) {
+          if (releaseName == null || releaseName === '') {
+            if (typeof RH.clearReleaseFm === 'function') RH.clearReleaseFm(fm);
+            else fm.release = null;
+          } else {
+            fm.release = releaseName;
+          }
+        });
+        self._renderView();
+
+        if (releaseName == null || releaseName === '') {
+          ForgeUtils.Toast.show('Moved to Unscheduled', 'success');
+          return;
+        }
+
+        var periods = granularity === 'monthly'
+          ? TimeUtils.getMonths(currentYear)
+          : TimeUtils.getQuarters(currentYear);
+        var releases = (rmConfig && rmConfig.releases) || [];
+        var rel = null;
+        for (var i = 0; i < releases.length; i++) {
+          var nameEq = typeof RH.nameEqualsRelease === 'function'
+            ? RH.nameEqualsRelease(releases[i].name, releaseName)
+            : String(releases[i].name).toLowerCase() === String(releaseName).toLowerCase();
+          if (nameEq) {
+            rel = releases[i];
+            break;
+          }
+        }
+        var labels = (rel && typeof RH.periodLabelsForRelease === 'function')
+          ? RH.periodLabelsForRelease(rel, periods)
+          : [];
+        if (labels.length > 1) {
+          ForgeUtils.Toast.show(
+            'Scheduled for ' + releaseName + ' (spans ' + labels.join('\u2013') + ')',
+            'success'
+          );
+        } else {
+          ForgeUtils.Toast.show('Scheduled for ' + releaseName, 'success');
+        }
+      } catch (e) {
+        console.error('assignRelease failed:', e);
+        ForgeUtils.Toast.show('Failed to update schedule: ' + (e.message || e), 'error');
+        self._renderView();
+      }
+    },
+
+    _showReleasePicker: function (filename, releases) {
+      var self = this;
+      this._closeReleasePicker();
+
+      var overlay = document.createElement('div');
+      overlay.className = 'rm-release-picker-overlay rm-visible';
+      overlay.setAttribute('data-rm-release-picker', '1');
+
+      var html = '<div class="rm-release-picker" role="dialog" aria-label="Assign to release">';
+      html += '<div class="rm-release-picker-title">Assign to release</div>';
+      html += '<div class="rm-release-picker-list">';
+      for (var i = 0; i < releases.length; i++) {
+        var r = releases[i];
+        var label = (r.name || 'Unnamed');
+        var range = '';
+        if (r.start_date || r.end_date) {
+          range = ' (' + (r.start_date || '?') + ' \u2013 ' + (r.end_date || '?') + ')';
+        }
+        html += '<button type="button" class="rm-release-picker-option" data-rm-pick-release="' +
+          ESC(r.name || '') + '">' + ESC(label + range) + '</button>';
+      }
+      html += '</div>';
+      html += '<button type="button" class="rm-release-picker-cancel" data-rm-pick-cancel>Cancel</button>';
+      html += '</div>';
+      overlay.innerHTML = html;
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+          self._closeReleasePicker();
+          return;
+        }
+        var cancel = e.target.closest('[data-rm-pick-cancel]');
+        if (cancel) {
+          self._closeReleasePicker();
+          return;
+        }
+        var opt = e.target.closest('[data-rm-pick-release]');
+        if (opt) {
+          var name = opt.getAttribute('data-rm-pick-release');
+          self._closeReleasePicker();
+          self.assignRelease(filename, name);
+        }
+      });
+
+      var view = $view();
+      if (view) view.appendChild(overlay);
+      else document.body.appendChild(overlay);
+    },
+
+    _closeReleasePicker: function () {
+      var view = $view();
+      var root = view || document;
+      root.querySelectorAll('[data-rm-release-picker]').forEach(function (el) {
+        el.remove();
+      });
+
     },
 
     _bindTimelineEvents: function () {
@@ -1779,11 +2018,17 @@
     },
 
     _bindKeyboard: function () {
+      var self = this;
       this._unbindKeyboard();
       keydownHandler = function (e) {
         if (e.key === 'Escape') {
           if (StatusMenu.isOpen()) {
             StatusMenu.close();
+            return;
+          }
+          var picker = $q('[data-rm-release-picker]');
+          if (picker) {
+            self._closeReleasePicker();
             return;
           }
           var overlay = $q('.rm-modal-overlay');
