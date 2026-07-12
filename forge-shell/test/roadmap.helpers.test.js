@@ -49,7 +49,7 @@ const releases = [
   { name: 'H2 Only', start_date: '2026-07-01', end_date: '2026-12-31' }
 ];
 
-test('releasesOverlappingPeriod: single match', () => {
+test('releasesOverlappingPeriod: two overlapping releases for Q1', () => {
   const set = H.releasesOverlappingPeriod(releases, Q1);
   assert.equal(set.length, 2); // Ship Q1 + Platform 26.2
   assert.ok(set.some((r) => r.name === 'Ship Q1'));
@@ -131,6 +131,16 @@ test('resolveDropToRelease: unscheduled period null → clear when pref set', ()
 test('resolveDropToRelease: unscheduled already clear → noop', () => {
   assert.equal(H.resolveDropToRelease(null, releases, null).kind, 'noop');
   assert.equal(H.resolveDropToRelease({ unscheduled: true }, releases, '').kind, 'noop');
+});
+
+test('resolveDropToRelease: period.index unscheduled → clear when pref set', () => {
+  const r = H.resolveDropToRelease({ index: 'unscheduled' }, releases, 'Ship Q1');
+  assert.equal(r.kind, 'clear');
+});
+
+test('resolveDropToRelease: period.index unscheduled → noop when no pref', () => {
+  const r = H.resolveDropToRelease({ index: 'unscheduled' }, releases, null);
+  assert.equal(r.kind, 'noop');
 });
 
 /* ── periodLabelsForRelease ── */

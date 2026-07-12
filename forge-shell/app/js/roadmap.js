@@ -58,7 +58,12 @@
     },
 
     releaseOverlapsPeriod: function (release, period) {
+      // Prefer pure helper so placement stays in lockstep with resolveDropToRelease
+      if (typeof RH.releaseOverlapsPeriod === 'function') {
+        return RH.releaseOverlapsPeriod(release, period);
+      }
       if (!release || !release.start_date || !release.end_date) return false;
+      if (!period || !period.start || !period.end) return false;
       return release.start_date <= period.end && release.end_date >= period.start;
     },
 
@@ -79,7 +84,7 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
-     OptimisticGuard — pending writes vs 5s refresh
+     OptimisticGuard — pending writes vs auto-refresh (TTL 15s)
      ═══════════════════════════════════════════════════════════════ */
   var OptimisticGuard = {
     _pending: new Map(),
@@ -118,18 +123,18 @@
       if (!card || !cardsHandle) throw new Error('Card not writable: ' + filename);
 
       var prevFm = JSON.parse(JSON.stringify(card.frontmatter));
-      mutatorFn(card.frontmatter);
-      card.frontmatter.updated = ForgeUtils.todayISO();
-
-      var content = CardData.CardParser.serialize(card.frontmatter, card.body);
-      var relPath = RH.cardRelativePath
-        ? RH.cardRelativePath(card)
-        : (card.dirName + '/' + card.filename + '.md');
-
-      // mark BEFORE await write so concurrent refresh cannot win the race
-      OptimisticGuard.mark(filename, { expectedContent: content, writtenAt: Date.now() });
-
       try {
+        mutatorFn(card.frontmatter);
+        card.frontmatter.updated = ForgeUtils.todayISO();
+
+        var content = CardData.CardParser.serialize(card.frontmatter, card.body);
+        var relPath = RH.cardRelativePath
+          ? RH.cardRelativePath(card)
+          : (card.dirName + '/' + card.filename + '.md');
+
+        // mark BEFORE await write so concurrent refresh cannot win the race
+        OptimisticGuard.mark(filename, { expectedContent: content, writtenAt: Date.now() });
+
         await ForgeFS.writeFile(cardsHandle, relPath, content);
         var reparsed = CardData.CardParser.parse(filename, content, card.dirName);
         // Keep existing handle map entry if any; not used for Roadmap writes
@@ -137,6 +142,7 @@
         // Keep pending until a scan sees matching content (or TTL force-apply)
         return reparsed;
       } catch (e) {
+        // Restore on mutator/serialize/write failure (any error after mutation)
         card.frontmatter = prevFm;
         OptimisticGuard.clear(filename);
         throw e;
