@@ -343,6 +343,10 @@
 .rm-bar-row-label {
   cursor: pointer;
 }
+.rm-table-row.rm-selected {
+  background: var(--accent-light, rgba(74, 108, 247, 0.12));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 
 .rm-story-card .rm-card-title {
   line-height: 1.3;
@@ -656,6 +660,122 @@
 
 /* ─── Timeline empty ─── */
 .rm-timeline-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 48px 24px;
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Table View (PR6)
+   ═══════════════════════════════════════════════════════════ */
+.rm-table-view {
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.rm-table-scroll {
+  flex: 1;
+  overflow: auto;
+  height: 100%;
+}
+
+.rm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 900px;
+}
+
+.rm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.rm-th-sortable {
+  cursor: pointer;
+}
+.rm-th-sortable:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary, var(--bg-secondary));
+}
+.rm-th-sortable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.rm-th-label {
+  margin-right: 4px;
+}
+.rm-sort-ind {
+  display: inline-block;
+  min-width: 12px;
+  color: var(--text-muted);
+  font-size: 10px;
+  opacity: 0.35;
+}
+.rm-sort-ind.rm-sort-active {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.rm-table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light, var(--border-color));
+  color: var(--text-primary);
+  vertical-align: middle;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rm-table-row {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.rm-table-row:hover {
+  background: var(--bg-hover, var(--bg-tertiary, rgba(0, 0, 0, 0.04)));
+}
+
+.rm-td-title {
+  font-weight: 600;
+  max-width: 280px;
+}
+
+.rm-td-epics {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  max-width: 64px;
+}
+
+.rm-type-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: lowercase;
+  letter-spacing: 0.2px;
+}
+
+.rm-table-empty {
   text-align: center;
   color: var(--text-muted);
   padding: 48px 24px;
