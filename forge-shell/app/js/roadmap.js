@@ -612,7 +612,10 @@
       var borderColor = bucketColor || 'var(--type-initiative)';
       var html = '<div class="rm-initiative-card" draggable="true" style="border-left-color:' + ESC(borderColor) + '"' +
         cardIdentityAttrs(card) + '>';
+      html += '<div class="rm-card-head">';
       html += '<div class="rm-card-title">' + ESC(fm.title || card.filename) + '</div>';
+      html += '<button type="button" class="rm-card-more" data-rm-action="more" aria-label="Card actions" title="Card actions">\u22EF</button>';
+      html += '</div>';
       html += '<div class="rm-card-meta">';
       html += renderStatusHit(fm.status);
       if (fm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(fm.client) + '</span>';
@@ -624,7 +627,10 @@
         var epicNode = initNode.children[ei];
         var efm = epicNode.card.frontmatter;
         html += '<div class="rm-epic-card"' + cardIdentityAttrs(epicNode.card) + '>';
+        html += '<div class="rm-card-head">';
         html += '<div class="rm-card-title">' + ESC(efm.title || epicNode.card.filename) + '</div>';
+        html += '<button type="button" class="rm-card-more" data-rm-action="more" aria-label="Card actions" title="Card actions">\u22EF</button>';
+        html += '</div>';
         html += '<div class="rm-card-meta">';
         html += renderStatusHit(efm.status);
         if (efm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(efm.client) + '</span>';
@@ -1045,6 +1051,8 @@
   var dragOccurred = false;
   /** Per-filename lock: ignore concurrent assignRelease on same card. */
   var assignInFlight = new Set();
+  /** Per-filename lock: ignore concurrent setCardStatus on same card. */
+  var statusInFlight = new Set();
   /** Focus restore target when multi-release picker closes. */
   var pickerFocusRestore = null;
   var selectedFilename = null;  /* drawer selection */
@@ -1326,6 +1334,8 @@
       }
     }
   };
+  /** Outside-click handler for quick-assign context menu (document-level). */
+  var qaMenuOutsideHandler = null;
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -1363,8 +1373,11 @@
       this._unbindKeyboard();
       StatusMenu.close();
       DetailDrawer.close();
+      this._closeReleasePicker();
+      this._closeQuickAssignMenu();
       OptimisticGuard.clearAll();
       assignInFlight.clear();
+      statusInFlight.clear();
       var hadPending = !!prefsSaveTimer;
       if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
       /* Flush pending toolbar prefs before releasing handles (best-effort; save is async) */
@@ -1847,6 +1860,11 @@
          draggable="true" is set in CardView render (single source of truth). */
       $qa('.rm-initiative-card').forEach(function (cardEl) {
         cardEl.addEventListener('dragstart', function (e) {
+          /* Don't start drag from the more button */
+          if (e.target.closest && e.target.closest('[data-rm-action="more"]')) {
+            e.preventDefault();
+            return;
+          }
           var filename = cardEl.getAttribute('data-rm-filename');
           if (!filename) {
             e.preventDefault();
@@ -1869,6 +1887,46 @@
             e.preventDefault();
             e.stopPropagation();
           }
+        });
+        /* Right-click → quick-assign menu */
+        cardEl.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var filename = cardEl.getAttribute('data-rm-filename');
+          var type = cardEl.getAttribute('data-rm-type') || 'initiative';
+          if (!filename) return;
+          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY);
+        });
+      });
+
+      /* Epic: context menu (status / release / open PFL — no bucket) */
+      $qa('.rm-epic-card').forEach(function (cardEl) {
+        cardEl.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var filename = cardEl.getAttribute('data-rm-filename');
+          var type = cardEl.getAttribute('data-rm-type') || 'epic';
+          if (!filename) return;
+          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY);
+        });
+      });
+
+      /* ⋯ buttons on initiatives + epics */
+      $qa('[data-rm-action="more"]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var cardEl = btn.closest('[data-rm-filename]');
+          if (!cardEl) return;
+          var filename = cardEl.getAttribute('data-rm-filename');
+          var type = cardEl.getAttribute('data-rm-type') || 'initiative';
+          if (!filename) return;
+          var rect = btn.getBoundingClientRect();
+          self._showQuickAssignMenu(filename, type, rect.right, rect.bottom);
+        });
+        /* Prevent drag from starting on the button */
+        btn.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
         });
       });
 
@@ -2107,6 +2165,295 @@
           var filename = cardEl.getAttribute('data-rm-filename');
           if (filename) DetailDrawer.open(filename);
         });
+      });
+    },
+
+    /**
+     * Write card status via portable CardWriteService. Type-aware callers pass
+     * a value from CardData.STATUS_OPTIONS[type].
+     */
+    setCardStatus: async function (filename, status) {
+      var self = this;
+      if (!filename || status == null || status === '') return;
+      if (statusInFlight.has(filename)) return;
+      statusInFlight.add(filename);
+      try {
+        var writePromise = CardWriteService.patchCardFrontmatter(filename, function (fm) {
+          fm.status = status;
+        });
+        self._renderView();
+        await writePromise;
+        ForgeUtils.Toast.show('Status set to ' + status, 'success');
+      } catch (e) {
+        console.error('setCardStatus failed:', e);
+        ForgeUtils.Toast.show('Failed to update status: ' + (e.message || e), 'error');
+        self._renderView();
+      } finally {
+        statusInFlight.delete(filename);
+      }
+    },
+
+    /** Add initiative filename to rmConfig.buckets[bucketIndex].initiatives + save. */
+    addToBucket: async function (filename, bucketIndex) {
+      var self = this;
+      if (!rmConfig || !Array.isArray(rmConfig.buckets)) return;
+      var bi = Number(bucketIndex);
+      var bucket = rmConfig.buckets[bi];
+      if (!bucket) return;
+      if (!Array.isArray(bucket.initiatives)) bucket.initiatives = [];
+      if (bucket.initiatives.indexOf(filename) !== -1) {
+        ForgeUtils.Toast.show('Already in ' + (bucket.name || 'bucket'), 'info');
+        return;
+      }
+      bucket.initiatives.push(filename);
+      try {
+        await RoadmapConfigManager.save(cardsHandle, rmConfig);
+        CardData.roadmapConfig = rmConfig;
+        self._renderView();
+        ForgeUtils.Toast.show('Added to ' + (bucket.name || 'bucket'), 'success');
+      } catch (e) {
+        console.error('addToBucket failed:', e);
+        bucket.initiatives.pop();
+        ForgeUtils.Toast.show('Failed to update bucket: ' + (e.message || e), 'error');
+      }
+    },
+
+    /** Remove initiative filename from rmConfig.buckets[bucketIndex].initiatives + save. */
+    removeFromBucket: async function (filename, bucketIndex) {
+      var self = this;
+      if (!rmConfig || !Array.isArray(rmConfig.buckets)) return;
+      var bi = Number(bucketIndex);
+      var bucket = rmConfig.buckets[bi];
+      if (!bucket || !Array.isArray(bucket.initiatives)) return;
+      var idx = bucket.initiatives.indexOf(filename);
+      if (idx === -1) return;
+      var removed = bucket.initiatives.splice(idx, 1)[0];
+      try {
+        await RoadmapConfigManager.save(cardsHandle, rmConfig);
+        CardData.roadmapConfig = rmConfig;
+        self._renderView();
+        ForgeUtils.Toast.show('Removed from ' + (bucket.name || 'bucket'), 'success');
+      } catch (e) {
+        console.error('removeFromBucket failed:', e);
+        bucket.initiatives.splice(idx, 0, removed);
+        ForgeUtils.Toast.show('Failed to update bucket: ' + (e.message || e), 'error');
+      }
+    },
+
+    /**
+     * Navigate to Product Forge. Prefer selectPlugin with options when supported;
+     * fall back to plain selectPlugin (PR4 deep-link may not be on this branch).
+     */
+    openInProductForge: function (filename) {
+      if (typeof Shell === 'undefined' || typeof Shell.selectPlugin !== 'function') {
+        ForgeUtils.Toast.show('Navigation unavailable', 'error');
+        return;
+      }
+      var pluginId = 'product-forge-local';
+      var result;
+      try {
+        result = Shell.selectPlugin(pluginId, filename ? { selectCard: filename } : undefined);
+      } catch (e) {
+        try {
+          result = Shell.selectPlugin(pluginId);
+        } catch (e2) {
+          ForgeUtils.Toast.show('Failed to open Product Forge', 'error');
+          return;
+        }
+      }
+      if (result === false) {
+        ForgeUtils.Toast.show('Product Forge is not available', 'error');
+      }
+    },
+
+    /**
+     * Quick-assign context menu (⋯ / contextmenu).
+     * Initiatives: release, clear, buckets, status, open PFL.
+     * Epics: release (metadata), status, open PFL.
+     * @param {string} filename
+     * @param {string} type — initiative | epic
+     * @param {number} clientX
+     * @param {number} clientY
+     * @param {string} [panel] — root | releases | status | buckets-add
+     */
+    _showQuickAssignMenu: function (filename, type, clientX, clientY, panel) {
+      var self = this;
+      this._closeQuickAssignMenu();
+      panel = panel || 'root';
+
+      var card = store.get(filename);
+      if (!card) return;
+      var cardType = type || (card.frontmatter && card.frontmatter.type) || 'initiative';
+      var isInitiative = cardType === 'initiative';
+      var releases = (rmConfig && rmConfig.releases) || [];
+      var buckets = (rmConfig && rmConfig.buckets) || [];
+      var currentRelease = card.frontmatter && card.frontmatter.release;
+      var currentStatus = (card.frontmatter && card.frontmatter.status) || '';
+      var statusOpts = (CardData.STATUS_OPTIONS && CardData.STATUS_OPTIONS[cardType]) || [];
+
+      var menu = document.createElement('div');
+      menu.className = 'rm-context-menu';
+      menu.setAttribute('data-rm-context-menu', '1');
+      menu.setAttribute('role', 'menu');
+      menu.setAttribute('data-rm-qa-filename', filename);
+      menu.setAttribute('data-rm-qa-type', cardType);
+
+      var html = '';
+
+      if (panel === 'releases') {
+        html += '<button type="button" class="rm-context-menu-item rm-context-menu-back" data-rm-qa-action="panel" data-rm-qa-value="root" role="menuitem">\u2190 Back</button>';
+        html += '<div class="rm-context-menu-label">Set release</div>';
+        if (releases.length === 0) {
+          html += '<div class="rm-context-menu-empty">No releases defined</div>';
+        } else {
+          for (var ri = 0; ri < releases.length; ri++) {
+            var rName = releases[ri].name || '';
+            var activeRel = currentRelease && String(currentRelease).toLowerCase() === String(rName).toLowerCase();
+            html += '<button type="button" class="rm-context-menu-item' + (activeRel ? ' rm-active' : '') + '"' +
+              ' data-rm-qa-action="set-release" data-rm-qa-value="' + ESC(rName) + '" role="menuitem">' +
+              ESC(rName || 'Unnamed') + '</button>';
+          }
+        }
+      } else if (panel === 'status') {
+        html += '<button type="button" class="rm-context-menu-item rm-context-menu-back" data-rm-qa-action="panel" data-rm-qa-value="root" role="menuitem">\u2190 Back</button>';
+        html += '<div class="rm-context-menu-label">Change status</div>';
+        if (statusOpts.length === 0) {
+          html += '<div class="rm-context-menu-empty">No status options</div>';
+        } else {
+          for (var si = 0; si < statusOpts.length; si++) {
+            var st = statusOpts[si];
+            var activeSt = currentStatus === st;
+            html += '<button type="button" class="rm-context-menu-item' + (activeSt ? ' rm-active' : '') + '"' +
+              ' data-rm-qa-action="set-status" data-rm-qa-value="' + ESC(st) + '" role="menuitem">' +
+              '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(st) + '"></span> ' +
+              ESC(st) + '</button>';
+          }
+        }
+      } else if (panel === 'buckets-add') {
+        html += '<button type="button" class="rm-context-menu-item rm-context-menu-back" data-rm-qa-action="panel" data-rm-qa-value="root" role="menuitem">\u2190 Back</button>';
+        html += '<div class="rm-context-menu-label">Add to bucket</div>';
+        var addable = 0;
+        for (var bi = 0; bi < buckets.length; bi++) {
+          var b = buckets[bi];
+          var inits = Array.isArray(b.initiatives) ? b.initiatives : [];
+          if (inits.indexOf(filename) !== -1) continue;
+          addable++;
+          html += '<button type="button" class="rm-context-menu-item"' +
+            ' data-rm-qa-action="add-bucket" data-rm-qa-value="' + bi + '" role="menuitem">' +
+            ESC(b.name || ('Bucket ' + (bi + 1))) + '</button>';
+        }
+        if (addable === 0) {
+          html += '<div class="rm-context-menu-empty">' +
+            (buckets.length === 0 ? 'No buckets defined' : 'Already in all buckets') +
+            '</div>';
+        }
+      } else {
+        /* Root menu */
+        html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="panel" data-rm-qa-value="releases" role="menuitem">Set release\u2026</button>';
+        if (currentRelease != null && currentRelease !== '') {
+          html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="clear-schedule" role="menuitem">Clear schedule</button>';
+        }
+        if (isInitiative) {
+          if (buckets.length > 0) {
+            html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="panel" data-rm-qa-value="buckets-add" role="menuitem">Add to bucket\u2026</button>';
+          }
+          for (var bj = 0; bj < buckets.length; bj++) {
+            var bkt = buckets[bj];
+            var bInits = Array.isArray(bkt.initiatives) ? bkt.initiatives : [];
+            if (bInits.indexOf(filename) === -1) continue;
+            html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="remove-bucket" data-rm-qa-value="' + bj + '" role="menuitem">' +
+              'Remove from ' + ESC(bkt.name || 'bucket') + '</button>';
+          }
+        }
+        html += '<div class="rm-context-menu-sep"></div>';
+        html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="panel" data-rm-qa-value="status" role="menuitem">Change status\u2026</button>';
+        html += '<button type="button" class="rm-context-menu-item" data-rm-qa-action="open-pfl" role="menuitem">Open in Product Forge</button>';
+      }
+
+      menu.innerHTML = html;
+
+      menu.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var item = e.target.closest('[data-rm-qa-action]');
+        if (!item || !menu.contains(item)) return;
+        var action = item.getAttribute('data-rm-qa-action');
+        var value = item.getAttribute('data-rm-qa-value');
+        var fn = menu.getAttribute('data-rm-qa-filename');
+        var tp = menu.getAttribute('data-rm-qa-type');
+
+        if (action === 'panel') {
+          var rect = menu.getBoundingClientRect();
+          self._showQuickAssignMenu(fn, tp, rect.left, rect.top, value);
+          return;
+        }
+
+        self._closeQuickAssignMenu();
+
+        if (action === 'set-release') {
+          self.assignRelease(fn, value);
+        } else if (action === 'clear-schedule') {
+          self.assignRelease(fn, null);
+        } else if (action === 'set-status') {
+          self.setCardStatus(fn, value);
+        } else if (action === 'add-bucket') {
+          self.addToBucket(fn, value);
+        } else if (action === 'remove-bucket') {
+          self.removeFromBucket(fn, value);
+        } else if (action === 'open-pfl') {
+          self.openInProductForge(fn);
+        }
+      });
+
+      /* Prevent menu clicks from bubbling to card handlers */
+      menu.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      menu.addEventListener('mousedown', function (e) {
+        e.stopPropagation();
+      });
+
+      var view = $view();
+      if (view) view.appendChild(menu);
+      else document.body.appendChild(menu);
+
+      /* Position, then clamp to viewport */
+      var mw = menu.offsetWidth || 200;
+      var mh = menu.offsetHeight || 120;
+      var left = clientX;
+      var top = clientY;
+      if (left + mw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - mw - 8);
+      if (top + mh > window.innerHeight - 8) top = Math.max(8, window.innerHeight - mh - 8);
+      if (left < 8) left = 8;
+      if (top < 8) top = 8;
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+
+      /* Outside click closes (next tick so the opening click does not dismiss) */
+      qaMenuOutsideHandler = function (ev) {
+        var m = $q('[data-rm-context-menu]');
+        if (m && !m.contains(ev.target)) {
+          self._closeQuickAssignMenu();
+        }
+      };
+      setTimeout(function () {
+        document.addEventListener('mousedown', qaMenuOutsideHandler, true);
+      }, 0);
+    },
+
+    _closeQuickAssignMenu: function () {
+      if (qaMenuOutsideHandler) {
+        document.removeEventListener('mousedown', qaMenuOutsideHandler, true);
+        qaMenuOutsideHandler = null;
+      }
+      var view = $view();
+      var root = view || document;
+      root.querySelectorAll('[data-rm-context-menu]').forEach(function (el) {
+        el.remove();
+      });
+      /* Also clear any orphaned menus on body if view was wiped */
+      document.querySelectorAll('[data-rm-context-menu]').forEach(function (el) {
+        el.remove();
       });
     },
 
@@ -2368,9 +2715,14 @@
       this._unbindKeyboard();
       keydownHandler = function (e) {
         if (e.key === 'Escape') {
-          /* Escape hierarchy: menu → modal → drawer → filter */
+          /* Escape hierarchy: menu → qa → picker → modal → drawer → filter */
           if (StatusMenu.isOpen()) {
             StatusMenu.close();
+            return;
+          }
+          var qaMenu = $q('[data-rm-context-menu]');
+          if (qaMenu) {
+            self._closeQuickAssignMenu();
             return;
           }
           var picker = $q('[data-rm-release-picker]');
