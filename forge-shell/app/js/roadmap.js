@@ -1039,6 +1039,10 @@
   var prefsSaveInFlight = false; // true during await RoadmapConfigManager.save from prefs path
   /** True after dragstart until next tick — suppresses click-as-open (future drawer). */
   var dragOccurred = false;
+  /** Per-filename lock: ignore concurrent assignRelease on same card. */
+  var assignInFlight = new Set();
+  /** Focus restore target when multi-release picker closes. */
+  var pickerFocusRestore = null;
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -1077,6 +1081,7 @@
       StatusMenu.close();
       this._closeReleasePicker();
       OptimisticGuard.clearAll();
+      assignInFlight.clear();
       var hadPending = !!prefsSaveTimer;
       if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
       /* Flush pending toolbar prefs before releasing handles (best-effort; save is async) */
@@ -1543,9 +1548,9 @@
         });
       });
 
-      /* Initiative drag sources (schedule unit only — not epics/stories) */
+      /* Initiative drag sources (schedule unit only — not epics/stories).
+         draggable="true" is set in CardView render (single source of truth). */
       $qa('.rm-initiative-card').forEach(function (cardEl) {
-        cardEl.setAttribute('draggable', 'true');
         cardEl.addEventListener('dragstart', function (e) {
           var filename = cardEl.getAttribute('data-rm-filename');
           if (!filename) {
@@ -1668,12 +1673,16 @@
 
     /**
      * Shared schedule assign/clear. releaseName null → clearReleaseFm (release: null).
-     * Optimistic: patch mutates store then writes; full re-render after.
+     * Optimistic: mutator runs sync inside patch → _renderView before await write.
+     * Per-filename in-flight lock ignores concurrent assigns until the first settles.
      */
     assignRelease: async function (filename, releaseName) {
       var self = this;
+      if (assignInFlight.has(filename)) return;
+      assignInFlight.add(filename);
       try {
-        await CardWriteService.patchCardFrontmatter(filename, function (fm) {
+        /* Start write; mutator + OptimisticGuard.mark run sync before first await */
+        var writePromise = CardWriteService.patchCardFrontmatter(filename, function (fm) {
           if (releaseName == null || releaseName === '') {
             if (typeof RH.clearReleaseFm === 'function') RH.clearReleaseFm(fm);
             else fm.release = null;
@@ -1681,7 +1690,9 @@
             fm.release = releaseName;
           }
         });
+        /* Design P0-3: optimistic store + _renderView before write completes */
         self._renderView();
+        await writePromise;
 
         if (releaseName == null || releaseName === '') {
           ForgeUtils.Toast.show('Moved to Unscheduled', 'success');
@@ -1714,9 +1725,12 @@
           ForgeUtils.Toast.show('Scheduled for ' + releaseName, 'success');
         }
       } catch (e) {
+        /* CardWriteService restores prevFm + clears guard on failure */
         console.error('assignRelease failed:', e);
         ForgeUtils.Toast.show('Failed to update schedule: ' + (e.message || e), 'error');
         self._renderView();
+      } finally {
+        assignInFlight.delete(filename);
       }
     },
 
@@ -1724,12 +1738,14 @@
       var self = this;
       this._closeReleasePicker();
 
+      pickerFocusRestore = document.activeElement;
+
       var overlay = document.createElement('div');
       overlay.className = 'rm-release-picker-overlay rm-visible';
       overlay.setAttribute('data-rm-release-picker', '1');
 
-      var html = '<div class="rm-release-picker" role="dialog" aria-label="Assign to release">';
-      html += '<div class="rm-release-picker-title">Assign to release</div>';
+      var html = '<div class="rm-release-picker" role="dialog" aria-modal="true" aria-label="Assign to release">';
+      html += '<div class="rm-release-picker-title" id="rm-release-picker-title">Assign to release</div>';
       html += '<div class="rm-release-picker-list">';
       for (var i = 0; i < releases.length; i++) {
         var r = releases[i];
@@ -1745,6 +1761,9 @@
       html += '<button type="button" class="rm-release-picker-cancel" data-rm-pick-cancel>Cancel</button>';
       html += '</div>';
       overlay.innerHTML = html;
+
+      var dialog = overlay.querySelector('.rm-release-picker');
+      if (dialog) dialog.setAttribute('aria-labelledby', 'rm-release-picker-title');
 
       overlay.addEventListener('click', function (e) {
         if (e.target === overlay) {
@@ -1767,6 +1786,11 @@
       var view = $view();
       if (view) view.appendChild(overlay);
       else document.body.appendChild(overlay);
+
+      var firstFocus = overlay.querySelector('.rm-release-picker-option, [data-rm-pick-cancel]');
+      if (firstFocus && typeof firstFocus.focus === 'function') {
+        try { firstFocus.focus(); } catch (err) { /* ignore */ }
+      }
     },
 
     _closeReleasePicker: function () {
@@ -1775,7 +1799,11 @@
       root.querySelectorAll('[data-rm-release-picker]').forEach(function (el) {
         el.remove();
       });
-
+      var restore = pickerFocusRestore;
+      pickerFocusRestore = null;
+      if (restore && typeof restore.focus === 'function') {
+        try { restore.focus(); } catch (err) { /* ignore */ }
+      }
     },
 
     _bindTimelineEvents: function () {
