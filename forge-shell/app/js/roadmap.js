@@ -696,7 +696,7 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
-     View prefs — allowlist / coerce (default_view)
+     View prefs — allowlist / coerce (default_view, time_granularity)
      ═══════════════════════════════════════════════════════════════ */
   var ALLOWED_VIEWS = ['card', 'timeline', 'table'];
   var TABLE_IMPLEMENTED = false; // until table PR
@@ -704,6 +704,24 @@
     if (ALLOWED_VIEWS.indexOf(v) === -1) return 'card';
     if (v === 'table' && !tableImplemented) return 'card'; // UI only; disk may keep 'table'
     return v;
+  }
+  function coerceGranularity(g) {
+    return g === 'monthly' ? 'monthly' : 'quarterly';
+  }
+  /** default_view value to write: preserve disk 'table' while UI is coerced to card */
+  function resolveDefaultViewForWrite() {
+    if (activeView === 'card' && !TABLE_IMPLEMENTED && rmConfig && rmConfig.default_view === 'table') {
+      return 'table';
+    }
+    return activeView;
+  }
+  function isSettingsModalOpen() {
+    var overlay = $q('.rm-modal-overlay');
+    return !!(overlay && overlay.classList.contains('rm-visible'));
+  }
+  /** True while debounced timer is pending or a prefs save is in flight */
+  function isPrefsWritePending() {
+    return prefsSaveTimer != null || prefsSaveInFlight;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -720,6 +738,7 @@
   var currentYear = new Date().getFullYear();
   var keydownHandler = null;
   var prefsSaveTimer = null; // debounced roadmap.md write for toolbar prefs
+  var prefsSaveInFlight = false; // true during await RoadmapConfigManager.save from prefs path
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -742,7 +761,7 @@
       CardData.roadmapConfig = rmConfig;
       /* Coerce UI view; leave rmConfig.default_view as loaded so disk 'table' survives until table PR */
       activeView = coerceView(rmConfig.default_view, TABLE_IMPLEMENTED);
-      granularity = rmConfig.time_granularity || 'quarterly';
+      granularity = coerceGranularity(rmConfig.time_granularity);
       currentYear = rmConfig.current_year || new Date().getFullYear();
 
       this._renderLayout(view, rootHandle);
@@ -756,7 +775,14 @@
       this._stopAutoRefresh();
       this._unbindKeyboard();
       OptimisticGuard.clearAll();
+      var hadPending = !!prefsSaveTimer;
       if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
+      /* Flush pending toolbar prefs before releasing handles (best-effort; save is async) */
+      if (hadPending && rmConfig && cardsHandle) {
+        this._applyToolbarPrefsToConfig(rmConfig);
+        RoadmapConfigManager.save(cardsHandle, rmConfig);
+      }
+      prefsSaveInFlight = false;
       store.clear();
       cardsHandle = null;
       rmConfig = null;
@@ -765,27 +791,61 @@
     /**
      * Debounced save of toolbar prefs (default_view, time_granularity,
      * current_year, show_stories) to roadmap.md. Silent on success; save()
-     * toasts on failure. Paused while Settings modal is open.
+     * toasts on failure. If Settings modal is open when the timer fires,
+     * reschedule rather than dropping the write.
      */
     schedulePrefsSave: function () {
       if (!rmConfig || !cardsHandle) return;
-      var overlay = $q('.rm-modal-overlay');
-      if (overlay && overlay.classList.contains('rm-visible')) return;
-
       if (prefsSaveTimer) clearTimeout(prefsSaveTimer);
-      prefsSaveTimer = setTimeout(async function () {
-        prefsSaveTimer = null;
-        var openOverlay = $q('.rm-modal-overlay');
-        if (openOverlay && openOverlay.classList.contains('rm-visible')) return;
-        if (!rmConfig || !cardsHandle) return;
-
-        rmConfig.default_view = activeView;
-        rmConfig.time_granularity = granularity;
-        rmConfig.current_year = currentYear;
-        /* show_stories already mutated on rmConfig by the stories toggle */
-
-        await RoadmapConfigManager.save(cardsHandle, rmConfig);
+      prefsSaveTimer = setTimeout(function () {
+        ctrl._runPrefsSave();
       }, 400);
+    },
+
+    /**
+     * Apply live toolbar state onto a config object for write.
+     * Preserves disk default_view='table' when UI is coerced to card.
+     */
+    _applyToolbarPrefsToConfig: function (cfg) {
+      if (!cfg) return;
+      cfg.default_view = resolveDefaultViewForWrite();
+      cfg.time_granularity = coerceGranularity(granularity);
+      cfg.current_year = currentYear;
+      /* show_stories: prefer live rmConfig (mutated by toggle); leave cfg if no live config */
+      if (rmConfig) cfg.show_stories = !!rmConfig.show_stories;
+    },
+
+    _runPrefsSave: async function () {
+      if (!rmConfig || !cardsHandle) {
+        prefsSaveTimer = null;
+        return;
+      }
+      if (isSettingsModalOpen()) {
+        /* Reschedule — do not drop pending prefs while Settings is open */
+        prefsSaveTimer = setTimeout(function () { ctrl._runPrefsSave(); }, 400);
+        return;
+      }
+      prefsSaveTimer = null;
+      prefsSaveInFlight = true;
+      try {
+        /* Fields assigned before await; on save failure memory may diverge from disk until reload */
+        this._applyToolbarPrefsToConfig(rmConfig);
+        await RoadmapConfigManager.save(cardsHandle, rmConfig);
+      } finally {
+        prefsSaveInFlight = false;
+      }
+    },
+
+    _syncToolbarPrefsUI: function () {
+      $qa('[data-rm-view]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.rmView === activeView);
+      });
+      $qa('[data-rm-gran]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.rmGran === granularity);
+      });
+      this._updateYearLabel();
+      var storiesBtn = $q('[data-rm-stories-toggle]');
+      if (storiesBtn) storiesBtn.classList.toggle('rm-active', !!(rmConfig && rmConfig.show_stories));
     },
 
     refresh: async function () {
@@ -962,22 +1022,33 @@
       var refreshBtn = $q('[data-rm-refresh]');
       if (refreshBtn) refreshBtn.addEventListener('click', function () { self.refresh(); });
 
-      /* Modal close */
+      /* Modal close (Cancel) — reschedule toolbar prefs so debounce is not lost */
       $qa('[data-rm-modal-close]').forEach(function (el) {
-        el.addEventListener('click', function () { ConfigModal.close(); });
+        el.addEventListener('click', function () {
+          ConfigModal.close();
+          self.schedulePrefsSave();
+        });
       });
 
-      /* Modal save */
+      /* Modal save — merge live toolbar prefs so open-time snapshot cannot stomp them */
       var saveBtn = $q('[data-rm-modal-save]');
       if (saveBtn) {
         saveBtn.addEventListener('click', async function () {
           self._readConfigFromModal();
           var newConfig = ConfigModal.save();
           if (newConfig) {
+            /* Live toolbar state wins over clone taken at modal open */
+            self._applyToolbarPrefsToConfig(newConfig);
             rmConfig = newConfig;
             CardData.roadmapConfig = rmConfig;
-            await RoadmapConfigManager.save(cardsHandle, rmConfig);
-            ForgeUtils.Toast.show('Roadmap settings saved', 'success');
+            if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
+            prefsSaveInFlight = true;
+            try {
+              await RoadmapConfigManager.save(cardsHandle, rmConfig);
+              ForgeUtils.Toast.show('Roadmap settings saved', 'success');
+            } finally {
+              prefsSaveInFlight = false;
+            }
           }
           ConfigModal.close();
           self._renderView();
@@ -1301,19 +1372,36 @@
       if (refreshRunning || !cardsHandle) return;
       refreshRunning = true;
       try {
-        /* Reload config — if prefs save pending, keep local prefs keys (live toolbar
-           state / show_stories), still apply releases/buckets/swim_lanes from disk */
+        /* Reload config — if prefs write pending/in-flight, keep local prefs keys
+           (live toolbar state / show_stories), still apply releases/buckets/swim_lanes from disk */
         var newConfig = await RoadmapConfigManager.load(cardsHandle);
-        if (prefsSaveTimer && rmConfig) {
-          newConfig.default_view = activeView;
-          newConfig.time_granularity = granularity;
+        var prefsLiveChanged = false;
+        var prefsProtected = isPrefsWritePending() && !!rmConfig;
+        if (prefsProtected) {
+          newConfig.default_view = resolveDefaultViewForWrite();
+          newConfig.time_granularity = coerceGranularity(granularity);
           newConfig.current_year = currentYear;
           newConfig.show_stories = rmConfig.show_stories;
+        } else {
+          /* Sync live toolbar state from disk when no local prefs write is pending */
+          var diskView = coerceView(newConfig.default_view, TABLE_IMPLEMENTED);
+          var diskGran = coerceGranularity(newConfig.time_granularity);
+          var diskYear = newConfig.current_year || currentYear;
+          if (diskView !== activeView || diskGran !== granularity || diskYear !== currentYear) {
+            activeView = diskView;
+            granularity = diskGran;
+            currentYear = diskYear;
+            prefsLiveChanged = true;
+          }
         }
         var configChanged = JSON.stringify(newConfig) !== JSON.stringify(rmConfig);
         if (configChanged) {
           rmConfig = newConfig;
           CardData.roadmapConfig = rmConfig;
+        }
+        /* Keep toolbar button state aligned with live vars / show_stories from disk */
+        if (prefsLiveChanged || (configChanged && !prefsProtected)) {
+          this._syncToolbarPrefsUI();
         }
 
         var files = await CardData.scanCardsDir(cardsHandle);
@@ -1381,6 +1469,8 @@
           var overlay = $q('.rm-modal-overlay');
           if (overlay && overlay.classList.contains('rm-visible')) {
             ConfigModal.close();
+            /* Same as Cancel: ensure deferred toolbar prefs still flush */
+            ctrl.schedulePrefsSave();
             return;
           }
           if (FilterPanel.open) {
