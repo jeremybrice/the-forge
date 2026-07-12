@@ -490,8 +490,16 @@
       return cfg;
     },
 
+    /**
+     * Persist roadmap.md. Returns true on success, false on missing handle or write failure.
+     * Callers must check the return value before success toasts / assuming disk is updated.
+     */
     save: async function (cardsHandle, config) {
-      if (!cardsHandle) return;
+      if (!cardsHandle) {
+        console.error('Failed to save roadmap.md: no cards handle');
+        ForgeUtils.Toast.show('Failed to save roadmap config: no cards directory', 'error');
+        return false;
+      }
       var yaml = ForgeUtils.YAML.stringify(config, [
         'type','title','default_view','time_granularity','current_year','show_stories',
         'releases','buckets','swim_lanes'
@@ -500,9 +508,11 @@
       try {
         // Use ForgeFS to write the file (works in both browser and Tauri modes)
         await ForgeFS.writeFile(cardsHandle, 'roadmap.md', content);
+        return true;
       } catch (e) {
         console.error('Failed to save roadmap.md:', e);
         ForgeUtils.Toast.show('Failed to save roadmap config: ' + e.message, 'error');
+        return false;
       }
     }
   };
@@ -614,7 +624,8 @@
         cardIdentityAttrs(card) + '>';
       html += '<div class="rm-card-head">';
       html += '<div class="rm-card-title">' + ESC(fm.title || card.filename) + '</div>';
-      html += '<button type="button" class="rm-card-more" data-rm-action="more" aria-label="Card actions" title="Card actions">\u22EF</button>';
+      html += '<button type="button" class="rm-card-more" data-rm-action="more" draggable="false"' +
+        ' aria-label="Card actions" title="Card actions" aria-haspopup="menu" aria-expanded="false">\u22EF</button>';
       html += '</div>';
       html += '<div class="rm-card-meta">';
       html += renderStatusHit(fm.status);
@@ -629,7 +640,8 @@
         html += '<div class="rm-epic-card"' + cardIdentityAttrs(epicNode.card) + '>';
         html += '<div class="rm-card-head">';
         html += '<div class="rm-card-title">' + ESC(efm.title || epicNode.card.filename) + '</div>';
-        html += '<button type="button" class="rm-card-more" data-rm-action="more" aria-label="Card actions" title="Card actions">\u22EF</button>';
+        html += '<button type="button" class="rm-card-more" data-rm-action="more" draggable="false"' +
+          ' aria-label="Card actions" title="Card actions" aria-haspopup="menu" aria-expanded="false">\u22EF</button>';
         html += '</div>';
         html += '<div class="rm-card-meta">';
         html += renderStatusHit(efm.status);
@@ -1336,6 +1348,8 @@
   };
   /** Outside-click handler for quick-assign context menu (document-level). */
   var qaMenuOutsideHandler = null;
+  /** ⋯ trigger that opened the current quick-assign menu (for aria-expanded). */
+  var qaMenuTriggerEl = null;
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -1646,22 +1660,25 @@
         saveBtn.addEventListener('click', async function () {
           self._readConfigFromModal();
           var newConfig = ConfigModal.save();
-          if (newConfig) {
-            /* Live toolbar state wins over clone taken at modal open */
-            self._applyToolbarPrefsToConfig(newConfig);
-            rmConfig = newConfig;
-            CardData.roadmapConfig = rmConfig;
-            if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
-            prefsSaveInFlight = true;
-            try {
-              await RoadmapConfigManager.save(cardsHandle, rmConfig);
-              ForgeUtils.Toast.show('Roadmap settings saved', 'success');
-            } finally {
-              prefsSaveInFlight = false;
+          if (!newConfig) return;
+          /* Live toolbar state wins over clone taken at modal open */
+          self._applyToolbarPrefsToConfig(newConfig);
+          rmConfig = newConfig;
+          CardData.roadmapConfig = rmConfig;
+          if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
+          prefsSaveInFlight = true;
+          try {
+            var ok = await RoadmapConfigManager.save(cardsHandle, rmConfig);
+            if (!ok) {
+              /* save already toasted; keep modal open for retry */
+              return;
             }
+            ForgeUtils.Toast.show('Roadmap settings saved', 'success');
+            ConfigModal.close();
+            self._renderView();
+          } finally {
+            prefsSaveInFlight = false;
           }
-          ConfigModal.close();
-          self._renderView();
         });
       }
     },
@@ -1895,7 +1912,8 @@
           var filename = cardEl.getAttribute('data-rm-filename');
           var type = cardEl.getAttribute('data-rm-type') || 'initiative';
           if (!filename) return;
-          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY);
+          var moreBtn = cardEl.querySelector('[data-rm-action="more"]');
+          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY, null, moreBtn);
         });
       });
 
@@ -1907,7 +1925,8 @@
           var filename = cardEl.getAttribute('data-rm-filename');
           var type = cardEl.getAttribute('data-rm-type') || 'epic';
           if (!filename) return;
-          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY);
+          var moreBtn = cardEl.querySelector('[data-rm-action="more"]');
+          self._showQuickAssignMenu(filename, type, e.clientX, e.clientY, null, moreBtn);
         });
       });
 
@@ -1922,7 +1941,7 @@
           var type = cardEl.getAttribute('data-rm-type') || 'initiative';
           if (!filename) return;
           var rect = btn.getBoundingClientRect();
-          self._showQuickAssignMenu(filename, type, rect.right, rect.bottom);
+          self._showQuickAssignMenu(filename, type, rect.right, rect.bottom, null, btn);
         });
         /* Prevent drag from starting on the button */
         btn.addEventListener('mousedown', function (e) {
@@ -2206,16 +2225,15 @@
         return;
       }
       bucket.initiatives.push(filename);
-      try {
-        await RoadmapConfigManager.save(cardsHandle, rmConfig);
-        CardData.roadmapConfig = rmConfig;
-        self._renderView();
-        ForgeUtils.Toast.show('Added to ' + (bucket.name || 'bucket'), 'success');
-      } catch (e) {
-        console.error('addToBucket failed:', e);
+      var ok = await RoadmapConfigManager.save(cardsHandle, rmConfig);
+      if (!ok) {
+        /* save already toasted; roll back in-memory mutation */
         bucket.initiatives.pop();
-        ForgeUtils.Toast.show('Failed to update bucket: ' + (e.message || e), 'error');
+        return;
       }
+      CardData.roadmapConfig = rmConfig;
+      self._renderView();
+      ForgeUtils.Toast.show('Added to ' + (bucket.name || 'bucket'), 'success');
     },
 
     /** Remove initiative filename from rmConfig.buckets[bucketIndex].initiatives + save. */
@@ -2228,21 +2246,23 @@
       var idx = bucket.initiatives.indexOf(filename);
       if (idx === -1) return;
       var removed = bucket.initiatives.splice(idx, 1)[0];
-      try {
-        await RoadmapConfigManager.save(cardsHandle, rmConfig);
-        CardData.roadmapConfig = rmConfig;
-        self._renderView();
-        ForgeUtils.Toast.show('Removed from ' + (bucket.name || 'bucket'), 'success');
-      } catch (e) {
-        console.error('removeFromBucket failed:', e);
+      var ok = await RoadmapConfigManager.save(cardsHandle, rmConfig);
+      if (!ok) {
+        /* save already toasted; roll back in-memory mutation */
         bucket.initiatives.splice(idx, 0, removed);
-        ForgeUtils.Toast.show('Failed to update bucket: ' + (e.message || e), 'error');
+        return;
       }
+      CardData.roadmapConfig = rmConfig;
+      self._renderView();
+      ForgeUtils.Toast.show('Removed from ' + (bucket.name || 'bucket'), 'success');
     },
 
     /**
      * Navigate to Product Forge. Prefer selectPlugin with options when supported;
      * fall back to plain selectPlugin (PR4 deep-link may not be on this branch).
+     * Note: current Shell.selectPlugin returns undefined on success (and when
+     * hidden). Only treat strict false as "unavailable"; also check visibility
+     * when Shell exposes it.
      */
     openInProductForge: function (filename) {
       if (typeof Shell === 'undefined' || typeof Shell.selectPlugin !== 'function') {
@@ -2250,6 +2270,10 @@
         return;
       }
       var pluginId = 'product-forge-local';
+      if (Shell.visibility && Shell.visibility[pluginId] === false) {
+        ForgeUtils.Toast.show('Product Forge is not available', 'error');
+        return;
+      }
       var result;
       try {
         result = Shell.selectPlugin(pluginId, filename ? { selectCard: filename } : undefined);
@@ -2261,6 +2285,7 @@
           return;
         }
       }
+      /* undefined = current Shell API success; only false means unavailable */
       if (result === false) {
         ForgeUtils.Toast.show('Product Forge is not available', 'error');
       }
@@ -2275,9 +2300,12 @@
      * @param {number} clientX
      * @param {number} clientY
      * @param {string} [panel] — root | releases | status | buckets-add
+     * @param {HTMLElement} [triggerEl] — ⋯ button for aria-expanded
      */
-    _showQuickAssignMenu: function (filename, type, clientX, clientY, panel) {
+    _showQuickAssignMenu: function (filename, type, clientX, clientY, panel, triggerEl) {
       var self = this;
+      /* Preserve trigger across panel switches (close clears qaMenuTriggerEl) */
+      var pendingTrigger = triggerEl || qaMenuTriggerEl;
       this._closeQuickAssignMenu();
       panel = panel || 'root';
 
@@ -2291,10 +2319,16 @@
       var currentStatus = (card.frontmatter && card.frontmatter.status) || '';
       var statusOpts = (CardData.STATUS_OPTIONS && CardData.STATUS_OPTIONS[cardType]) || [];
 
+      qaMenuTriggerEl = pendingTrigger || null;
+      if (qaMenuTriggerEl && qaMenuTriggerEl.setAttribute) {
+        qaMenuTriggerEl.setAttribute('aria-expanded', 'true');
+      }
+
       var menu = document.createElement('div');
       menu.className = 'rm-context-menu';
       menu.setAttribute('data-rm-context-menu', '1');
       menu.setAttribute('role', 'menu');
+      menu.setAttribute('tabindex', '-1');
       menu.setAttribute('data-rm-qa-filename', filename);
       menu.setAttribute('data-rm-qa-type', cardType);
 
@@ -2383,7 +2417,7 @@
 
         if (action === 'panel') {
           var rect = menu.getBoundingClientRect();
-          self._showQuickAssignMenu(fn, tp, rect.left, rect.top, value);
+          self._showQuickAssignMenu(fn, tp, rect.left, rect.top, value, qaMenuTriggerEl);
           return;
         }
 
@@ -2429,6 +2463,12 @@
       menu.style.left = left + 'px';
       menu.style.top = top + 'px';
 
+      /* Focus first menuitem for keyboard discovery after open */
+      var firstItem = menu.querySelector('.rm-context-menu-item');
+      if (firstItem && typeof firstItem.focus === 'function') {
+        try { firstItem.focus(); } catch (err) { /* ignore */ }
+      }
+
       /* Outside click closes (next tick so the opening click does not dismiss) */
       qaMenuOutsideHandler = function (ev) {
         var m = $q('[data-rm-context-menu]');
@@ -2446,6 +2486,10 @@
         document.removeEventListener('mousedown', qaMenuOutsideHandler, true);
         qaMenuOutsideHandler = null;
       }
+      if (qaMenuTriggerEl && qaMenuTriggerEl.setAttribute) {
+        try { qaMenuTriggerEl.setAttribute('aria-expanded', 'false'); } catch (err) { /* ignore */ }
+      }
+      qaMenuTriggerEl = null;
       var view = $view();
       var root = view || document;
       root.querySelectorAll('[data-rm-context-menu]').forEach(function (el) {
@@ -2454,6 +2498,10 @@
       /* Also clear any orphaned menus on body if view was wiped */
       document.querySelectorAll('[data-rm-context-menu]').forEach(function (el) {
         el.remove();
+      });
+      /* Reset any stale aria-expanded on more buttons after re-render */
+      $qa('[data-rm-action="more"][aria-expanded="true"]').forEach(function (btn) {
+        btn.setAttribute('aria-expanded', 'false');
       });
     },
 
