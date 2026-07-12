@@ -696,6 +696,17 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
+     View prefs — allowlist / coerce (default_view)
+     ═══════════════════════════════════════════════════════════════ */
+  var ALLOWED_VIEWS = ['card', 'timeline', 'table'];
+  var TABLE_IMPLEMENTED = false; // until table PR
+  function coerceView(v, tableImplemented) {
+    if (ALLOWED_VIEWS.indexOf(v) === -1) return 'card';
+    if (v === 'table' && !tableImplemented) return 'card'; // UI only; disk may keep 'table'
+    return v;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
      Module State
      ═══════════════════════════════════════════════════════════════ */
   var store = new CardData.CardStore();
@@ -708,6 +719,7 @@
   var granularity = 'quarterly';
   var currentYear = new Date().getFullYear();
   var keydownHandler = null;
+  var prefsSaveTimer = null; // debounced roadmap.md write for toolbar prefs
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -728,7 +740,8 @@
       /* Load roadmap config */
       rmConfig = await RoadmapConfigManager.load(cardsHandle);
       CardData.roadmapConfig = rmConfig;
-      activeView = rmConfig.default_view || 'card';
+      /* Coerce UI view; leave rmConfig.default_view as loaded so disk 'table' survives until table PR */
+      activeView = coerceView(rmConfig.default_view, TABLE_IMPLEMENTED);
       granularity = rmConfig.time_granularity || 'quarterly';
       currentYear = rmConfig.current_year || new Date().getFullYear();
 
@@ -743,9 +756,36 @@
       this._stopAutoRefresh();
       this._unbindKeyboard();
       OptimisticGuard.clearAll();
+      if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
       store.clear();
       cardsHandle = null;
       rmConfig = null;
+    },
+
+    /**
+     * Debounced save of toolbar prefs (default_view, time_granularity,
+     * current_year, show_stories) to roadmap.md. Silent on success; save()
+     * toasts on failure. Paused while Settings modal is open.
+     */
+    schedulePrefsSave: function () {
+      if (!rmConfig || !cardsHandle) return;
+      var overlay = $q('.rm-modal-overlay');
+      if (overlay && overlay.classList.contains('rm-visible')) return;
+
+      if (prefsSaveTimer) clearTimeout(prefsSaveTimer);
+      prefsSaveTimer = setTimeout(async function () {
+        prefsSaveTimer = null;
+        var openOverlay = $q('.rm-modal-overlay');
+        if (openOverlay && openOverlay.classList.contains('rm-visible')) return;
+        if (!rmConfig || !cardsHandle) return;
+
+        rmConfig.default_view = activeView;
+        rmConfig.time_granularity = granularity;
+        rmConfig.current_year = currentYear;
+        /* show_stories already mutated on rmConfig by the stories toggle */
+
+        await RoadmapConfigManager.save(cardsHandle, rmConfig);
+      }, 400);
     },
 
     refresh: async function () {
@@ -853,9 +893,10 @@
       /* View toggle */
       $qa('[data-rm-view]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          activeView = btn.dataset.rmView;
+          activeView = coerceView(btn.dataset.rmView, TABLE_IMPLEMENTED);
           $qa('[data-rm-view]').forEach(function (b) { b.classList.toggle('active', b.dataset.rmView === activeView); });
           self._renderView();
+          self.schedulePrefsSave();
         });
       });
 
@@ -865,14 +906,25 @@
           granularity = btn.dataset.rmGran;
           $qa('[data-rm-gran]').forEach(function (b) { b.classList.toggle('active', b.dataset.rmGran === granularity); });
           self._renderView();
+          self.schedulePrefsSave();
         });
       });
 
       /* Year nav */
       var prevBtn = $q('[data-rm-year-prev]');
       var nextBtn = $q('[data-rm-year-next]');
-      if (prevBtn) prevBtn.addEventListener('click', function () { currentYear--; self._updateYearLabel(); self._renderView(); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { currentYear++; self._updateYearLabel(); self._renderView(); });
+      if (prevBtn) prevBtn.addEventListener('click', function () {
+        currentYear--;
+        self._updateYearLabel();
+        self._renderView();
+        self.schedulePrefsSave();
+      });
+      if (nextBtn) nextBtn.addEventListener('click', function () {
+        currentYear++;
+        self._updateYearLabel();
+        self._renderView();
+        self.schedulePrefsSave();
+      });
 
       /* Stories toggle */
       var storiesBtn = $q('[data-rm-stories-toggle]');
@@ -881,6 +933,7 @@
           if (rmConfig) rmConfig.show_stories = !rmConfig.show_stories;
           storiesBtn.classList.toggle('rm-active', rmConfig && rmConfig.show_stories);
           self._renderView();
+          self.schedulePrefsSave();
         });
       }
 
@@ -1070,14 +1123,16 @@
       var cardContainer = $q('[data-rm-card-container]');
       var timelineContainer = $q('[data-rm-timeline-container]');
 
-      if (activeView === 'card') {
-        if (cardContainer) { cardContainer.style.display = ''; CardView.render(cardContainer, periods, hierarchy, rmConfig || {}); }
-        if (timelineContainer) timelineContainer.style.display = 'none';
-        this._bindCardViewEvents();
-      } else {
+      /* Explicit switch: only 'timeline' opens timeline; card/table/unknown → card UI */
+      if (activeView === 'timeline') {
         if (timelineContainer) { timelineContainer.style.display = ''; TimelineView.render(timelineContainer, periods, hierarchy, rmConfig || {}, taxonomy); }
         if (cardContainer) cardContainer.style.display = 'none';
         this._bindTimelineEvents();
+      } else {
+        /* card (and table until TABLE_IMPLEMENTED falls back to card UI) */
+        if (cardContainer) { cardContainer.style.display = ''; CardView.render(cardContainer, periods, hierarchy, rmConfig || {}); }
+        if (timelineContainer) timelineContainer.style.display = 'none';
+        this._bindCardViewEvents();
       }
 
       this._updateRefreshIndicator();
@@ -1246,8 +1301,15 @@
       if (refreshRunning || !cardsHandle) return;
       refreshRunning = true;
       try {
-        /* Reload config */
+        /* Reload config — if prefs save pending, keep local prefs keys (live toolbar
+           state / show_stories), still apply releases/buckets/swim_lanes from disk */
         var newConfig = await RoadmapConfigManager.load(cardsHandle);
+        if (prefsSaveTimer && rmConfig) {
+          newConfig.default_view = activeView;
+          newConfig.time_granularity = granularity;
+          newConfig.current_year = currentYear;
+          newConfig.show_stories = rmConfig.show_stories;
+        }
         var configChanged = JSON.stringify(newConfig) !== JSON.stringify(rmConfig);
         if (configChanged) {
           rmConfig = newConfig;
