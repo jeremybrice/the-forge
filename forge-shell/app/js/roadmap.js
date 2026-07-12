@@ -794,6 +794,194 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════
+     TableView — dense sortable initiative table (PR6)
+     ═══════════════════════════════════════════════════════════════ */
+  var TableView = {
+    sortKey: 'title',
+    sortDir: 'asc',
+
+    COLUMNS: [
+      { key: 'title', label: 'Title' },
+      { key: 'type', label: 'Type' },
+      { key: 'status', label: 'Status' },
+      { key: 'product', label: 'Product' },
+      { key: 'client', label: 'Client' },
+      { key: 'module', label: 'Module' },
+      { key: 'release', label: 'Release' },
+      { key: 'period', label: 'Period' },
+      { key: 'epics', label: 'Epics' }
+    ],
+
+    _dash: function (v) {
+      if (v == null || v === '') return '\u2014';
+      return String(v);
+    },
+
+    /** Period display labels + first overlapping period start for sort. */
+    _periodInfo: function (card, periods, releases) {
+      var rel = TimeUtils.getReleaseForCard(card, releases);
+      if (!rel) return { label: '\u2014', sortKey: '' };
+      var labels = (typeof RH.periodLabelsForRelease === 'function')
+        ? RH.periodLabelsForRelease(rel, periods)
+        : [];
+      if (!labels.length) {
+        for (var i = 0; i < periods.length; i++) {
+          if (TimeUtils.releaseOverlapsPeriod(rel, periods[i])) {
+            labels.push(periods[i].label);
+          }
+        }
+      }
+      var sortKey = '';
+      for (var j = 0; j < periods.length; j++) {
+        if (TimeUtils.releaseOverlapsPeriod(rel, periods[j])) {
+          sortKey = periods[j].start || '';
+          break;
+        }
+      }
+      return {
+        label: labels.length ? labels.join(', ') : '\u2014',
+        sortKey: sortKey
+      };
+    },
+
+    _buildRows: function (hierarchy, periods, releases) {
+      var tree = (hierarchy && hierarchy.tree) || [];
+      var rows = [];
+      for (var i = 0; i < tree.length; i++) {
+        var node = tree[i];
+        var card = node.card;
+        var fm = card.frontmatter || {};
+        var periodInfo = this._periodInfo(card, periods, releases);
+        rows.push({
+          card: card,
+          title: fm.title || card.filename || '',
+          type: fm.type || 'initiative',
+          status: fm.status || '',
+          product: fm.product || '',
+          client: fm.client || '',
+          module: fm.module || '',
+          release: fm.release || '',
+          period: periodInfo.label,
+          periodSort: periodInfo.sortKey,
+          epics: (node.children && node.children.length) || 0
+        });
+      }
+      return rows;
+    },
+
+    _cmp: function (a, b) {
+      var key = this.sortKey;
+      var av, bv;
+      if (key === 'epics') {
+        av = a.epics;
+        bv = b.epics;
+      } else if (key === 'period') {
+        av = a.periodSort || '';
+        bv = b.periodSort || '';
+      } else {
+        av = (a[key] != null ? a[key] : '');
+        bv = (b[key] != null ? b[key] : '');
+        if (typeof av === 'string') av = av.toLowerCase();
+        if (typeof bv === 'string') bv = bv.toLowerCase();
+      }
+      var dir = this.sortDir === 'desc' ? -1 : 1;
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      /* Stable tie-break by title */
+      var at = (a.title || '').toLowerCase();
+      var bt = (b.title || '').toLowerCase();
+      if (at < bt) return -1;
+      if (at > bt) return 1;
+      return 0;
+    },
+
+    _sortRows: function (rows) {
+      var self = this;
+      rows.sort(function (a, b) { return self._cmp(a, b); });
+    },
+
+    _sortIndicator: function (key) {
+      if (this.sortKey !== key) {
+        return '<span class="rm-sort-ind" aria-hidden="true"></span>';
+      }
+      var icon = this.sortDir === 'desc' ? 'fa-sort-down' : 'fa-sort-up';
+      return '<span class="rm-sort-ind rm-sort-active" aria-hidden="true"><i class="fa-solid ' + icon + '"></i></span>';
+    },
+
+    render: function (container, periods, hierarchy, config) {
+      var releases = (config && config.releases) || [];
+      var rows = this._buildRows(hierarchy, periods, releases);
+      this._sortRows(rows);
+
+      if (rows.length === 0) {
+        var filtersActive = typeof FilterPanel !== 'undefined' && FilterPanel.getActiveCount && FilterPanel.getActiveCount() > 0;
+        var emptyMsg = filtersActive
+          ? 'No initiative cards match the current filters.'
+          : 'No initiative cards found. Create some cards to see the table.';
+        container.innerHTML =
+          '<div class="rm-table-empty">' +
+          '<i class="fa-solid fa-table" style="font-size:32px;opacity:0.3;display:block;margin-bottom:12px"></i>' +
+          emptyMsg +
+          '</div>';
+        return;
+      }
+
+      var html = '<div class="rm-table-scroll"><table class="rm-table">';
+      html += '<thead><tr>';
+      for (var ci = 0; ci < this.COLUMNS.length; ci++) {
+        var col = this.COLUMNS[ci];
+        var ariaSort = 'none';
+        if (this.sortKey === col.key) {
+          ariaSort = this.sortDir === 'desc' ? 'descending' : 'ascending';
+        }
+        html += '<th scope="col" data-rm-sort="' + ESC(col.key) + '" aria-sort="' + ariaSort + '" class="rm-th-sortable" tabindex="0" role="columnheader">';
+        html += '<span class="rm-th-label">' + ESC(col.label) + '</span>';
+        html += this._sortIndicator(col.key);
+        html += '</th>';
+      }
+      html += '</tr></thead><tbody>';
+
+      for (var ri = 0; ri < rows.length; ri++) {
+        var row = rows[ri];
+        var card = row.card;
+        var releaseDisplay = this._dash(row.release);
+        html += '<tr class="rm-table-row"' + cardIdentityAttrs(card) + '>';
+        html += '<td class="rm-td-title" title="' + ESC(row.title) + '">' + ESC(row.title) + '</td>';
+        html += '<td class="rm-td-type"><span class="rm-type-pill" style="background:' +
+          CardData.getTypeColor(row.type) + '">' + ESC(row.type) + '</span></td>';
+        html += '<td class="rm-td-status">' + renderStatusHit(row.status) + '</td>';
+        html += '<td>' + ESC(this._dash(row.product)) + '</td>';
+        html += '<td>' + ESC(this._dash(row.client)) + '</td>';
+        html += '<td>' + ESC(this._dash(row.module)) + '</td>';
+        html += '<td title="' + ESC(releaseDisplay) + '">' + ESC(releaseDisplay) + '</td>';
+        html += '<td title="' + ESC(row.period) + '">' + ESC(row.period) + '</td>';
+        html += '<td class="rm-td-epics">' + row.epics + '</td>';
+        html += '</tr>';
+      }
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    },
+
+    /** Toggle sort on column key; returns true if direction/key changed. */
+    setSort: function (key) {
+      if (!key) return false;
+      var known = false;
+      for (var i = 0; i < this.COLUMNS.length; i++) {
+        if (this.COLUMNS[i].key === key) { known = true; break; }
+      }
+      if (!known) return false;
+      if (this.sortKey === key) {
+        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortKey = key;
+        this.sortDir = 'asc';
+      }
+      return true;
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
      FilterPanel
      ═══════════════════════════════════════════════════════════════ */
   var FilterPanel = {
@@ -1019,7 +1207,7 @@
      View prefs — allowlist / coerce (default_view, time_granularity)
      ═══════════════════════════════════════════════════════════════ */
   var ALLOWED_VIEWS = ['card', 'timeline', 'table'];
-  var TABLE_IMPLEMENTED = false; // until table PR
+  var TABLE_IMPLEMENTED = true; // PR6 table view
   function coerceView(v, tableImplemented) {
     if (ALLOWED_VIEWS.indexOf(v) === -1) return 'card';
     if (v === 'table' && !tableImplemented) return 'card'; // UI only; disk may keep 'table'
@@ -1028,7 +1216,7 @@
   function coerceGranularity(g) {
     return g === 'monthly' ? 'monthly' : 'quarterly';
   }
-  /** default_view value to write: preserve disk 'table' while UI is coerced to card */
+  /** default_view for write; if table not implemented, preserve disk 'table' while UI shows card */
   function resolveDefaultViewForWrite() {
     if (activeView === 'card' && !TABLE_IMPLEMENTED && rmConfig && rmConfig.default_view === 'table') {
       return 'table';
@@ -1370,7 +1558,7 @@
       /* Load roadmap config */
       rmConfig = await RoadmapConfigManager.load(cardsHandle);
       CardData.roadmapConfig = rmConfig;
-      /* Coerce UI view; leave rmConfig.default_view as loaded so disk 'table' survives until table PR */
+      /* Coerce UI view against allowlist / TABLE_IMPLEMENTED */
       activeView = coerceView(rmConfig.default_view, TABLE_IMPLEMENTED);
       granularity = coerceGranularity(rmConfig.time_granularity);
       currentYear = rmConfig.current_year || new Date().getFullYear();
@@ -1506,6 +1694,7 @@
             '<div class="view-toggle">' +
               '<button data-rm-view="card" class="' + (activeView === 'card' ? 'active' : '') + '" title="Card View"><i class="fa-solid fa-grip"></i> Card</button>' +
               '<button data-rm-view="timeline" class="' + (activeView === 'timeline' ? 'active' : '') + '" title="Timeline View"><i class="fa-solid fa-chart-gantt"></i> Timeline</button>' +
+              '<button data-rm-view="table" class="' + (activeView === 'table' ? 'active' : '') + '" title="Table View"><i class="fa-solid fa-table"></i> Table</button>' +
             '</div>' +
 
             /* Granularity toggle */
@@ -1544,6 +1733,7 @@
           '<div class="rm-content">' +
             '<div class="rm-card-view" data-rm-card-container></div>' +
             '<div class="rm-timeline-view" data-rm-timeline-container style="display:none"></div>' +
+            '<div class="rm-table-view" data-rm-table-container style="display:none"></div>' +
             '<div class="rm-filter-panel" data-rm-filter-panel></div>' +
             '<div class="rm-detail-drawer" data-rm-detail-drawer aria-hidden="true"></div>' +
           '</div>' +
@@ -1822,16 +2012,24 @@
 
       var cardContainer = $q('[data-rm-card-container]');
       var timelineContainer = $q('[data-rm-timeline-container]');
+      var tableContainer = $q('[data-rm-table-container]');
 
-      /* Explicit switch: only 'timeline' opens timeline; card/table/unknown → card UI */
+      /* Explicit switch: card | timeline | table (unknown → card) */
       if (activeView === 'timeline') {
         if (timelineContainer) { timelineContainer.style.display = ''; TimelineView.render(timelineContainer, periods, hierarchy, rmConfig || {}, taxonomy); }
         if (cardContainer) cardContainer.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'none';
         this._bindTimelineEvents();
+      } else if (activeView === 'table' && TABLE_IMPLEMENTED) {
+        if (tableContainer) { tableContainer.style.display = ''; TableView.render(tableContainer, periods, hierarchy, rmConfig || {}); }
+        if (cardContainer) cardContainer.style.display = 'none';
+        if (timelineContainer) timelineContainer.style.display = 'none';
+        this._bindTableViewEvents();
       } else {
-        /* card (and table until TABLE_IMPLEMENTED falls back to card UI) */
+        /* card (default / unknown) */
         if (cardContainer) { cardContainer.style.display = ''; CardView.render(cardContainer, periods, hierarchy, rmConfig || {}); }
         if (timelineContainer) timelineContainer.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'none';
         this._bindCardViewEvents();
       }
 
@@ -2502,6 +2700,57 @@
       /* Reset any stale aria-expanded on more buttons after re-render */
       $qa('[data-rm-action="more"][aria-expanded="true"]').forEach(function (btn) {
         btn.setAttribute('aria-expanded', 'false');
+
+      });
+    },
+
+    _bindTableViewEvents: function () {
+      var self = this;
+
+      /* Column header sort */
+      $qa('[data-rm-sort]').forEach(function (th) {
+        function onSortActivate(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var key = th.getAttribute('data-rm-sort');
+          if (TableView.setSort(key)) {
+            self._renderView();
+          }
+        }
+        th.addEventListener('click', onSortActivate);
+        th.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') onSortActivate(e);
+        });
+      });
+
+      /* Inline status change — stopPropagation so row click does not open drawer */
+      $qa('.rm-table-view .rm-status-hit').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var cardEl = btn.closest('[data-rm-filename]');
+          if (!cardEl) return;
+          var filename = cardEl.getAttribute('data-rm-filename');
+          var type = cardEl.getAttribute('data-rm-type');
+          var status = cardEl.getAttribute('data-rm-status') || '';
+          if (!filename || !type) return;
+          if (typeof StatusMenu !== 'undefined' && StatusMenu.open) {
+            StatusMenu.open(btn, filename, type, status);
+          }
+        });
+      });
+
+      /* Row click → detail drawer */
+      $qa('.rm-table-row').forEach(function (rowEl) {
+        rowEl.addEventListener('click', function (e) {
+          if (e.target.closest('.rm-status-hit')) return;
+          if (e.target.closest('[data-rm-action="more"]')) return;
+          var filename = rowEl.getAttribute('data-rm-filename');
+          if (filename && typeof DetailDrawer !== 'undefined' && DetailDrawer.open) {
+            DetailDrawer.open(filename);
+          }
+        });
+
       });
     },
 
