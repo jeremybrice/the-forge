@@ -8,10 +8,20 @@
 
   var ESC = ForgeUtils.escapeHTML;
   var VIEW_ID = 'view-roadmap';
+  var RH = typeof RoadmapHelpers !== 'undefined' ? RoadmapHelpers : {};
+  var OPTIMISTIC_TTL_MS = 15000;
 
   function $view() { return document.getElementById(VIEW_ID); }
   function $q(sel) { var v = $view(); return v ? v.querySelector(sel) : null; }
   function $qa(sel) { var v = $view(); return v ? v.querySelectorAll(sel) : []; }
+
+  /** data-rm-filename / type / status for event delegation (identity only). */
+  function cardIdentityAttrs(card) {
+    var fm = (card && card.frontmatter) || {};
+    return ' data-rm-filename="' + ESC(card.filename || '') + '"' +
+      ' data-rm-type="' + ESC(fm.type || '') + '"' +
+      ' data-rm-status="' + ESC(fm.status || '') + '"';
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      TimeUtils — Period / release mapping
@@ -48,7 +58,12 @@
     },
 
     releaseOverlapsPeriod: function (release, period) {
+      // Prefer pure helper so placement stays in lockstep with resolveDropToRelease
+      if (typeof RH.releaseOverlapsPeriod === 'function') {
+        return RH.releaseOverlapsPeriod(release, period);
+      }
       if (!release || !release.start_date || !release.end_date) return false;
+      if (!period || !period.start || !period.end) return false;
       return release.start_date <= period.end && release.end_date >= period.start;
     },
 
@@ -65,6 +80,73 @@
       var rel = this.getReleaseForCard(card, releases);
       if (!rel) return false;
       return this.releaseOverlapsPeriod(rel, period);
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     OptimisticGuard — pending writes vs auto-refresh (TTL 15s)
+     ═══════════════════════════════════════════════════════════════ */
+  var OptimisticGuard = {
+    _pending: new Map(),
+
+    mark: function (filename, entry) {
+      this._pending.set(filename, entry);
+    },
+
+    clear: function (filename) {
+      this._pending.delete(filename);
+    },
+
+    get: function (filename) {
+      return this._pending.has(filename) ? this._pending.get(filename) : null;
+    },
+
+    clearAll: function () {
+      this._pending.clear();
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     CardWriteService — portable card frontmatter writes
+     Uses ForgeFS.writeFile(cardsHandle, relPath, content) only.
+     ═══════════════════════════════════════════════════════════════ */
+  var CardWriteService = {
+    /**
+     * Mutate card frontmatter, serialize, write via portable FS path.
+     * Marks OptimisticGuard BEFORE await write so concurrent refresh cannot clobber.
+     * @param {string} filename
+     * @param {function(object): void} mutatorFn — receives live frontmatter
+     * @returns {Promise<object>} reparsed card
+     */
+    patchCardFrontmatter: async function (filename, mutatorFn) {
+      var card = store.get(filename);
+      if (!card || !cardsHandle) throw new Error('Card not writable: ' + filename);
+
+      var prevFm = JSON.parse(JSON.stringify(card.frontmatter));
+      try {
+        mutatorFn(card.frontmatter);
+        card.frontmatter.updated = ForgeUtils.todayISO();
+
+        var content = CardData.CardParser.serialize(card.frontmatter, card.body);
+        var relPath = RH.cardRelativePath
+          ? RH.cardRelativePath(card)
+          : (card.dirName + '/' + card.filename + '.md');
+
+        // mark BEFORE await write so concurrent refresh cannot win the race
+        OptimisticGuard.mark(filename, { expectedContent: content, writtenAt: Date.now() });
+
+        await ForgeFS.writeFile(cardsHandle, relPath, content);
+        var reparsed = CardData.CardParser.parse(filename, content, card.dirName);
+        // Keep existing handle map entry if any; not used for Roadmap writes
+        store.set(filename, reparsed, Date.now(), store.fileHandles.get(filename));
+        // Keep pending until a scan sees matching content (or TTL force-apply)
+        return reparsed;
+      } catch (e) {
+        // Restore on mutator/serialize/write failure (any error after mutation)
+        card.frontmatter = prevFm;
+        OptimisticGuard.clear(filename);
+        throw e;
+      }
     }
   };
 
@@ -138,7 +220,10 @@
       for (var pi = 0; pi < periods.length; pi++) {
         var period = periods[pi];
         var isCurrent = pi === currentIdx;
-        html += '<div class="rm-column' + (isCurrent ? ' rm-current-period' : '') + '">';
+        html += '<div class="rm-column' + (isCurrent ? ' rm-current-period' : '') + '"' +
+          ' data-rm-period-index="' + pi + '"' +
+          ' data-rm-period-start="' + ESC(period.start || '') + '"' +
+          ' data-rm-period-end="' + ESC(period.end || '') + '">';
         html += '<div class="rm-column-header"><span>' + ESC(period.label) + '</span>';
         if (isCurrent) html += '<span class="rm-current-badge">Current</span>';
         html += '</div>';
@@ -148,7 +233,7 @@
       }
 
       /* Unscheduled column */
-      html += '<div class="rm-column rm-unscheduled">';
+      html += '<div class="rm-column rm-unscheduled" data-rm-period-index="unscheduled">';
       html += '<div class="rm-column-header"><span>Unscheduled</span></div>';
       html += '<div class="rm-column-body">';
       html += this._renderUnscheduledCards(hierarchy, releases, buckets, showStories);
@@ -223,11 +308,12 @@
       var card = initNode.card;
       var fm = card.frontmatter;
       var borderColor = bucketColor || 'var(--type-initiative)';
-      var html = '<div class="rm-initiative-card" style="border-left-color:' + ESC(borderColor) + '">';
+      var html = '<div class="rm-initiative-card" style="border-left-color:' + ESC(borderColor) + '"' +
+        cardIdentityAttrs(card) + '>';
       html += '<div class="rm-card-title">' + ESC(fm.title || card.filename) + '</div>';
       html += '<div class="rm-card-meta">';
       html += '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(fm.status) + '"></span>';
-      html += '<span>' + ESC(fm.status || '') + '</span>';
+      html += '<span class="rm-status-label">' + ESC(fm.status || '') + '</span>';
       if (fm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(fm.client) + '</span>';
       if (fm.module) html += '<span class="rm-tag-pill rm-module">' + ESC(fm.module) + '</span>';
       html += '</div></div>';
@@ -236,21 +322,22 @@
       for (var ei = 0; ei < initNode.children.length; ei++) {
         var epicNode = initNode.children[ei];
         var efm = epicNode.card.frontmatter;
-        html += '<div class="rm-epic-card">';
+        html += '<div class="rm-epic-card"' + cardIdentityAttrs(epicNode.card) + '>';
         html += '<div class="rm-card-title">' + ESC(efm.title || epicNode.card.filename) + '</div>';
         html += '<div class="rm-card-meta">';
         html += '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(efm.status) + '"></span>';
-        html += '<span>' + ESC(efm.status || '') + '</span>';
+        html += '<span class="rm-status-label">' + ESC(efm.status || '') + '</span>';
         if (efm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(efm.client) + '</span>';
         if (efm.module) html += '<span class="rm-tag-pill rm-module">' + ESC(efm.module) + '</span>';
         html += '</div></div>';
 
-        /* Stories */
+        /* Stories (hierarchy stores story cards directly under epic children) */
         if (showStories) {
           for (var si = 0; si < epicNode.children.length; si++) {
-            var sfm = epicNode.children[si].frontmatter;
-            html += '<div class="rm-story-card">';
-            html += '<div class="rm-card-title">' + ESC(sfm.title || epicNode.children[si].filename) + '</div>';
+            var storyCard = epicNode.children[si];
+            var sfm = storyCard.frontmatter;
+            html += '<div class="rm-story-card"' + cardIdentityAttrs(storyCard) + '>';
+            html += '<div class="rm-card-title">' + ESC(sfm.title || storyCard.filename) + '</div>';
             html += '</div>';
           }
         }
@@ -354,9 +441,10 @@
       var card = initNode.card;
       var fm = card.frontmatter;
       var rel = TimeUtils.getReleaseForCard(card, releases);
+      var idAttrs = cardIdentityAttrs(card);
 
-      var html = '<div class="rm-bar-row">';
-      html += '<div class="rm-bar-row-label" title="' + ESC(fm.title || card.filename) + '">';
+      var html = '<div class="rm-bar-row"' + idAttrs + '>';
+      html += '<div class="rm-bar-row-label" title="' + ESC(fm.title || card.filename) + '"' + idAttrs + '>';
       html += '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(fm.status) + '"></span> ';
       html += ESC(fm.title || card.filename);
       html += '</div>';
@@ -373,7 +461,7 @@
         var widthPct = Math.min(100 - leftPct, (barEnd - barStart) / totalMs * 100);
         if (widthPct < 2) widthPct = 2;
 
-        html += '<div class="rm-bar rm-initiative-bar" style="left:' + leftPct.toFixed(1) + '%;width:' + widthPct.toFixed(1) + '%" ';
+        html += '<div class="rm-bar rm-initiative-bar" style="left:' + leftPct.toFixed(1) + '%;width:' + widthPct.toFixed(1) + '%"' + idAttrs + ' ';
         html += 'data-rm-tooltip-title="' + ESC(fm.title || card.filename) + '" ';
         html += 'data-rm-tooltip-meta="' + ESC((fm.release || '') + ' | ' + (rel.start_date || '') + ' to ' + (rel.end_date || '')) + '">';
         html += ESC(fm.title || card.filename);
@@ -654,6 +742,7 @@
     destroy: function () {
       this._stopAutoRefresh();
       this._unbindKeyboard();
+      OptimisticGuard.clearAll();
       store.clear();
       cardsHandle = null;
       rmConfig = null;
@@ -1167,10 +1256,31 @@
 
         var files = await CardData.scanCardsDir(cardsHandle);
         var changes = { added: [], modified: [], deleted: [] };
+        var now = Date.now();
+        var guardFn = typeof RH.guardDecision === 'function' ? RH.guardDecision : null;
 
         for (var entry of files) {
           var filename = entry[0];
           var fileData = entry[1];
+          var pending = OptimisticGuard.get(filename);
+          var decision = guardFn
+            ? guardFn(pending, fileData.content, now, OPTIMISTIC_TTL_MS)
+            : 'apply';
+
+          if (decision === 'skip') {
+            // Keep in-memory optimistic card; do not store.set from disk
+            continue;
+          }
+
+          if (decision === 'apply-and-clear' || decision === 'force-apply-ttl') {
+            OptimisticGuard.clear(filename);
+            if (decision === 'force-apply-ttl') {
+              console.warn(
+                'OptimisticGuard TTL expired for "' + filename + '"; applying disk content'
+              );
+            }
+          }
+
           var oldTs = store.timestamps.get(filename);
           if (oldTs === undefined) {
             changes.added.push(filename);
@@ -1185,6 +1295,7 @@
           if (!files.has(fn)) {
             changes.deleted.push(fn);
             store.delete(fn);
+            OptimisticGuard.clear(fn);
           }
         }
 
