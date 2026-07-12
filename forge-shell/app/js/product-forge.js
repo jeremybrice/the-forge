@@ -1313,7 +1313,7 @@
      ═══════════════════════════════════════════════════════════════ */
   var ctrl = {
 
-    async init(rootHandle) {
+    async init(rootHandle, options) {
       this.destroy();
       var view = $view();
       if (!view) return;
@@ -1343,6 +1343,14 @@
       this._renderLayout(view, rootHandle);
       pinStore.load();
       await this._loadCards();
+      /* Deep-link from Roadmap (or others): select only after cards load.
+         Single apply point — no applyPendingOptions dual path. */
+      if (options && options.selectCard) {
+        var revealed = this._revealCard(options.selectCard);
+        if (!revealed && ForgeUtils.Toast) {
+          ForgeUtils.Toast.show('Card not found in Product Forge', 'info', 3500);
+        }
+      }
       this._startAutoRefresh();
       this._bindKeyboard();
     },
@@ -2169,10 +2177,11 @@
        expand all ancestors + the section containing it (and the
        Recents section), select it, scroll into view, and apply a
        brief flash class to the row that auto-removes after 1.5s.
-       Idempotent and safe to call multiple times. */
+       Idempotent and safe to call multiple times.
+       @returns {boolean} true if card found and revealed */
     _revealCard: function (filename) {
       var card = store.get(filename);
-      if (!card) return;
+      if (!card) return false;
 
       /* 1+2. Expand ancestors and the owning section (shared with
          the user-click path). */
@@ -2199,6 +2208,7 @@
         treeView.scrollToFilename(filename);
         treeView.flashFilename(filename);
       });
+      return true;
     },
 
     /* _maybeAutoReveal — decides whether a batch of newly-added

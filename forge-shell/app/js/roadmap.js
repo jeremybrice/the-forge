@@ -436,6 +436,10 @@
         if (ForgeUtils.Toast) {
           ForgeUtils.Toast.show('Status updated to ' + status, 'success', 2500);
         }
+        /* Keep drawer status row in sync when it is open for this card */
+        if (drawerOpen && selectedFilename === filename) {
+          DetailDrawer.render();
+        }
       } catch (e) {
         applyStatusToDom(filename, prev);
         console.warn('Roadmap status write failed:', e);
@@ -1043,6 +1047,285 @@
   var assignInFlight = new Set();
   /** Focus restore target when multi-release picker closes. */
   var pickerFocusRestore = null;
+  var selectedFilename = null;  /* drawer selection */
+  var drawerOpen = false;
+
+  /* ═══════════════════════════════════════════════════════════════
+     DetailDrawer — summary slide-over (PR4); not a full editor
+     ═══════════════════════════════════════════════════════════════ */
+  var DetailDrawer = {
+    /** Sync ARIA exposure with open state (avoid aria-hidden while focusable). */
+    _setAriaOpen: function (drawer, isOpen) {
+      if (!drawer) return;
+      drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+      if (isOpen) {
+        drawer.setAttribute('role', 'dialog');
+        drawer.setAttribute('aria-label', 'Card detail');
+      } else {
+        drawer.removeAttribute('role');
+        drawer.removeAttribute('aria-label');
+      }
+    },
+
+    open: function (filename) {
+      if (!filename || !store.get(filename)) return;
+      selectedFilename = filename;
+      drawerOpen = true;
+
+      /* Mutual exclusion: close filter when opening drawer */
+      if (FilterPanel.open) {
+        FilterPanel.open = false;
+        var panel = $q('[data-rm-filter-panel]');
+        if (panel) panel.classList.remove('rm-open');
+      }
+
+      this.render();
+      this.applySelectionChrome();
+      var drawer = $q('[data-rm-detail-drawer]');
+      if (drawer) {
+        drawer.classList.add('rm-open');
+        this._setAriaOpen(drawer, true);
+      }
+    },
+
+    close: function () {
+      drawerOpen = false;
+      selectedFilename = null;
+      var drawer = $q('[data-rm-detail-drawer]');
+      if (drawer) {
+        drawer.classList.remove('rm-open');
+        drawer.innerHTML = '';
+        this._setAriaOpen(drawer, false);
+      }
+      this.clearSelectionChrome();
+    },
+
+    clearSelectionChrome: function () {
+      var view = $view();
+      if (!view) return;
+      view.querySelectorAll('.rm-selected').forEach(function (el) {
+        el.classList.remove('rm-selected');
+      });
+    },
+
+    /** Re-apply .rm-selected after every _renderView (DOM is replaced). */
+    applySelectionChrome: function () {
+      this.clearSelectionChrome();
+      if (!drawerOpen || !selectedFilename) return;
+      if (!store.get(selectedFilename)) {
+        this.close();
+        return;
+      }
+      var view = $view();
+      if (!view) return;
+      view.querySelectorAll('[data-rm-filename]').forEach(function (el) {
+        if (el.getAttribute('data-rm-filename') === selectedFilename) {
+          el.classList.add('rm-selected');
+        }
+      });
+    },
+
+    /** Description excerpt: fm.description or first ~280 chars of body. */
+    _descriptionExcerpt: function (card) {
+      var fm = card.frontmatter || {};
+      if (fm.description && String(fm.description).trim()) {
+        var d = String(fm.description).trim();
+        return d.length > 280 ? d.slice(0, 280) + '\u2026' : d;
+      }
+      var body = (card.body || '').replace(/\s+/g, ' ').trim();
+      if (!body) return '';
+      return body.length > 280 ? body.slice(0, 280) + '\u2026' : body;
+    },
+
+    _periodLabelsForRelease: function (release) {
+      if (!release || !release.start_date || !release.end_date) return [];
+      var periods = granularity === 'monthly'
+        ? TimeUtils.getMonths(currentYear)
+        : TimeUtils.getQuarters(currentYear);
+      var labels = [];
+      for (var i = 0; i < periods.length; i++) {
+        if (TimeUtils.releaseOverlapsPeriod(release, periods[i])) {
+          labels.push(periods[i].label);
+        }
+      }
+      return labels;
+    },
+
+    render: function () {
+      var drawer = $q('[data-rm-detail-drawer]');
+      if (!drawer) return;
+      if (!drawerOpen || !selectedFilename) {
+        drawer.innerHTML = '';
+        drawer.classList.remove('rm-open');
+        this._setAriaOpen(drawer, false);
+        return;
+      }
+
+      var card = store.get(selectedFilename);
+      if (!card) {
+        this.close();
+        return;
+      }
+
+      var fm = card.frontmatter || {};
+      var type = fm.type || '';
+      var typeColor = CardData.getTypeColor(type);
+      var releases = (rmConfig && rmConfig.releases) || [];
+      var rel = TimeUtils.getReleaseForCard(card, releases);
+      var periodLabels = this._periodLabelsForRelease(rel);
+      var excerpt = this._descriptionExcerpt(card);
+
+      /* Hierarchy */
+      var parentFn = fm.parent || null;
+      var parentCard = parentFn ? store.get(parentFn) : null;
+      var children = store.getChildren(selectedFilename) || [];
+      var childMax = 5;
+
+      var html = '';
+      html += '<div class="rm-drawer-header">';
+      html += '<div class="rm-drawer-header-main">';
+      html += '<span class="type-badge" style="background:' + typeColor + '">' + ESC(type || 'card') + '</span>';
+      html += '<h3 class="rm-drawer-title">' + ESC(fm.title || card.filename) + '</h3>';
+      html += '</div>';
+      html += '<button type="button" class="btn-icon rm-drawer-close-btn" data-rm-drawer-close title="Close" aria-label="Close detail drawer"><i class="fa-solid fa-xmark"></i></button>';
+      html += '</div>';
+
+      html += '<div class="rm-drawer-body">';
+
+      /* Status row — reuse StatusMenu hit when type supports it */
+      html += '<div class="rm-drawer-section rm-drawer-status-row">';
+      html += '<span class="rm-drawer-label">Status</span>';
+      html += '<div class="rm-drawer-status-control"' + cardIdentityAttrs(card) + '>';
+      html += renderStatusHit(fm.status);
+      html += '</div>';
+      html += '</div>';
+
+      /* Key meta */
+      html += '<div class="rm-drawer-section rm-drawer-meta">';
+      if (fm.product) {
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Product</span><span>' + ESC(fm.product) + '</span></div>';
+      }
+      if (fm.client) {
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Client</span><span>' + ESC(fm.client) + '</span></div>';
+      }
+      if (fm.module) {
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Module</span><span>' + ESC(fm.module) + '</span></div>';
+      }
+      if (fm.team) {
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Team</span><span>' + ESC(fm.team) + '</span></div>';
+      }
+      html += '</div>';
+
+      /* Schedule — from local rmConfig releases */
+      html += '<div class="rm-drawer-section">';
+      html += '<div class="rm-drawer-section-title">Schedule</div>';
+      if (fm.release || rel) {
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Release</span><span>' + ESC(fm.release || (rel && rel.name) || '') + '</span></div>';
+        if (rel && (rel.start_date || rel.end_date)) {
+          html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Dates</span><span>' +
+            ESC((rel.start_date || '?') + ' \u2013 ' + (rel.end_date || '?')) + '</span></div>';
+        }
+        if (periodLabels.length > 0) {
+          html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Periods</span><span>' +
+            ESC(periodLabels.join(', ')) + '</span></div>';
+        }
+      } else {
+        html += '<div class="rm-drawer-muted">Unscheduled</div>';
+      }
+      html += '</div>';
+
+      /* Hierarchy summary */
+      html += '<div class="rm-drawer-section">';
+      html += '<div class="rm-drawer-section-title">Hierarchy</div>';
+      if (parentCard || parentFn) {
+        var parentTitle = parentCard
+          ? (parentCard.frontmatter.title || parentCard.filename)
+          : parentFn;
+        html += '<div class="rm-drawer-meta-row"><span class="rm-drawer-label">Parent</span><span>' +
+          ESC(parentTitle) + '</span></div>';
+      } else {
+        html += '<div class="rm-drawer-muted">No parent</div>';
+      }
+      if (children.length > 0) {
+        html += '<div class="rm-drawer-children-label">' + children.length + ' child' +
+          (children.length === 1 ? '' : 'ren') + '</div>';
+        html += '<ul class="rm-drawer-children">';
+        var showN = Math.min(childMax, children.length);
+        for (var ci = 0; ci < showN; ci++) {
+          var ch = children[ci];
+          var cTitle = (ch.frontmatter && ch.frontmatter.title) || ch.filename;
+          var cType = (ch.frontmatter && ch.frontmatter.type) || '';
+          html += '<li><span class="rm-drawer-child-type">' + ESC(cType) + '</span> ' +
+            ESC(cTitle) + '</li>';
+        }
+        if (children.length > childMax) {
+          html += '<li class="rm-drawer-muted">' + (children.length - childMax) + ' more</li>';
+        }
+        html += '</ul>';
+      } else {
+        html += '<div class="rm-drawer-muted">No children</div>';
+      }
+      html += '</div>';
+
+      /* Description excerpt */
+      if (excerpt) {
+        html += '<div class="rm-drawer-section">';
+        html += '<div class="rm-drawer-section-title">Description</div>';
+        html += '<p class="rm-drawer-excerpt">' + ESC(excerpt) + '</p>';
+        html += '</div>';
+      }
+
+      html += '</div>'; /* body */
+
+      /* Actions */
+      html += '<div class="rm-drawer-footer">';
+      html += '<button type="button" class="primary rm-drawer-open-pfl" data-rm-open-pfl="' +
+        ESC(card.filename) + '">Open in Product Forge</button>';
+      html += '</div>';
+
+      drawer.innerHTML = html;
+      drawer.classList.add('rm-open');
+      this._setAriaOpen(drawer, true);
+      this._bindEvents(drawer);
+    },
+
+    _bindEvents: function (drawer) {
+      var self = this;
+
+      var closeBtn = drawer.querySelector('[data-rm-drawer-close]');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () { self.close(); });
+      }
+
+      /* Status hit in drawer */
+      var statusBtn = drawer.querySelector('.rm-status-hit');
+      if (statusBtn) {
+        statusBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var wrap = statusBtn.closest('[data-rm-filename]');
+          if (!wrap) return;
+          var filename = wrap.getAttribute('data-rm-filename');
+          var type = wrap.getAttribute('data-rm-type');
+          var status = wrap.getAttribute('data-rm-status') || '';
+          if (!filename || !type) return;
+          StatusMenu.open(statusBtn, filename, type, status);
+        });
+      }
+
+      var openPfl = drawer.querySelector('[data-rm-open-pfl]');
+      if (openPfl) {
+        openPfl.addEventListener('click', function () {
+          var filename = openPfl.getAttribute('data-rm-open-pfl');
+          if (!filename) return;
+          var ok = Shell.selectPlugin('product-forge-local', { selectCard: filename });
+          if (!ok) {
+            ForgeUtils.Toast.show('Product Forge is hidden or unavailable', 'error');
+          }
+        });
+      }
+    }
+  };
 
   /* ═══════════════════════════════════════════════════════════════
      Controller
@@ -1079,7 +1362,7 @@
       this._stopAutoRefresh();
       this._unbindKeyboard();
       StatusMenu.close();
-      this._closeReleasePicker();
+      DetailDrawer.close();
       OptimisticGuard.clearAll();
       assignInFlight.clear();
       var hadPending = !!prefsSaveTimer;
@@ -1154,6 +1437,8 @@
       this._updateYearLabel();
       var storiesBtn = $q('[data-rm-stories-toggle]');
       if (storiesBtn) storiesBtn.classList.toggle('rm-active', !!(rmConfig && rmConfig.show_stories));
+      selectedFilename = null;
+      drawerOpen = false;
     },
 
     refresh: async function () {
@@ -1228,11 +1513,12 @@
             '<button class="btn-icon" data-rm-refresh title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
           '</div>' +
 
-          /* Content area */
+          /* Content area — filter + detail drawer are siblings of view containers */
           '<div class="rm-content">' +
             '<div class="rm-card-view" data-rm-card-container></div>' +
             '<div class="rm-timeline-view" data-rm-timeline-container style="display:none"></div>' +
             '<div class="rm-filter-panel" data-rm-filter-panel></div>' +
+            '<div class="rm-detail-drawer" data-rm-detail-drawer aria-hidden="true"></div>' +
           '</div>' +
 
         '</div>' +
@@ -1305,14 +1591,17 @@
         });
       }
 
-      /* Filter toggle */
+      /* Filter toggle — mutual exclusion with detail drawer */
       var filterBtn = $q('[data-rm-filter-toggle]');
       if (filterBtn) {
         filterBtn.addEventListener('click', function () {
           FilterPanel.open = !FilterPanel.open;
+          if (FilterPanel.open) {
+            DetailDrawer.close();
+            self._renderFilterPanel();
+          }
           var panel = $q('[data-rm-filter-panel]');
           if (panel) panel.classList.toggle('rm-open', FilterPanel.open);
-          if (FilterPanel.open) self._renderFilterPanel();
         });
       }
 
@@ -1516,6 +1805,12 @@
         this._bindCardViewEvents();
       }
 
+      /* Selection chrome + drawer body survive view container innerHTML wipe */
+      DetailDrawer.applySelectionChrome();
+      if (drawerOpen && selectedFilename) {
+        DetailDrawer.render();
+      }
+
       this._updateRefreshIndicator();
       this._updateFilterBadge();
     },
@@ -1533,7 +1828,7 @@
         });
       });
 
-      /* Inline status change (PR3) — stopPropagation so future drawer open is not triggered */
+      /* Inline status change (PR3) — stopPropagation so drawer open is not triggered */
       $qa('.rm-status-hit').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -1804,6 +2099,15 @@
       if (restore && typeof restore.focus === 'function') {
         try { restore.focus(); } catch (err) { /* ignore */ }
       }
+      /* Card body click → open detail drawer (not status / more) */
+      $qa('.rm-initiative-card, .rm-epic-card, .rm-story-card').forEach(function (cardEl) {
+        cardEl.addEventListener('click', function (e) {
+          if (e.target.closest('.rm-status-hit')) return;
+          if (e.target.closest('[data-rm-action="more"]')) return;
+          var filename = cardEl.getAttribute('data-rm-filename');
+          if (filename) DetailDrawer.open(filename);
+        });
+      });
     },
 
     _bindTimelineEvents: function () {
@@ -1840,6 +2144,20 @@
         });
         bar.addEventListener('mouseleave', function () {
           if (tooltip) { tooltip.remove(); tooltip = null; }
+        });
+        /* Timeline bar click → open drawer */
+        bar.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var filename = bar.getAttribute('data-rm-filename');
+          if (filename) DetailDrawer.open(filename);
+        });
+      });
+
+      /* Timeline label click → open drawer */
+      $qa('.rm-bar-row-label').forEach(function (label) {
+        label.addEventListener('click', function () {
+          var filename = label.getAttribute('data-rm-filename');
+          if (filename) DetailDrawer.open(filename);
         });
       });
     },
@@ -2050,6 +2368,7 @@
       this._unbindKeyboard();
       keydownHandler = function (e) {
         if (e.key === 'Escape') {
+          /* Escape hierarchy: menu → modal → drawer → filter */
           if (StatusMenu.isOpen()) {
             StatusMenu.close();
             return;
@@ -2064,6 +2383,10 @@
             ConfigModal.close();
             /* Same as Cancel: ensure deferred toolbar prefs still flush */
             ctrl.schedulePrefsSave();
+            return;
+          }
+          if (drawerOpen) {
+            DetailDrawer.close();
             return;
           }
           if (FilterPanel.open) {
