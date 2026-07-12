@@ -204,6 +204,9 @@
     _type: null,
     _currentStatus: null,
     _docCloser: null,
+    _scrollCloser: null,
+    _resizeCloser: null,
+    _keyHandler: null,
     _busy: false,
 
     isOpen: function () {
@@ -223,6 +226,18 @@
         document.removeEventListener('pointerdown', this._docCloser, true);
         this._docCloser = null;
       }
+      if (this._scrollCloser) {
+        document.removeEventListener('scroll', this._scrollCloser, true);
+        this._scrollCloser = null;
+      }
+      if (this._resizeCloser) {
+        window.removeEventListener('resize', this._resizeCloser);
+        this._resizeCloser = null;
+      }
+      if (this._keyHandler) {
+        document.removeEventListener('keydown', this._keyHandler, true);
+        this._keyHandler = null;
+      }
       this._filename = null;
       this._type = null;
       this._currentStatus = null;
@@ -230,6 +245,15 @@
 
     open: function (anchorBtn, filename, type, currentStatus) {
       var self = this;
+
+      /* Refuse open while a status write is in flight */
+      if (this._busy) {
+        if (ForgeUtils.Toast) {
+          ForgeUtils.Toast.show('Status update in progress', 'info', 2000);
+        }
+        return;
+      }
+
       if (this._el && this._anchor === anchorBtn) {
         this.close();
         return;
@@ -248,12 +272,13 @@
       menu.className = 'rm-status-menu';
       menu.setAttribute('role', 'menu');
       menu.setAttribute('aria-label', 'Change status');
+      menu.setAttribute('tabindex', '-1');
 
       var html = '';
       /* Foreign status: disabled menuitem so user sees what will be overwritten */
       if (this._currentStatus && !inList) {
         html += '<button type="button" role="menuitemradio" class="rm-status-menu-item rm-status-menu-foreign" ' +
-          'disabled aria-checked="true" aria-disabled="true">' +
+          'disabled aria-checked="true" aria-disabled="true" tabindex="-1">' +
           ESC(this._currentStatus) + ' (current)</button>';
       }
 
@@ -263,7 +288,7 @@
         html += '<button type="button" role="menuitemradio" class="rm-status-menu-item' +
           (isCurrent ? ' rm-status-menu-current' : '') + '" ' +
           'data-rm-status-value="' + ESC(opt) + '" ' +
-          'aria-checked="' + (isCurrent ? 'true' : 'false') + '">' +
+          'aria-checked="' + (isCurrent ? 'true' : 'false') + '" tabindex="-1">' +
           '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(opt) + '"></span>' +
           '<span>' + ESC(opt) + '</span>' +
           (isCurrent ? '<span class="rm-status-menu-check" aria-hidden="true">✓</span>' : '') +
@@ -282,15 +307,94 @@
       this._el = menu;
       this._position(anchorBtn, menu);
 
+      /* Focus checked Shell option, else first enabled item */
+      var focusTarget = menu.querySelector('.rm-status-menu-item.rm-status-menu-current') ||
+        menu.querySelector('[data-rm-status-value]');
+      if (focusTarget) {
+        focusTarget.setAttribute('tabindex', '0');
+        focusTarget.focus();
+      } else {
+        menu.focus();
+      }
+
       this._docCloser = function (e) {
         if (self._el && self._el.contains(e.target)) return;
         if (self._anchor && self._anchor.contains(e.target)) return;
         self.close();
       };
+      /* Close when board scrolls or viewport resizes (fixed menu would detach) */
+      this._scrollCloser = function () { self.close(); };
+      this._resizeCloser = function () { self.close(); };
+      this._keyHandler = function (e) { self._onKeydown(e); };
+
       /* Defer so the opening click does not immediately close */
       setTimeout(function () {
-        if (self._el) document.addEventListener('pointerdown', self._docCloser, true);
+        if (!self._el) return;
+        document.addEventListener('pointerdown', self._docCloser, true);
+        document.addEventListener('scroll', self._scrollCloser, true);
+        window.addEventListener('resize', self._resizeCloser);
+        document.addEventListener('keydown', self._keyHandler, true);
       }, 0);
+    },
+
+    _enabledItems: function () {
+      if (!this._el) return [];
+      return Array.prototype.slice.call(this._el.querySelectorAll('[data-rm-status-value]:not([disabled])'));
+    },
+
+    _onKeydown: function (e) {
+      if (!this._el) return;
+      var key = e.key;
+
+      if (key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        var anchor = this._anchor;
+        this.close();
+        if (anchor) anchor.focus();
+        return;
+      }
+
+      /* Only handle nav keys when focus is inside the menu */
+      if (!this._el.contains(document.activeElement)) return;
+
+      var items = this._enabledItems();
+      if (!items.length) return;
+
+      var idx = items.indexOf(document.activeElement);
+      if (idx < 0) idx = 0;
+
+      if (key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._focusItem(items, (idx + 1) % items.length);
+      } else if (key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._focusItem(items, (idx - 1 + items.length) % items.length);
+      } else if (key === 'Home') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._focusItem(items, 0);
+      } else if (key === 'End') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._focusItem(items, items.length - 1);
+      } else if (key === 'Enter' || key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        var active = document.activeElement;
+        if (active && active.getAttribute('data-rm-status-value')) {
+          this._choose(active.getAttribute('data-rm-status-value'));
+        }
+      }
+    },
+
+    _focusItem: function (items, index) {
+      for (var i = 0; i < items.length; i++) {
+        items[i].setAttribute('tabindex', i === index ? '0' : '-1');
+      }
+      items[index].focus();
     },
 
     _position: function (anchor, menu) {
@@ -306,7 +410,13 @@
     },
 
     _choose: async function (status) {
-      if (this._busy) return;
+      if (this._busy) {
+        this.close();
+        if (ForgeUtils.Toast) {
+          ForgeUtils.Toast.show('Status update in progress', 'info', 2000);
+        }
+        return;
+      }
       var filename = this._filename;
       var prev = this._currentStatus;
       if (!filename) return;
