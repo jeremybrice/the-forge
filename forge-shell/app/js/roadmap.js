@@ -23,6 +23,31 @@
       ' data-rm-status="' + ESC(fm.status || '') + '"';
   }
 
+  /** Interactive status control (PR3). Display value as-is (incl. foreign). */
+  function renderStatusHit(status) {
+    return '<button type="button" class="rm-status-hit" data-rm-action="status" ' +
+      'aria-label="Change status" aria-haspopup="menu" aria-expanded="false">' +
+      '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(status) + '"></span>' +
+      '<span class="rm-status-label">' + ESC(status || '') + '</span>' +
+      '</button>';
+  }
+
+  /** Apply status chrome to all card nodes matching filename (optimistic / revert). */
+  function applyStatusToDom(filename, status) {
+    var view = $view();
+    if (!view) return;
+    view.querySelectorAll('[data-rm-filename]').forEach(function (el) {
+      if (el.getAttribute('data-rm-filename') !== filename) return;
+      el.setAttribute('data-rm-status', status || '');
+      var hit = el.querySelector('.rm-status-hit');
+      if (!hit) return;
+      var dot = hit.querySelector('.rm-status-dot');
+      var label = hit.querySelector('.rm-status-label');
+      if (dot) dot.style.background = CardData.getStatusColor(status);
+      if (label) label.textContent = status || '';
+    });
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      TimeUtils — Period / release mapping
      ═══════════════════════════════════════════════════════════════ */
@@ -146,6 +171,169 @@
         card.frontmatter = prevFm;
         OptimisticGuard.clear(filename);
         throw e;
+      }
+    },
+
+    /**
+     * Set card status if value is in CardData.STATUS_OPTIONS[type].
+     * @param {string} filename
+     * @param {string} status
+     * @returns {Promise<object>} reparsed card
+     */
+    setCardStatus: async function (filename, status) {
+      var card = store.get(filename);
+      if (!card) throw new Error('Card not found: ' + filename);
+      var type = card.frontmatter.type;
+      var options = (CardData.STATUS_OPTIONS && CardData.STATUS_OPTIONS[type]) || [];
+      if (options.indexOf(status) === -1) {
+        throw new Error('Invalid status "' + status + '" for type ' + type);
+      }
+      return this.patchCardFrontmatter(filename, function (fm) {
+        fm.status = status;
+      });
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     StatusMenu — anchored type-aware status popover (PR3)
+     ═══════════════════════════════════════════════════════════════ */
+  var StatusMenu = {
+    _el: null,
+    _anchor: null,
+    _filename: null,
+    _type: null,
+    _currentStatus: null,
+    _docCloser: null,
+    _busy: false,
+
+    isOpen: function () {
+      return !!this._el;
+    },
+
+    close: function () {
+      if (this._el) {
+        this._el.remove();
+        this._el = null;
+      }
+      if (this._anchor) {
+        this._anchor.setAttribute('aria-expanded', 'false');
+        this._anchor = null;
+      }
+      if (this._docCloser) {
+        document.removeEventListener('pointerdown', this._docCloser, true);
+        this._docCloser = null;
+      }
+      this._filename = null;
+      this._type = null;
+      this._currentStatus = null;
+    },
+
+    open: function (anchorBtn, filename, type, currentStatus) {
+      var self = this;
+      if (this._el && this._anchor === anchorBtn) {
+        this.close();
+        return;
+      }
+      this.close();
+
+      this._anchor = anchorBtn;
+      this._filename = filename;
+      this._type = type;
+      this._currentStatus = currentStatus || '';
+      anchorBtn.setAttribute('aria-expanded', 'true');
+
+      var options = (CardData.STATUS_OPTIONS && CardData.STATUS_OPTIONS[type]) || [];
+      var inList = options.indexOf(this._currentStatus) !== -1;
+      var menu = document.createElement('div');
+      menu.className = 'rm-status-menu';
+      menu.setAttribute('role', 'menu');
+      menu.setAttribute('aria-label', 'Change status');
+
+      var html = '';
+      /* Foreign status: disabled menuitem so user sees what will be overwritten */
+      if (this._currentStatus && !inList) {
+        html += '<button type="button" role="menuitemradio" class="rm-status-menu-item rm-status-menu-foreign" ' +
+          'disabled aria-checked="true" aria-disabled="true">' +
+          ESC(this._currentStatus) + ' (current)</button>';
+      }
+
+      for (var i = 0; i < options.length; i++) {
+        var opt = options[i];
+        var isCurrent = opt === this._currentStatus;
+        html += '<button type="button" role="menuitemradio" class="rm-status-menu-item' +
+          (isCurrent ? ' rm-status-menu-current' : '') + '" ' +
+          'data-rm-status-value="' + ESC(opt) + '" ' +
+          'aria-checked="' + (isCurrent ? 'true' : 'false') + '">' +
+          '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(opt) + '"></span>' +
+          '<span>' + ESC(opt) + '</span>' +
+          (isCurrent ? '<span class="rm-status-menu-check" aria-hidden="true">✓</span>' : '') +
+          '</button>';
+      }
+      menu.innerHTML = html;
+
+      menu.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var item = e.target.closest('[data-rm-status-value]');
+        if (!item || item.disabled) return;
+        self._choose(item.getAttribute('data-rm-status-value'));
+      });
+
+      document.body.appendChild(menu);
+      this._el = menu;
+      this._position(anchorBtn, menu);
+
+      this._docCloser = function (e) {
+        if (self._el && self._el.contains(e.target)) return;
+        if (self._anchor && self._anchor.contains(e.target)) return;
+        self.close();
+      };
+      /* Defer so the opening click does not immediately close */
+      setTimeout(function () {
+        if (self._el) document.addEventListener('pointerdown', self._docCloser, true);
+      }, 0);
+    },
+
+    _position: function (anchor, menu) {
+      var rect = anchor.getBoundingClientRect();
+      var menuW = menu.offsetWidth || 160;
+      var menuH = menu.offsetHeight || 120;
+      var left = rect.left;
+      var top = rect.bottom + 4;
+      if (left + menuW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - menuW - 8);
+      if (top + menuH > window.innerHeight - 8) top = Math.max(8, rect.top - menuH - 4);
+      menu.style.left = Math.round(left) + 'px';
+      menu.style.top = Math.round(top) + 'px';
+    },
+
+    _choose: async function (status) {
+      if (this._busy) return;
+      var filename = this._filename;
+      var prev = this._currentStatus;
+      if (!filename) return;
+
+      /* Same value: close without write */
+      if (status === prev) {
+        this.close();
+        return;
+      }
+
+      this.close();
+      this._busy = true;
+      applyStatusToDom(filename, status);
+
+      try {
+        await CardWriteService.setCardStatus(filename, status);
+        if (ForgeUtils.Toast) {
+          ForgeUtils.Toast.show('Status updated to ' + status, 'success', 2500);
+        }
+      } catch (e) {
+        applyStatusToDom(filename, prev);
+        console.warn('Roadmap status write failed:', e);
+        if (ForgeUtils.Toast) {
+          ForgeUtils.Toast.show('Failed to update status: ' + (e.message || e), 'error');
+        }
+      } finally {
+        this._busy = false;
       }
     }
   };
@@ -312,8 +500,7 @@
         cardIdentityAttrs(card) + '>';
       html += '<div class="rm-card-title">' + ESC(fm.title || card.filename) + '</div>';
       html += '<div class="rm-card-meta">';
-      html += '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(fm.status) + '"></span>';
-      html += '<span class="rm-status-label">' + ESC(fm.status || '') + '</span>';
+      html += renderStatusHit(fm.status);
       if (fm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(fm.client) + '</span>';
       if (fm.module) html += '<span class="rm-tag-pill rm-module">' + ESC(fm.module) + '</span>';
       html += '</div></div>';
@@ -325,8 +512,7 @@
         html += '<div class="rm-epic-card"' + cardIdentityAttrs(epicNode.card) + '>';
         html += '<div class="rm-card-title">' + ESC(efm.title || epicNode.card.filename) + '</div>';
         html += '<div class="rm-card-meta">';
-        html += '<span class="rm-status-dot" style="background:' + CardData.getStatusColor(efm.status) + '"></span>';
-        html += '<span class="rm-status-label">' + ESC(efm.status || '') + '</span>';
+        html += renderStatusHit(efm.status);
         if (efm.client) html += '<span class="rm-tag-pill rm-client">' + ESC(efm.client) + '</span>';
         if (efm.module) html += '<span class="rm-tag-pill rm-module">' + ESC(efm.module) + '</span>';
         html += '</div></div>';
@@ -338,7 +524,9 @@
             var sfm = storyCard.frontmatter;
             html += '<div class="rm-story-card"' + cardIdentityAttrs(storyCard) + '>';
             html += '<div class="rm-card-title">' + ESC(sfm.title || storyCard.filename) + '</div>';
-            html += '</div>';
+            html += '<div class="rm-card-meta">';
+            html += renderStatusHit(sfm.status);
+            html += '</div></div>';
           }
         }
       }
@@ -774,6 +962,7 @@
     destroy: function () {
       this._stopAutoRefresh();
       this._unbindKeyboard();
+      StatusMenu.close();
       OptimisticGuard.clearAll();
       var hadPending = !!prefsSaveTimer;
       if (prefsSaveTimer) { clearTimeout(prefsSaveTimer); prefsSaveTimer = null; }
@@ -1184,6 +1373,8 @@
     },
 
     _renderView: function () {
+      StatusMenu.close();
+
       var periods = granularity === 'monthly'
         ? TimeUtils.getMonths(currentYear)
         : TimeUtils.getQuarters(currentYear);
@@ -1219,6 +1410,21 @@
           var chevron = el.querySelector('.rm-chevron');
           if (body) body.classList.toggle('rm-collapsed');
           if (chevron) chevron.classList.toggle('rm-collapsed');
+        });
+      });
+
+      /* Inline status change (PR3) — stopPropagation so future drawer open is not triggered */
+      $qa('.rm-status-hit').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var cardEl = btn.closest('[data-rm-filename]');
+          if (!cardEl) return;
+          var filename = cardEl.getAttribute('data-rm-filename');
+          var type = cardEl.getAttribute('data-rm-type');
+          var status = cardEl.getAttribute('data-rm-status') || '';
+          if (!filename || !type) return;
+          StatusMenu.open(btn, filename, type, status);
         });
       });
     },
@@ -1466,6 +1672,10 @@
       this._unbindKeyboard();
       keydownHandler = function (e) {
         if (e.key === 'Escape') {
+          if (StatusMenu.isOpen()) {
+            StatusMenu.close();
+            return;
+          }
           var overlay = $q('.rm-modal-overlay');
           if (overlay && overlay.classList.contains('rm-visible')) {
             ConfigModal.close();

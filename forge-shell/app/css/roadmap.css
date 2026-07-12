@@ -264,6 +264,95 @@
   flex-shrink: 0;
 }
 
+/* ─── Inline status hit target (PR3) ─── */
+.rm-status-hit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 1px 4px 1px 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  max-width: 100%;
+}
+.rm-status-hit:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.rm-status-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.rm-status-hit .rm-status-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Status menu popover (PR3) ─── */
+.rm-status-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 160px;
+  max-width: 240px;
+  padding: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.rm-status-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.rm-status-menu-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.rm-status-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.rm-status-menu-item.rm-status-menu-current {
+  font-weight: 600;
+}
+.rm-status-menu-item.rm-status-menu-foreign,
+.rm-status-menu-item:disabled {
+  opacity: 0.65;
+  cursor: default;
+  font-style: italic;
+}
+.rm-status-menu-check {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.rm-story-card .rm-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ─── Tag pills ─── */
 .rm-tag-pill {
   display: inline-block;
