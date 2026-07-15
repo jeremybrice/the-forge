@@ -52,6 +52,7 @@
       } else {
         this._renderEmptyState();
       }
+      this._renderDetail();
     },
 
     destroy() {
@@ -253,11 +254,60 @@
           ctrl._renderDetail();
         });
       });
+    },
+
+    _selectedDoc() {
+      var init = state.initiatives.filter(function (i) { return i.key === state.selectedKey; })[0];
+      if (!init) return null;
+      if (state.selectedType === 'spec') return init.spec;
+      if (state.selectedType === 'plan') return init.plan;
+      if (state.selectedType === 'handoff') return init.handoffs[0];
+      return null;
+    },
+
+    _renderDetail() {
+      var el = $q('[data-dp-detail]');
+      if (!el) return;
+      var doc = this._selectedDoc();
+      if (!doc) {
+        el.innerHTML = '<div class="dp-detail-empty"><i class="fa-solid fa-diagram-project" style="font-size:32px;"></i>' +
+          '<span>Select a spec or plan to read.</span></div>';
+        return;
+      }
+      var init = state.initiatives.filter(function (i) { return i.key === state.selectedKey; })[0];
+      // sibling: spec<->plan within the same initiative
+      var siblingType = null;
+      if (init) {
+        if (doc.type === 'spec' && init.plan) siblingType = 'plan';
+        else if (doc.type === 'plan' && init.spec) siblingType = 'spec';
+      }
+      var progStr = '';
+      if (doc.type === 'plan' && doc.progress && doc.progress.percent != null) {
+        progStr = '<span>· ' + doc.progress.done + '/' + doc.progress.total + ' steps (' + doc.progress.percent + '%)</span>';
+      }
+      var jumpBtn = siblingType
+        ? '<button class="btn-icon" data-dp-jump="' + siblingType + '" title="Jump to ' + siblingType + '"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>'
+        : '';
+      el.innerHTML =
+        '<div class="dp-detail-header">' +
+          '<h2 class="dp-title">' + ESC(doc.title || doc.slug) + '</h2>' +
+          '<div class="dp-meta">' +
+            '<span class="status-pill" style="background:color-mix(in srgb,' + this._statusColor(doc.statusBucket) + ' 15%, transparent);color:' + this._statusColor(doc.statusBucket) + ';">' + ESC(doc.statusBucket) + '</span>' +
+            '<span>' + ESC(doc.date || '') + '</span>' +
+            (doc.topic ? '<span>· ' + ESC(doc.topic) + '</span>' : '') +
+            progStr +
+          '</div>' +
+          '<div style="margin-left:auto;">' + jumpBtn + '</div>' +
+        '</div>' +
+        '<div class="dp-detail-body rendered-body">' + ForgeUtils.MD.render(doc.body || '') + '</div>';
+      var jump = $q('[data-dp-jump]');
+      if (jump) jump.addEventListener('click', function () {
+        state.selectedType = jump.getAttribute('data-dp-jump');
+        ctrl._renderTree();
+        ctrl._renderDetail();
+      });
     }
   };
-
-  // _renderDetail is added in a later task.
-  ctrl._renderDetail = function () {};
 
   window.DesignPlansView = ctrl;
   Shell.registerController('design-plans', window.DesignPlansView);
