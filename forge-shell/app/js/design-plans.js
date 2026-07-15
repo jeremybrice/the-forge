@@ -34,6 +34,9 @@
       var view = $view();
       if (!view) return;
       state.docsRoot = readDocsRoot();
+      if (!state.docsRoot && !ForgeFS.usesPathStrings()) {
+        try { state.docsRoot = await ForgeUtils.DB.get('dp-docs-root'); } catch (e) { /* ignore */ }
+      }
       this._renderLayout(view);
       if (window.Sidebar) {
         window.Sidebar.init({
@@ -140,11 +143,37 @@
           ForgeUtils.Toast.show('Could not set docs root: ' + (e.message || e), 'error', 5000);
         }
       }
+    },
+
+    async _loadDocs() {
+      var entries = [];
+      try {
+        entries = await ForgeFS.listMarkdownFiles(state.docsRoot, DOCS_SUBDIR);
+      } catch (e) { entries = []; }
+
+      var docs = [];
+      var skipped = 0;
+      for (var i = 0; i < entries.length; i++) {
+        var ent = entries[i];
+        if (!/\.md$/i.test(ent.name)) continue;
+        var rel = DOCS_SUBDIR + '/' + ent.path;
+        var raw;
+        try { raw = await ForgeFS.readFile(state.docsRoot, rel); }
+        catch (err) { skipped++; continue; }
+        try { docs.push(H.parseDoc(ent.path, raw, H.DEFAULT_CLUSTERS)); }
+        catch (perr) { skipped++; }
+      }
+      state.docs = docs;
+      state.skipped = skipped;
+      state.initiatives = H.groupInitiatives(docs);
+      this._renderTree();
+      if (skipped > 0) {
+        ForgeUtils.Toast.show('Skipped ' + skipped + ' unreadable doc(s)', 'warning', 4000);
+      }
     }
   };
 
-  // _loadDocs / _renderTree / _renderDetail are added in later tasks.
-  ctrl._loadDocs = async function () { state.docs = []; state.initiatives = []; };
+  // _renderTree / _renderDetail are added in later tasks.
   ctrl._renderTree = function () {};
 
   window.DesignPlansView = ctrl;
