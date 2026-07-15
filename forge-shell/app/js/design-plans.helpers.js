@@ -191,6 +191,31 @@
     return list;
   }
 
+  function rankDocs(docs, query) {
+    var q = (query || '').trim().toLowerCase();
+    if (!q) return [];
+    var ranked = [];
+    (docs || []).forEach(function (doc) {
+      var title = String(doc.title || '').toLowerCase();
+      var slug = String(doc.slug || '').toLowerCase();
+      var body = String(doc.body || '').toLowerCase();
+      var rank;
+      if (title.indexOf(q) === 0) rank = 0;
+      else if (title.indexOf(q) !== -1) rank = 1;
+      else if (slug.indexOf(q) !== -1) rank = 2;
+      else if (body.indexOf(q) !== -1) rank = 3;
+      else return;
+      ranked.push({ doc: doc, rank: rank, filename: doc.filename || '' });
+    });
+    ranked.sort(function (a, b) {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      if (a.filename < b.filename) return -1;
+      if (a.filename > b.filename) return 1;
+      return 0;
+    });
+    return ranked.map(function (e) { return e.doc; });
+  }
+
   return {
     classifyType: classifyType,
     parseFilename: parseFilename,
@@ -202,6 +227,7 @@
     initiativeKey: initiativeKey,
     rollUpStatus: rollUpStatus,
     groupInitiatives: groupInitiatives,
+    rankDocs: rankDocs,
     DEFAULT_CLUSTERS: DEFAULT_CLUSTERS
   };
 });

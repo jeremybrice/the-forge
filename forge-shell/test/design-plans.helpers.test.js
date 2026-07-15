@@ -202,3 +202,27 @@ test('groupInitiatives: handoff attached', () => {
   assert.equal(list.length, 1);
   assert.equal(list[0].handoffs.length, 1);
 });
+
+/* ── rankDocs ── */
+
+test('rankDocs: empty query returns []', () => {
+  const d = H.parseDoc('specs/2026-07-08-cron-design.md', '# Cron\n', ['cron']);
+  assert.deepEqual(H.rankDocs([d], ''), []);
+  assert.deepEqual(H.rankDocs([d], '   '), []);
+});
+
+test('rankDocs: title-startswith ranks first, then body', () => {
+  const a = H.parseDoc('specs/2026-07-08-cron-design.md', '# Cron fast\nbody cron', ['cron']);
+  const b = H.parseDoc('specs/2026-07-09-cron-2-design.md', '# Other\nmentions cron', ['cron']);
+  const ranked = H.rankDocs([b, a], 'cron');
+  assert.equal(ranked[0].filename, '2026-07-08-cron-design.md');
+  assert.equal(ranked.length, 2);
+});
+
+test('rankDocs: case-insensitive; filename tie-break ASC within rank', () => {
+  const a = H.parseDoc('specs/2026-07-09-zed-design.md', '# Alpha tool\n', []);
+  const b = H.parseDoc('specs/2026-07-08-aaa-design.md', '# Alpha tool\n', []);
+  const ranked = H.rankDocs([a, b], 'alpha');
+  assert.equal(ranked[0].filename, '2026-07-08-aaa-design.md');
+  assert.equal(ranked[1].filename, '2026-07-09-zed-design.md');
+});
