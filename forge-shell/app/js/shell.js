@@ -332,6 +332,8 @@ const Shell = {
       pluginToRefresh = 'report-forge';
     } else if (path.includes('/audio-forge/')) {
       pluginToRefresh = 'audio-forge';
+    } else if (path.includes('/docs/superpowers/')) {
+      pluginToRefresh = 'design-plans';
     }
 
     // If a relevant plugin is active, refresh it

@@ -74,6 +74,17 @@
   --status-teal: #1abc9c;
   --status-gray: #95a5a6;
   --status-yellow: #f39c12;
+
+  /* Design Plans — status buckets + doc types (shared across themes) */
+  --dp-status-draft: #e67e22;
+  --dp-status-inreview: #3498db;
+  --dp-status-approved: #27ae60;
+  --dp-status-done: #1abc9c;
+  --dp-status-rolledback: #e74c3c;
+  --dp-status-unknown: #95a5a6;
+  --dp-type-spec: #6366f1;
+  --dp-type-plan: #10b981;
+  --dp-type-handoff: #f59e0b;
 }
 
 [data-theme="dark"] {
