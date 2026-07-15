@@ -170,11 +170,94 @@
       if (skipped > 0) {
         ForgeUtils.Toast.show('Skipped ' + skipped + ' unreadable doc(s)', 'warning', 4000);
       }
+    },
+
+    _statusColor(bucket) {
+      return 'var(--dp-status-' + (bucket || 'unknown').toLowerCase().replace(/\s+/g, '') + ', var(--text-muted))';
+    },
+
+    _typeIcon(type) {
+      if (type === 'spec') return '<i class="fa-regular fa-file-lines" title="spec"></i>';
+      if (type === 'plan') return '<i class="fa-solid fa-list-check" title="plan"></i>';
+      if (type === 'handoff') return '<i class="fa-solid fa-hand" title="handoff"></i>';
+      return '<i class="fa-regular fa-file"></i>';
+    },
+
+    _renderTree() {
+      var treeEl = $q('[data-dp-tree]');
+      if (!treeEl) return;
+      treeEl.classList.remove('hidden');
+      var resEl = $q('[data-dp-search-results]');
+      if (resEl) resEl.classList.add('hidden');
+
+      if (!state.initiatives.length) {
+        treeEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No docs found.</div>';
+        return;
+      }
+      var html = '';
+      state.initiatives.forEach(function (init) {
+        var open = !state.collapsed[init.key];
+        var members = [];
+        if (init.spec) members.push(init.spec);
+        if (init.plan) members.push(init.plan);
+        init.handoffs.forEach(function (h) { members.push(h); });
+        html +=
+          '<div class="dp-initiative">' +
+            '<div class="dp-initiative-header" data-dp-toggle="' + ESC(init.key) + '">' +
+              '<span class="dp-toggle"><i class="fa-solid fa-chevron-' + (open ? 'down' : 'right') + '"></i></span>' +
+              '<span class="dp-status-dot" style="background:' + ctrl._statusColor(init.statusBucket) + '"></span>' +
+              '<span class="dp-init-date">' + ESC(init.date || '') + '</span>' +
+              '<span class="dp-init-title">' + ESC(init.title || init.slug) + '</span>' +
+            '</div>' +
+            '<div class="dp-members' + (open ? '' : ' hidden') + '">' +
+              members.map(function (d) { return ctrl._memberRow(init.key, d); }).join('') +
+            '</div>' +
+          '</div>';
+      });
+      treeEl.innerHTML = html;
+      this._bindTreeEvents();
+    },
+
+    _memberRow(initKey, doc) {
+      var selected = (state.selectedKey === initKey && state.selectedType === doc.type);
+      var prog = '';
+      if (doc.type === 'plan' && doc.progress && doc.progress.percent != null) {
+        prog = '<span class="dp-progress" title="' + doc.progress.done + '/' + doc.progress.total + ' done">' +
+                 '<span class="dp-progress-bar"><span style="width:' + doc.progress.percent + '%"></span></span>' +
+                 doc.progress.percent + '%' +
+               '</span>';
+      }
+      return '<div class="dp-member' + (selected ? ' selected' : '') + '" ' +
+        'data-dp-select="' + ESC(initKey) + '" data-dp-type="' + doc.type + '">' +
+        '<span class="dp-member-type">' + this._typeIcon(doc.type) + '</span>' +
+        '<span class="dp-status-dot" style="background:' + this._statusColor(doc.statusBucket) + '"></span>' +
+        '<span class="dp-member-title">' + ESC(doc.title || doc.slug) + '</span>' +
+        prog +
+        '</div>';
+    },
+
+    _bindTreeEvents() {
+      $qa('[data-dp-toggle]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var key = el.getAttribute('data-dp-toggle');
+          if (state.collapsed[key]) delete state.collapsed[key];
+          else state.collapsed[key] = true;
+          ctrl._renderTree();
+        });
+      });
+      $qa('[data-dp-select]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          state.selectedKey = el.getAttribute('data-dp-select');
+          state.selectedType = el.getAttribute('data-dp-type');
+          ctrl._renderTree();
+          ctrl._renderDetail();
+        });
+      });
     }
   };
 
-  // _renderTree / _renderDetail are added in later tasks.
-  ctrl._renderTree = function () {};
+  // _renderDetail is added in a later task.
+  ctrl._renderDetail = function () {};
 
   window.DesignPlansView = ctrl;
   Shell.registerController('design-plans', window.DesignPlansView);
