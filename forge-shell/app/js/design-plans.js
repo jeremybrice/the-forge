@@ -52,7 +52,7 @@
       } else {
         this._renderEmptyState();
       }
-      this._renderDetail();
+      if (state.docsRoot) { this._renderDetail(); }
     },
 
     destroy() {
@@ -73,6 +73,7 @@
             '<div class="folder-path"><span><i class="fa-solid fa-folder-open"></i></span><span class="dp-docs-path">—</span></div>' +
             '<div class="spacer"></div>' +
             '<button class="btn-icon" data-dp-action="toggle-filter" title="Filter"><i class="fa-solid fa-filter"></i></button>' +
+            '<button class="btn-icon" data-dp-action="pick-root" title="Choose docs root"><i class="fa-solid fa-folder-open"></i></button>' +
             '<button class="btn-icon" data-dp-action="refresh" title="Refresh"><i class="fa-solid fa-rotate"></i></button>' +
           '</div>' +
           '<div class="dp-active-filters hidden" data-dp-active-filters></div>' +
@@ -97,6 +98,8 @@
     _bindChrome() {
       var refreshBtn = $q('[data-dp-action="refresh"]');
       if (refreshBtn) refreshBtn.addEventListener('click', function () { ctrl.refresh(); });
+      var pickRootBtn = $q('[data-dp-action="pick-root"]');
+      if (pickRootBtn) pickRootBtn.addEventListener('click', function () { ctrl._pickRoot(); });
       var filterBtn = $q('[data-dp-action="toggle-filter"]');
       if (filterBtn) filterBtn.addEventListener('click', function () {
         var panel = $q('[data-dp-filter-panel]');
@@ -124,7 +127,7 @@
         '<p class="note" style="color:var(--text-muted);">The path is stored separately from your Forge project folder.</p>' +
       '</div>';
       if (detail) detail.innerHTML = msg;
-      var pick = $q('[data-dp-action="pick-root"]');
+      var pick = detail ? detail.querySelector('[data-dp-action="pick-root"]') : null;
       if (pick) pick.addEventListener('click', function () { ctrl._pickRoot(); });
     },
 
@@ -175,6 +178,7 @@
         ForgeUtils.Toast.show('Skipped ' + skipped + ' unreadable doc(s)', 'warning', 4000);
       }
       this._renderActiveChips();
+      this._renderDetail();
     },
 
     _statusColor(bucket) {
@@ -330,7 +334,7 @@
       var resEl = $q('[data-dp-search-results]');
       if (!resEl) return;
       resEl.classList.remove('hidden');
-      var candidates = state.docs.filter(function (d) { return ctrl.docMatchesFilters(d); });
+      var candidates = state.docs.filter(function (d) { return d.type !== 'other' && ctrl.docMatchesFilters(d); });
       var ranked = H.rankDocs(candidates, state.query);
       if (!ranked.length) {
         resEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No matches.</div>';
