@@ -33,8 +33,58 @@
     return { date: date, slug: slug };
   }
 
+  function parseSimpleFrontmatter(fmText) {
+    var obj = {};
+    (fmText || '').split(/\r?\n/).forEach(function (line) {
+      var m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
+      if (!m) return;
+      var v = m[2].trim();
+      if (v === '') return;
+      if ((v[0] === '"' && v[v.length - 1] === '"') || (v[0] === "'" && v[v.length - 1] === "'")) {
+        v = v.slice(1, -1);
+      }
+      obj[m[1].toLowerCase()] = v;
+    });
+    return obj;
+  }
+
+  function extractH1(body) {
+    var lines = (body || '').split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var m = lines[i].match(/^#\s+(.+?)\s*$/);
+      if (m) return m[1].trim();
+    }
+    return null;
+  }
+
+  function extractBold(body, key) {
+    var re = new RegExp('^\\*\\*' + key + ':?\\*\\*:?\\s*(.+)$', 'i');
+    var lines = (body || '').split(/\r?\n/);
+    var max = Math.min(lines.length, 60);
+    for (var i = 0; i < max; i++) {
+      var m = lines[i].match(re);
+      if (m) return m[1].trim();
+    }
+    return null;
+  }
+
+  function parseDocMeta(rawText, filename) {
+    var text = rawText || '';
+    var body = text;
+    var fm = {};
+    var fmMatch = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    if (fmMatch) {
+      fm = parseSimpleFrontmatter(fmMatch[1]);
+      body = fmMatch[2] || '';
+    }
+    var title = fm.title || extractH1(body) || parseFilename(filename).slug;
+    var statusRaw = (fm.status != null && fm.status !== '') ? fm.status : extractBold(body, 'Status');
+    return { title: title, statusRaw: statusRaw, body: body };
+  }
+
   return {
     classifyType: classifyType,
-    parseFilename: parseFilename
+    parseFilename: parseFilename,
+    parseDocMeta: parseDocMeta
   };
 });
