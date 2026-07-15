@@ -50,6 +50,13 @@ test('parseFilename: no date → date null, slug is whole stem', () => {
   assert.deepEqual(H.parseFilename('notes.md'), { date: null, slug: 'notes' });
 });
 
+test('parseFilename: handoff strips -handoff suffix so slug groups with spec', () => {
+  assert.deepEqual(
+    H.parseFilename('2026-07-04-d-handoff.md'),
+    { date: '2026-07-04', slug: 'd' }
+  );
+});
+
 /* ── parseDocMeta ── */
 
 test('parseDocMeta: bold-inline Status + H1 title', () => {
@@ -128,4 +135,70 @@ test('planProgress: zero checkboxes → percent null', () => {
 test('planProgress: counts all task-list checkboxes regardless of section', () => {
   const body = '## Global\n- [x] a\n\n## Task 1\n- [ ] b\n- [X] c\n';
   assert.deepEqual(H.planProgress(body), { done: 2, total: 3, percent: 67 });
+});
+
+/* ── parseDoc ── */
+
+test('parseDoc: spec end-to-end', () => {
+  const raw = '# Cron Design\n**Status:** Approved\n\nbody';
+  const d = H.parseDoc('specs/2026-07-04-cron-design.md', raw, ['cron']);
+  assert.equal(d.type, 'spec');
+  assert.equal(d.date, '2026-07-04');
+  assert.equal(d.slug, 'cron');
+  assert.equal(d.title, 'Cron Design');
+  assert.equal(d.statusBucket, 'Approved');
+  assert.equal(d.topic, 'cron');
+  assert.equal(d.progress, null);   // specs have no progress
+});
+
+test('parseDoc: plan computes progress', () => {
+  const raw = '# Cron Plan\n**Status:** Done\n- [x] a\n- [ ] b\n';
+  const d = H.parseDoc('plans/2026-07-04-cron.md', raw, ['cron']);
+  assert.equal(d.type, 'plan');
+  assert.equal(d.statusBucket, 'Done');
+  assert.deepEqual(d.progress, { done: 1, total: 2, percent: 50 });
+});
+
+/* ── groupInitiatives ── */
+
+test('groupInitiatives: pairs spec+plan by date+slug', () => {
+  const spec = H.parseDoc('specs/2026-07-08-x-design.md', '# X\n**Status:** Approved\nb', ['x']);
+  const plan = H.parseDoc('plans/2026-07-08-x.md', '# X Plan\n**Status:** Approved\n- [ ] t\n', ['x']);
+  const list = H.groupInitiatives([spec, plan]);
+  assert.equal(list.length, 1);
+  assert.strictEqual(list[0].spec, spec);
+  assert.strictEqual(list[0].plan, plan);
+  assert.equal(list[0].statusBucket, 'Approved');
+  assert.equal(list[0].progress, 0);
+});
+
+test('groupInitiatives: spec-without-plan and plan-without-spec', () => {
+  const specOnly = H.parseDoc('specs/2026-07-01-a-design.md', '# A\n**Status:** Draft\n', ['a']);
+  const planOnly = H.parseDoc('plans/2026-07-02-b.md', '# B Plan\n**Status:** Approved\n- [x] t\n', ['b']);
+  const list = H.groupInitiatives([specOnly, planOnly]);
+  assert.equal(list.length, 2);
+  // newest first: 2026-07-02 (b) before 2026-07-01 (a)
+  assert.equal(list[0].slug, 'b');
+  assert.equal(list[0].spec, null);
+  assert.equal(list[0].statusBucket, 'Approved');   // rolled up from plan
+  assert.equal(list[0].progress, 100);
+  assert.equal(list[1].slug, 'a');
+  assert.equal(list[1].plan, null);
+  assert.equal(list[1].statusBucket, 'Draft');
+  assert.equal(list[1].progress, null);
+});
+
+test('groupInitiatives: revisions are separate initiatives', () => {
+  const orig = H.parseDoc('plans/2026-07-08-c.md', '# C\n**Status:** Approved\n', ['c']);
+  const rev = H.parseDoc('plans/2026-07-09-c-mcp-revision.md', '# C rev\n**Status:** Done\n', ['c']);
+  const list = H.groupInitiatives([orig, rev]);
+  assert.equal(list.length, 2);
+});
+
+test('groupInitiatives: handoff attached', () => {
+  const spec = H.parseDoc('specs/2026-07-04-d-design.md', '# D\n**Status:** Approved\n', ['d']);
+  const ho = H.parseDoc('handoffs/2026-07-04-d-handoff.md', '# D handoff\n', ['d']);
+  const list = H.groupInitiatives([spec, ho]);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].handoffs.length, 1);
 });

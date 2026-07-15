@@ -30,6 +30,7 @@
     var date = m ? m[1] : null;
     var slug = m ? stem.slice(m[0].length) : stem;
     slug = slug.replace(/-design$/, '');
+    slug = slug.replace(/-handoff$/, '');
     return { date: date, slug: slug };
   }
 
@@ -121,6 +122,75 @@
     return { done: done, total: total, percent: Math.round((done / total) * 100) };
   }
 
+  function basename(relPath) {
+    var parts = String(relPath || '').split('/');
+    return parts[parts.length - 1];
+  }
+
+  function parseDoc(relPath, rawText, clusters) {
+    var filename = basename(relPath);
+    var meta = parseDocMeta(rawText, filename);
+    var fn = parseFilename(filename);
+    var type = classifyType(relPath);
+    return {
+      filename: filename,
+      relPath: relPath,
+      type: type,
+      date: fn.date,
+      slug: fn.slug,
+      title: meta.title,
+      statusRaw: meta.statusRaw,
+      statusBucket: normalizeStatus(meta.statusRaw),
+      topic: inferTopic(fn.slug, clusters),
+      body: meta.body,
+      progress: type === 'plan' ? planProgress(meta.body) : null
+    };
+  }
+
+  function initiativeKey(doc) {
+    return (doc.date || '0000-00-00') + '|' + (doc.slug || '');
+  }
+
+  function rollUpStatus(init) {
+    if (init.spec) return init.spec.statusBucket;
+    if (init.plan) return init.plan.statusBucket;
+    if (init.handoffs.length) return init.handoffs[0].statusBucket;
+    return 'Unknown';
+  }
+
+  function groupInitiatives(docs) {
+    var map = {};
+    var order = [];
+    (docs || []).forEach(function (doc) {
+      var key = initiativeKey(doc);
+      if (!map[key]) {
+        map[key] = {
+          key: key, date: doc.date, slug: doc.slug, title: doc.title,
+          spec: null, plan: null, handoffs: []
+        };
+        order.push(key);
+      }
+      var init = map[key];
+      if (doc.type === 'spec') init.spec = doc;
+      else if (doc.type === 'plan') init.plan = doc;
+      else if (doc.type === 'handoff') init.handoffs.push(doc);
+      if (!init.title && doc.title) init.title = doc.title;
+    });
+    var list = order.map(function (k) {
+      var init = map[k];
+      init.statusBucket = rollUpStatus(init);
+      init.progress = (init.plan && init.plan.progress) ? init.plan.progress.percent : null;
+      return init;
+    });
+    list.sort(function (a, b) {
+      var da = a.date || '', db = b.date || '';
+      if (db < da) return -1;   // newest first
+      if (db > da) return 1;
+      return 0;
+    });
+    return list;
+  }
+
   return {
     classifyType: classifyType,
     parseFilename: parseFilename,
@@ -128,6 +198,10 @@
     normalizeStatus: normalizeStatus,
     inferTopic: inferTopic,
     planProgress: planProgress,
+    parseDoc: parseDoc,
+    initiativeKey: initiativeKey,
+    rollUpStatus: rollUpStatus,
+    groupInitiatives: groupInitiatives,
     DEFAULT_CLUSTERS: DEFAULT_CLUSTERS
   };
 });
