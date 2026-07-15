@@ -100,7 +100,10 @@
       var filterBtn = $q('[data-dp-action="toggle-filter"]');
       if (filterBtn) filterBtn.addEventListener('click', function () {
         var panel = $q('[data-dp-filter-panel]');
-        if (panel) panel.classList.toggle('open');
+        if (!panel) return;
+        var willOpen = !panel.classList.contains('open');
+        panel.classList.toggle('open', willOpen);
+        if (willOpen) ctrl._renderFilterPanel();
       });
       var search = $q('[data-dp-search]');
       if (search) search.addEventListener('input', function () {
@@ -171,6 +174,7 @@
       if (skipped > 0) {
         ForgeUtils.Toast.show('Skipped ' + skipped + ' unreadable doc(s)', 'warning', 4000);
       }
+      this._renderActiveChips();
     },
 
     _statusColor(bucket) {
@@ -198,12 +202,15 @@
         return;
       }
       var html = '';
+      var anyShown = false;
       state.initiatives.forEach(function (init) {
         var open = !state.collapsed[init.key];
         var members = [];
-        if (init.spec) members.push(init.spec);
-        if (init.plan) members.push(init.plan);
-        init.handoffs.forEach(function (h) { members.push(h); });
+        if (init.spec && ctrl.docMatchesFilters(init.spec)) members.push(init.spec);
+        if (init.plan && ctrl.docMatchesFilters(init.plan)) members.push(init.plan);
+        init.handoffs.forEach(function (h) { if (ctrl.docMatchesFilters(h)) members.push(h); });
+        if (!members.length) return; // skip initiative with no matching members
+        anyShown = true;
         html +=
           '<div class="dp-initiative">' +
             '<div class="dp-initiative-header" data-dp-toggle="' + ESC(init.key) + '">' +
@@ -217,6 +224,10 @@
             '</div>' +
           '</div>';
       });
+      if (!anyShown) {
+        treeEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No docs match these filters.</div>';
+        return;
+      }
       treeEl.innerHTML = html;
       this._bindTreeEvents();
     },
@@ -227,6 +238,90 @@
       if (f.status.length && f.status.indexOf(doc.statusBucket) === -1) return false;
       if (f.topic.length && f.topic.indexOf(doc.topic || null) === -1) return false;
       return true;
+    },
+
+    _facetValues() {
+      var status = {}, type = {}, topic = {};
+      state.docs.forEach(function (d) {
+        status[d.statusBucket] = 1; type[d.type] = 1;
+        if (d.topic) topic[d.topic] = 1;
+      });
+      return {
+        status: Object.keys(status).sort(),
+        type: Object.keys(type).sort(),
+        topic: Object.keys(topic).sort()
+      };
+    },
+
+    _renderFilterPanel() {
+      var panel = $q('[data-dp-filter-panel]');
+      if (!panel) return;
+      var f = this._facetValues();
+      var self = this;
+      function group(title, key, vals) {
+        var rows = vals.map(function (v) {
+          var checked = state.filters[key].indexOf(v) !== -1 ? 'checked' : '';
+          return '<label><input type="checkbox" data-dp-facet="' + key + '" value="' + ESC(v) + '" ' + checked + '> ' + ESC(v) + '</label>';
+        }).join('');
+        return '<div class="dp-filter-group"><h4>' + title + '</h4>' + rows + '</div>';
+      }
+      panel.innerHTML =
+        '<div class="dp-filter-header"><span>Filter</span><button class="dp-filter-clear" data-dp-action="clear-filters">Clear all</button></div>' +
+        '<div class="dp-filter-body">' +
+          group('Status', 'status', f.status) +
+          group('Type', 'type', f.type) +
+          group('Topic', 'topic', f.topic) +
+        '</div>';
+      panel.querySelectorAll('[data-dp-facet]').forEach(function (box) {
+        box.addEventListener('change', function () {
+          var key = box.getAttribute('data-dp-facet');
+          var val = box.value;
+          var arr = state.filters[key];
+          var idx = arr.indexOf(val);
+          if (box.checked && idx === -1) arr.push(val);
+          if (!box.checked && idx !== -1) arr.splice(idx, 1);
+          self._renderTree();
+          self._renderActiveChips();
+        });
+      });
+      var clear = panel.querySelector('[data-dp-action="clear-filters"]');
+      if (clear) clear.addEventListener('click', function () {
+        state.filters = { status: [], type: [], topic: [] };
+        self._renderFilterPanel();
+        self._renderTree();
+        self._renderActiveChips();
+      });
+    },
+
+    _renderActiveChips() {
+      var bar = $q('[data-dp-active-filters]');
+      var layout = $q('.dp-layout');
+      if (!bar || !layout) return;
+      var all = state.filters.status.concat(state.filters.type).concat(state.filters.topic);
+      if (!all.length) {
+        bar.classList.add('hidden');
+        layout.classList.remove('has-filter-chips');
+        bar.innerHTML = '';
+        return;
+      }
+      bar.classList.remove('hidden');
+      layout.classList.add('has-filter-chips');
+      var chips = all.map(function (v) {
+        return '<span class="dp-chip" data-dp-chip="' + ESC(v) + '">' + ESC(v) + ' <i class="fa-solid fa-xmark"></i></span>';
+      }).join('');
+      bar.innerHTML = chips;
+      bar.querySelectorAll('[data-dp-chip]').forEach(function (c) {
+        c.addEventListener('click', function () {
+          var v = c.getAttribute('data-dp-chip');
+          ['status', 'type', 'topic'].forEach(function (k) {
+            var i = state.filters[k].indexOf(v);
+            if (i !== -1) state.filters[k].splice(i, 1);
+          });
+          ctrl._renderFilterPanel();
+          ctrl._renderTree();
+          ctrl._renderActiveChips();
+        });
+      });
     },
 
     _renderSearchResults() {
