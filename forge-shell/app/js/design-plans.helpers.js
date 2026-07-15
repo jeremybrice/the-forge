@@ -82,9 +82,52 @@
     return { title: title, statusRaw: statusRaw, body: body };
   }
 
+  var DEFAULT_CLUSTERS = [
+    'orson', 'cron', 'sf-ums', 'jira-intake', 'memory', 'docs', 'audio',
+    'repo', 'pfl', 'sidebar', 'roadmap', 'report', 'agent'
+  ];
+
+  var STATUS_RULES = [
+    { bucket: 'Rolled Back', test: /roll(?:ed)?\s*back/i },
+    { bucket: 'Done', test: /\b(done|implemented|shipped|complete|completed)\b/i },
+    { bucket: 'Approved', test: /approved/i },
+    { bucket: 'In Review', test: /(proposed|awaiting|for review|brainstorm)/i },
+    { bucket: 'Draft', test: /draft/i }
+  ];
+
+  function normalizeStatus(statusRaw) {
+    if (statusRaw == null || statusRaw === '') return 'Unknown';
+    for (var i = 0; i < STATUS_RULES.length; i++) {
+      if (STATUS_RULES[i].test.test(String(statusRaw))) return STATUS_RULES[i].bucket;
+    }
+    return 'Unknown';
+  }
+
+  function inferTopic(slug, clusters) {
+    var list = Array.isArray(clusters) ? clusters : DEFAULT_CLUSTERS;
+    var s = String(slug || '').toLowerCase();
+    for (var i = 0; i < list.length; i++) {
+      if (s.indexOf(list[i]) !== -1) return list[i];
+    }
+    return null;
+  }
+
+  function planProgress(body) {
+    var text = String(body || '');
+    var done = (text.match(/^\s*-\s*\[x\]/gmi) || []).length;
+    var todo = (text.match(/^\s*-\s*\[ \]/gmi) || []).length;
+    var total = done + todo;
+    if (total === 0) return { done: 0, total: 0, percent: null };
+    return { done: done, total: total, percent: Math.round((done / total) * 100) };
+  }
+
   return {
     classifyType: classifyType,
     parseFilename: parseFilename,
-    parseDocMeta: parseDocMeta
+    parseDocMeta: parseDocMeta,
+    normalizeStatus: normalizeStatus,
+    inferTopic: inferTopic,
+    planProgress: planProgress,
+    DEFAULT_CLUSTERS: DEFAULT_CLUSTERS
   };
 });

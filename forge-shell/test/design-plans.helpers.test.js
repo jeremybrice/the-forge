@@ -84,3 +84,48 @@ test('parseDocMeta: bold Status missing → statusRaw null (no crash)', () => {
   const m = H.parseDocMeta(raw, '2026-01-01-x.md');
   assert.equal(m.statusRaw, null);
 });
+
+/* ── normalizeStatus ── */
+
+test('normalizeStatus: each bucket + Unknown', () => {
+  assert.equal(H.normalizeStatus('Draft'), 'Draft');
+  assert.equal(H.normalizeStatus('Draft for review'), 'In Review');   // 'for review' wins
+  assert.equal(H.normalizeStatus('Proposed (awaiting approval)'), 'In Review');
+  assert.equal(H.normalizeStatus('Approved (revised 2026-07-09)'), 'Approved');
+  assert.equal(H.normalizeStatus('APPROVED'), 'Approved');
+  assert.equal(H.normalizeStatus('Implemented and shipped'), 'Done');
+  assert.equal(H.normalizeStatus('ROLLED BACK'), 'Rolled Back');
+  assert.equal(H.normalizeStatus(''), 'Unknown');
+  assert.equal(H.normalizeStatus(null), 'Unknown');
+  assert.equal(H.normalizeStatus('something novel'), 'Unknown');
+});
+
+/* ── inferTopic ── */
+
+test('inferTopic: known cluster match + null fallback', () => {
+  assert.equal(H.inferTopic('jira-intake-sync-cron', ['jira-intake', 'cron']), 'jira-intake');
+  assert.equal(H.inferTopic('orson-board-redesign', ['orson']), 'orson');
+  assert.equal(H.inferTopic('mystery-slug', ['orson']), null);
+  assert.equal(H.inferTopic('x', []), null);
+});
+
+test('inferTopic: defaults to DEFAULT_CLUSTERS when none passed', () => {
+  assert.equal(H.inferTopic('orson-thing'), 'orson');
+  assert.equal(H.inferTopic('totally-unknown'), null);
+});
+
+/* ── planProgress ── */
+
+test('planProgress: counts done/todo and percent', () => {
+  const body = '## Task 1\n- [x] one\n- [ ] two\n- [x] three\n';
+  assert.deepEqual(H.planProgress(body), { done: 2, total: 3, percent: 67 });
+});
+
+test('planProgress: zero checkboxes → percent null', () => {
+  assert.deepEqual(H.planProgress('# just a spec\nno boxes'), { done: 0, total: 0, percent: null });
+});
+
+test('planProgress: counts all task-list checkboxes regardless of section', () => {
+  const body = '## Global\n- [x] a\n\n## Task 1\n- [ ] b\n- [X] c\n';
+  assert.deepEqual(H.planProgress(body), { done: 2, total: 3, percent: 67 });
+});
