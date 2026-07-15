@@ -187,6 +187,8 @@
     _renderTree() {
       var treeEl = $q('[data-dp-tree]');
       if (!treeEl) return;
+      var query = (state.query || '').trim();
+      if (query) { this._renderSearchResults(); return; }
       treeEl.classList.remove('hidden');
       var resEl = $q('[data-dp-search-results]');
       if (resEl) resEl.classList.add('hidden');
@@ -217,6 +219,44 @@
       });
       treeEl.innerHTML = html;
       this._bindTreeEvents();
+    },
+
+    docMatchesFilters(doc) {
+      var f = state.filters;
+      if (f.type.length && f.type.indexOf(doc.type) === -1) return false;
+      if (f.status.length && f.status.indexOf(doc.statusBucket) === -1) return false;
+      if (f.topic.length && f.topic.indexOf(doc.topic || null) === -1) return false;
+      return true;
+    },
+
+    _renderSearchResults() {
+      var treeEl = $q('[data-dp-tree]');
+      if (treeEl) treeEl.classList.add('hidden');
+      var resEl = $q('[data-dp-search-results]');
+      if (!resEl) return;
+      resEl.classList.remove('hidden');
+      var candidates = state.docs.filter(function (d) { return ctrl.docMatchesFilters(d); });
+      var ranked = H.rankDocs(candidates, state.query);
+      if (!ranked.length) {
+        resEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No matches.</div>';
+        return;
+      }
+      var html = ranked.map(function (d) {
+        return '<div class="dp-member" data-dp-select="' + ESC(H.initiativeKey(d)) + '" data-dp-type="' + d.type + '">' +
+          '<span class="dp-member-type">' + ctrl._typeIcon(d.type) + '</span>' +
+          '<span class="dp-member-title">' + ESC(d.title || d.slug) + '</span>' +
+          '<span class="dp-member-meta">' + ESC(d.date || '') + ' · ' + ESC(d.type) + '</span>' +
+          '</div>';
+      }).join('');
+      resEl.innerHTML = html;
+      resEl.querySelectorAll('[data-dp-select]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          state.selectedKey = el.getAttribute('data-dp-select');
+          state.selectedType = el.getAttribute('data-dp-type');
+          ctrl._renderTree();   // re-highlights
+          ctrl._renderDetail();
+        });
+      });
     },
 
     _memberRow(initKey, doc) {
