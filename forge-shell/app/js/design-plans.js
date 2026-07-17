@@ -251,6 +251,7 @@
       });
       if (!anyShown) {
         treeEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No docs match these filters.</div>';
+        state.pendingReveal = null;
         return;
       }
       treeEl.innerHTML = html;
@@ -258,7 +259,10 @@
       if (state.pendingReveal) {
         var pr = state.pendingReveal;
         state.pendingReveal = null;
-        var row = treeEl.querySelector('[data-dp-select="' + pr.key + '"][data-dp-type="' + pr.type + '"]');
+        var row = null;
+        treeEl.querySelectorAll('[data-dp-select]').forEach(function (r) {
+          if (!row && r.getAttribute('data-dp-select') === pr.key && r.getAttribute('data-dp-type') === pr.type) row = r;
+        });
         if (row) {
           row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           row.classList.add('dp-flash-new');
