@@ -87,7 +87,7 @@ query is cleared.
 - `parseExpanded(raw)` → `string[]`: JSON-parse a stored value; return `[]`
   for null/empty/invalid JSON or non-array results; filter to string entries.
 - `pruneExpanded(keys, validKeys)` → `string[]`: return the entries of `keys`
-  that exist in `validKeys` (an array or Set), preserving order, deduped.
+  that exist in `validKeys` (an array), preserving order, deduped.
 
 Storage read/write stays in the controller (DOM-adjacent), per the existing
 `readDocsRoot`/`writeDocsRoot` precedent.
