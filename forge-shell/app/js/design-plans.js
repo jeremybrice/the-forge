@@ -255,6 +255,16 @@
       }
       treeEl.innerHTML = html;
       this._bindTreeEvents();
+      if (state.pendingReveal) {
+        var pr = state.pendingReveal;
+        state.pendingReveal = null;
+        var row = treeEl.querySelector('[data-dp-select="' + pr.key + '"][data-dp-type="' + pr.type + '"]');
+        if (row) {
+          row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          row.classList.add('dp-flash-new');
+          setTimeout(function () { row.classList.remove('dp-flash-new'); }, 1500);
+        }
+      }
     },
 
     docMatchesFilters(doc) {
@@ -373,7 +383,10 @@
         el.addEventListener('click', function () {
           state.selectedKey = el.getAttribute('data-dp-select');
           state.selectedType = el.getAttribute('data-dp-type');
-          ctrl._renderTree();   // re-highlights
+          state.expanded[state.selectedKey] = true;
+          writeExpanded();
+          state.pendingReveal = { key: state.selectedKey, type: state.selectedType };
+          ctrl._renderTree();   // re-highlights; reveals if tree visible
           ctrl._renderDetail();
         });
       });

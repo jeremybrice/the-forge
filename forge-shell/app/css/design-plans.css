@@ -107,3 +107,13 @@
 .dp-active-filters.hidden { display: none; }
 .dp-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-tertiary); border-radius: 12px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
 .dp-chip:hover { background: var(--bg-hover); }
+
+/* Brief flash applied to a member row when search reveal selects it.
+   1.5s, fades out — class removed by setTimeout in JS. */
+@keyframes dp-flash-new-keyframes {
+  0%   { background: var(--accent-light); }
+  100% { background: transparent; }
+}
+.dp-flash-new {
+  animation: dp-flash-new-keyframes 1.5s ease-out;
+}
