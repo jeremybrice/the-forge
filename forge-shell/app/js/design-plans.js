@@ -8,6 +8,7 @@
   var H = window.DesignPlansHelpers;
   var DOCS_KEY = 'forge-shell-docs-root';
   var DOCS_SUBDIR = 'docs/superpowers';
+  var EXPANDED_KEY = 'forge-shell-dp-expanded';
 
   function $view() { return document.getElementById(VIEW_ID); }
   function $q(sel) { var v = $view(); return v ? v.querySelector(sel) : null; }
@@ -18,7 +19,8 @@
     selectedKey: null, selectedType: null,
     query: '', skipped: 0,
     filters: { status: [], type: [], topic: [] },
-    collapsed: {}   // initiativeKey -> true
+    expanded: {},        // initiativeKey -> true (default: collapsed)
+    pendingReveal: null  // { key, type } consumed by _renderTree
   };
 
   function readDocsRoot() {
@@ -28,12 +30,24 @@
     try { localStorage.setItem(DOCS_KEY, p); } catch (e) { /* ignore */ }
   }
 
+  function readExpanded() {
+    try {
+      var out = {};
+      H.parseExpanded(localStorage.getItem(EXPANDED_KEY)).forEach(function (k) { out[k] = true; });
+      return out;
+    } catch (e) { return {}; }
+  }
+  function writeExpanded() {
+    try { localStorage.setItem(EXPANDED_KEY, JSON.stringify(Object.keys(state.expanded))); } catch (e) { /* ignore */ }
+  }
+
   var ctrl = {
     async init(rootHandle, options) {
       this.destroy();
       var view = $view();
       if (!view) return;
       state.docsRoot = readDocsRoot();
+      state.expanded = readExpanded();
       if (!state.docsRoot && !ForgeFS.usesPathStrings()) {
         try { state.docsRoot = await ForgeUtils.DB.get('dp-docs-root'); } catch (e) { /* ignore */ }
       }
@@ -173,6 +187,13 @@
       state.docs = docs;
       state.skipped = skipped;
       state.initiatives = H.groupInitiatives(docs);
+      var validKeys = state.initiatives.map(function (i) { return i.key; });
+      var pruned = H.pruneExpanded(Object.keys(state.expanded), validKeys);
+      if (pruned.length !== Object.keys(state.expanded).length) {
+        state.expanded = {};
+        pruned.forEach(function (k) { state.expanded[k] = true; });
+        writeExpanded();
+      }
       this._renderTree();
       if (skipped > 0) {
         ForgeUtils.Toast.show('Skipped ' + skipped + ' unreadable doc(s)', 'warning', 4000);
@@ -208,7 +229,7 @@
       var html = '';
       var anyShown = false;
       state.initiatives.forEach(function (init) {
-        var open = !state.collapsed[init.key];
+        var open = !!state.expanded[init.key];
         var members = [];
         if (init.spec && ctrl.docMatchesFilters(init.spec)) members.push(init.spec);
         if (init.plan && ctrl.docMatchesFilters(init.plan)) members.push(init.plan);
@@ -380,8 +401,9 @@
       $qa('[data-dp-toggle]').forEach(function (el) {
         el.addEventListener('click', function () {
           var key = el.getAttribute('data-dp-toggle');
-          if (state.collapsed[key]) delete state.collapsed[key];
-          else state.collapsed[key] = true;
+          if (state.expanded[key]) delete state.expanded[key];
+          else state.expanded[key] = true;
+          writeExpanded();
           ctrl._renderTree();
         });
       });
