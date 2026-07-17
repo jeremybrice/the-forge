@@ -226,3 +226,58 @@ test('rankDocs: case-insensitive; filename tie-break ASC within rank', () => {
   assert.equal(ranked[0].filename, '2026-07-08-aaa-design.md');
   assert.equal(ranked[1].filename, '2026-07-09-zed-design.md');
 });
+
+/* ── parseExpanded ── */
+
+test('parseExpanded: valid JSON array of strings round-trips', () => {
+  assert.deepEqual(
+    H.parseExpanded('["2026-07-09|a","2026-07-08|b"]'),
+    ['2026-07-09|a', '2026-07-08|b']
+  );
+});
+
+test('parseExpanded: null, empty, non-string → []', () => {
+  assert.deepEqual(H.parseExpanded(null), []);
+  assert.deepEqual(H.parseExpanded(''), []);
+  assert.deepEqual(H.parseExpanded(undefined), []);
+  assert.deepEqual(H.parseExpanded(42), []);
+});
+
+test('parseExpanded: invalid JSON → []', () => {
+  assert.deepEqual(H.parseExpanded('{oops'), []);
+  assert.deepEqual(H.parseExpanded('["unterminated'), []);
+});
+
+test('parseExpanded: non-array JSON → []', () => {
+  assert.deepEqual(H.parseExpanded('{"a":true}'), []);
+  assert.deepEqual(H.parseExpanded('"just a string"'), []);
+  assert.deepEqual(H.parseExpanded('12'), []);
+});
+
+test('parseExpanded: filters empty/non-string entries and dedupes', () => {
+  assert.deepEqual(
+    H.parseExpanded('["a","",3,null,"b","a"]'),
+    ['a', 'b']
+  );
+});
+
+/* ── pruneExpanded ── */
+
+test('pruneExpanded: drops keys not in the valid set, preserves order', () => {
+  assert.deepEqual(
+    H.pruneExpanded(['b|x', 'a|y', 'c|z'], ['a|y', 'c|z']),
+    ['a|y', 'c|z']
+  );
+});
+
+test('pruneExpanded: dedupes and ignores non-string entries', () => {
+  assert.deepEqual(
+    H.pruneExpanded(['a', 'a', 3, null, 'b'], ['a', 'b']),
+    ['a', 'b']
+  );
+});
+
+test('pruneExpanded: non-array inputs → []', () => {
+  assert.deepEqual(H.pruneExpanded(null, ['a']), []);
+  assert.deepEqual(H.pruneExpanded(['a'], null), []);
+});

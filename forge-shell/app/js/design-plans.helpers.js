@@ -216,6 +216,28 @@
     return ranked.map(function (e) { return e.doc; });
   }
 
+  function parseExpanded(raw) {
+    if (typeof raw !== 'string' || raw === '') return [];
+    var val;
+    try { val = JSON.parse(raw); } catch (e) { return []; }
+    if (!Array.isArray(val)) return [];
+    var out = [];
+    val.forEach(function (v) {
+      if (typeof v === 'string' && v !== '' && out.indexOf(v) === -1) out.push(v);
+    });
+    return out;
+  }
+
+  function pruneExpanded(keys, validKeys) {
+    var valid = {};
+    (Array.isArray(validKeys) ? validKeys : []).forEach(function (k) { valid[k] = true; });
+    var out = [];
+    (Array.isArray(keys) ? keys : []).forEach(function (k) {
+      if (typeof k === 'string' && valid[k] && out.indexOf(k) === -1) out.push(k);
+    });
+    return out;
+  }
+
   return {
     classifyType: classifyType,
     parseFilename: parseFilename,
@@ -228,6 +250,8 @@
     rollUpStatus: rollUpStatus,
     groupInitiatives: groupInitiatives,
     rankDocs: rankDocs,
+    parseExpanded: parseExpanded,
+    pruneExpanded: pruneExpanded,
     DEFAULT_CLUSTERS: DEFAULT_CLUSTERS
   };
 });
