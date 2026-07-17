@@ -16,6 +16,7 @@ const PLUGINS = [
   { id: 'rovo-agent-forge',    label: 'Rovo Agent Forge', icon: 'fa-solid fa-robot',          requiredDir: 'rovo-agents' },
   { id: 'report-forge',        label: 'Report Forge',     icon: 'fa-solid fa-file-lines',     requiredDir: 'reports' },
   { id: 'audio-forge',         label: 'Audio Forge',      icon: 'fa-solid fa-microphone',     requiredDir: 'audio-forge' },
+  { id: 'design-plans',        label: 'Design Plans',     icon: 'fa-solid fa-diagram-project', requiredDir: null },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -331,6 +332,8 @@ const Shell = {
       pluginToRefresh = 'report-forge';
     } else if (path.includes('/audio-forge/')) {
       pluginToRefresh = 'audio-forge';
+    } else if (path.includes('/docs/superpowers/')) {
+      pluginToRefresh = 'design-plans';
     }
 
     // If a relevant plugin is active, refresh it

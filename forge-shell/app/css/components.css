@@ -617,6 +617,7 @@
   [class$="-sidebar-collapsed"] .raf-sidebar,
   [class$="-sidebar-collapsed"] .rf-sidebar,
   [class$="-sidebar-collapsed"] .af-sidebar,
+  [class$="-sidebar-collapsed"] .dp-sidebar,
   [class$="-sidebar-collapsed"] .sidebar-resizer {
     display: none;
   }
