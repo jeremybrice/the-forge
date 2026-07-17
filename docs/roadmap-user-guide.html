@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forge Shell · Roadmap User Guide</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-card: #1e2a3a;
+      --border: #2d3a4d;
+      --text: #e8eef6;
+      --text-muted: #8b9cb3;
+      --accent: #4a6cf7;
+      --accent-soft: rgba(74, 108, 247, 0.15);
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --initiative: #8b5cf6;
+      --epic: #06b6d4;
+      --radius: 10px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+
+    /* Layout */
+    .page {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+      nav.toc {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      nav.toc .toc-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+      nav.toc a { padding: 4px 0; }
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 28px 20px;
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--border);
+    }
+    nav.toc .brand {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    nav.toc h1 {
+      font-size: 15px;
+      margin: 0 0 18px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    nav.toc .toc-links { display: flex; flex-direction: column; gap: 2px; }
+    nav.toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-radius: 6px;
+    }
+    nav.toc a:hover { color: var(--text); background: var(--accent-soft); }
+
+    main {
+      padding: 40px 48px 80px;
+      max-width: 820px;
+    }
+    @media (max-width: 600px) {
+      main { padding: 24px 18px 60px; }
+    }
+
+    /* Typography */
+    main h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    main .lede {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin: 0 0 28px;
+      max-width: 58ch;
+    }
+    main h2 {
+      font-size: 1.35rem;
+      margin: 48px 0 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      scroll-margin-top: 24px;
+    }
+    main h2:first-of-type { border-top: none; margin-top: 0; }
+    main h3 {
+      font-size: 1.05rem;
+      margin: 24px 0 8px;
+      color: var(--text);
+    }
+    p { margin: 0 0 12px; }
+    a { color: #7b9cff; }
+    ul, ol { margin: 0 0 16px; padding-left: 1.35em; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--text-muted); }
+    strong { font-weight: 600; }
+    code, kbd {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    kbd {
+      font-size: 0.8em;
+      padding: 2px 7px;
+      box-shadow: 0 1px 0 var(--border);
+    }
+
+    /* Components */
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #a8bbff;
+      border: 1px solid rgba(74, 108, 247, 0.35);
+    }
+    .badge.muted {
+      background: rgba(139, 156, 179, 0.12);
+      color: var(--text-muted);
+      border-color: var(--border);
+    }
+
+    .callout {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin: 16px 0 20px;
+      box-shadow: var(--shadow);
+    }
+    .callout.warn { border-left-color: var(--warn); }
+    .callout.tip { border-left-color: var(--success); }
+    .callout .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 16px 0 24px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      transition: border-color 0.15s;
+    }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-card .icon {
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+    .feature-card h3 {
+      margin: 0 0 6px;
+      font-size: 0.95rem;
+    }
+    .feature-card p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+    .feature-card a {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.82rem;
+      text-decoration: none;
+    }
+    .feature-card a:hover { text-decoration: underline; }
+
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 20px;
+    }
+    .steps li {
+      position: relative;
+      padding: 12px 14px 12px 48px;
+      margin-bottom: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 12px 0 20px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .toolbar-mock {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 12px 0 20px;
+      font-size: 13px;
+    }
+    .toolbar-mock .title {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .toolbar-mock .seg {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .toolbar-mock .seg span {
+      padding: 5px 10px;
+      color: var(--text-muted);
+      border-right: 1px solid var(--border);
+    }
+    .toolbar-mock .seg span:last-child { border-right: none; }
+    .toolbar-mock .seg span.on {
+      background: var(--accent);
+      color: #fff;
+    }
+    .toolbar-mock .spacer { flex: 1; min-width: 12px; }
+    .toolbar-mock .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .card-mock {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--initiative);
+      border-radius: 8px;
+      padding: 10px 12px;
+      max-width: 300px;
+      margin: 12px 0 16px;
+      box-shadow: var(--shadow);
+    }
+    .card-mock .t { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+    .card-mock .meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .card-mock .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .card-mock .status-hit {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      cursor: default;
+    }
+    .card-mock .more {
+      margin-left: auto;
+      opacity: 0.7;
+      letter-spacing: 1px;
+    }
+
+    footer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="toc" aria-label="Table of contents">
+      <div class="brand">Forge Shell</div>
+      <h1>Roadmap User Guide</h1>
+      <div class="toc-links">
+        <a href="#overview">Overview</a>
+        <a href="#whats-new">What’s new</a>
+        <a href="#open">Open Roadmap</a>
+        <a href="#toolbar">Toolbar &amp; views</a>
+        <a href="#status">Change status</a>
+        <a href="#schedule">Schedule with drag &amp; drop</a>
+        <a href="#drawer">Detail drawer</a>
+        <a href="#quick-assign">Quick-assign menu</a>
+        <a href="#table">Table view</a>
+        <a href="#prefs">Saved preferences</a>
+        <a href="#settings">Settings (releases &amp; buckets)</a>
+        <a href="#filters">Filters</a>
+        <a href="#model">How scheduling works</a>
+        <a href="#tips">Tips &amp; troubleshooting</a>
+        <a href="#checklist">Quick checklist</a>
+      </div>
+    </nav>
+
+    <main>
+      <h1>Roadmap enhancements</h1>
+      <p class="lede">
+        The Forge Shell <strong>Roadmap</strong> page is now an interactive planning surface.
+        You can change status, reschedule work by dragging cards, inspect details, jump into Product Forge,
+        scan a dense table, and keep your view preferences across sessions.
+      </p>
+
+      <div class="badge-row">
+        <span class="badge">Forge Shell · Roadmap</span>
+        <span class="badge muted">Product Forge cards</span>
+        <span class="badge muted">Shipped 2026-07</span>
+      </div>
+
+      <!-- Overview -->
+      <h2 id="overview">Overview</h2>
+      <p>
+        Roadmap visualizes Product Forge initiative cards across time using
+        <strong>releases</strong> defined in project config (<code>cards/roadmap.md</code>).
+        It is still a <strong>planning surface</strong>—not a full card editor.
+        Use it for schedule, status, and triage; open Product Forge for deep editing.
+      </p>
+      <div class="callout tip">
+        <div class="label">Prerequisite</div>
+        <p>Your project needs a <code>cards/</code> directory with Product Forge cards.
+        Open the project folder in Forge Shell, then select <strong>Roadmap</strong> in the sidebar.</p>
+      </div>
+
+      <!-- What's new -->
+      <h2 id="whats-new">What’s new</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">●</div>
+          <h3>Inline status</h3>
+          <p>Click a status pill to update initiative, epic, or story status in place.</p>
+          <a href="#status">How →</a>
+        </div>
+        <div class="feature-card">
+          <div class="icon">↔</div>
+          <h3>Drag to schedule</h3>
+          <p>Drag initiatives between quarters/months and Unscheduled to set or clear release.</p>
+          <a href="#schedule">How →</a>
+        </div>
+        <div class="feature-card">
+          <div class="icon">▣</div>
+          <h3>Detail drawer</h3>
+          <p>Click a card for a summary panel and jump straight into Product Forge.</p>
+          <a href="#drawer">How →</a>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⋯</div>
+          <h3>Quick-assign menu</h3>
+          <p>Set release, buckets, status, or open Product Forge from ⋯ or right-click.</p>
+          <a href="#quick-assign">How →</a>
+        </div>
+        <div class="feature-card">
+          <div class="icon">☰</div>
+          <h3>Table view</h3>
+          <p>Sortable dense table of initiatives with the same filters and actions.</p>
+          <a href="#table">How →</a>
+        </div>
+        <div class="feature-card">
+          <div class="icon">◎</div>
+          <h3>Remembered prefs</h3>
+          <p>View mode, year, quarterly/monthly, and stories toggle save to the project.</p>
+          <a href="#prefs">How →</a>
+        </div>
+      </div>
+
+      <!-- Open -->
+      <h2 id="open">Open Roadmap</h2>
+      <ol class="steps">
+        <li>Launch Forge Shell (desktop app or browser/server mode).</li>
+        <li>Select your project folder (must include <code>cards/</code>).</li>
+        <li>In the left sidebar, choose <strong>Roadmap</strong> (road icon).</li>
+      </ol>
+      <p>If no <code>cards/</code> folder exists, Roadmap shows a “not active” message until Product Forge cards are present.</p>
+
+      <!-- Toolbar -->
+      <h2 id="toolbar">Toolbar &amp; views</h2>
+      <div class="toolbar-mock" aria-hidden="true">
+        <span class="title">Roadmap</span>
+        <div class="seg">
+          <span class="on">Card</span>
+          <span>Timeline</span>
+          <span>Table</span>
+        </div>
+        <div class="seg">
+          <span class="on">Quarterly</span>
+          <span>Monthly</span>
+        </div>
+        <span class="spacer"></span>
+        <span class="icon-btn" title="Year">‹</span>
+        <span>2026</span>
+        <span class="icon-btn">›</span>
+        <span class="icon-btn" title="Stories">≡</span>
+        <span class="icon-btn" title="Filter">▽</span>
+        <span class="icon-btn" title="Settings">⚙</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Control</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Card</strong></td>
+            <td>Kanban-style columns by period (quarter or month) plus <strong>Unscheduled</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Timeline</strong></td>
+            <td>Gantt-style bars by product swim lane, positioned from release dates.</td>
+          </tr>
+          <tr>
+            <td><strong>Table</strong></td>
+            <td>Sortable list of initiatives (title, status, product, release, period, epic count, …).</td>
+          </tr>
+          <tr>
+            <td><strong>Quarterly / Monthly</strong></td>
+            <td>Time grain for columns and period labels.</td>
+          </tr>
+          <tr>
+            <td><strong>Year ‹ ›</strong></td>
+            <td>Which calendar year is shown.</td>
+          </tr>
+          <tr>
+            <td><strong>Stories</strong> (list icon)</td>
+            <td>Show or hide story cards nested under epics in Card view.</td>
+          </tr>
+          <tr>
+            <td><strong>Filter</strong></td>
+            <td>Side panel: product, client, module, status, release.</td>
+          </tr>
+          <tr>
+            <td><strong>Settings</strong> (gear)</td>
+            <td>Edit releases, buckets, and timeline swim lanes.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Status -->
+      <h2 id="status">Change status</h2>
+      <p>Status is no longer display-only. On Card (and Table) view, click the status pill on a card:</p>
+      <div class="card-mock" aria-hidden="true">
+        <div class="t">Notification system overhaul</div>
+        <div class="meta">
+          <span class="status-hit"><span class="dot"></span> Approved</span>
+          <span class="more">⋯</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li>Click the colored status (dot + label) on an initiative, epic, or story.</li>
+        <li>Choose a new status from the menu (options depend on card type).</li>
+        <li>The pill updates immediately and is written to the card file on disk.</li>
+      </ol>
+      <ul>
+        <li>Choosing the <strong>same</strong> status closes the menu without writing.</li>
+        <li>Press <kbd>Esc</kbd> to close the menu.</li>
+        <li>If a card has an unusual status from another tool, it still displays; picking a menu option replaces it.</li>
+      </ul>
+      <div class="callout">
+        <div class="label">Note</div>
+        <p>Timeline bars show status as a color cue; use Card or Table view (or the drawer / quick-assign menu) to change it.</p>
+      </div>
+
+      <!-- Schedule -->
+      <h2 id="schedule">Schedule with drag &amp; drop</h2>
+      <p>
+        In <strong>Card</strong> view, <strong>initiative</strong> cards can be dragged between period columns
+        and the <strong>Unscheduled</strong> column. This assigns or clears the card’s
+        <code>release</code> field—it does not invent free-form dates.
+      </p>
+      <ol class="steps">
+        <li>Ensure releases exist under <strong>Settings → Releases</strong> (name + start/end dates).</li>
+        <li>Drag an initiative onto a quarter/month column whose dates overlap a release.</li>
+        <li>Or drag to <strong>Unscheduled</strong> to clear the schedule.</li>
+      </ol>
+      <h3>What to expect</h3>
+      <table>
+        <thead>
+          <tr><th>Situation</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>One release covers that period</td>
+            <td>Card is assigned that release name.</td>
+          </tr>
+          <tr>
+            <td>Several releases overlap the period</td>
+            <td>A small picker asks which release to use.</td>
+          </tr>
+          <tr>
+            <td>No release covers the period</td>
+            <td>Error toast; nothing is written. Add a release in Settings first.</td>
+          </tr>
+          <tr>
+            <td>Drop on Unscheduled</td>
+            <td>Release is cleared; card appears under Unscheduled.</td>
+          </tr>
+          <tr>
+            <td>Release spans multiple quarters</td>
+            <td>Card may appear in more than one column—that is expected.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout warn">
+        <div class="label">Important</div>
+        <p>
+          Only <strong>initiatives</strong> are schedule units for column placement.
+          Epics and stories nest under their initiative; drag does not reparent them.
+          To change hierarchy, use Product Forge.
+        </p>
+      </div>
+
+      <!-- Drawer -->
+      <h2 id="drawer">Detail drawer</h2>
+      <p>Click a card’s body (not the status pill or ⋯) to open a summary drawer on the right.</p>
+      <ol class="steps">
+        <li>Click an initiative (or epic) title area in Card or Table view, or a bar/label in Timeline.</li>
+        <li>Review type, status, product/client/module, release dates, hierarchy, and a short description.</li>
+        <li>Click <strong>Open in Product Forge</strong> to jump to the full card and edit there.</li>
+        <li>Press <kbd>Esc</kbd> (or the drawer close control) to dismiss.</li>
+      </ol>
+      <ul>
+        <li>Opening the drawer closes the filter panel (and vice versa).</li>
+        <li>You can still change status from the drawer when a status control is shown.</li>
+        <li>If Product Forge is hidden in plugin visibility, you’ll get an error toast and stay on Roadmap.</li>
+      </ul>
+
+      <!-- Quick assign -->
+      <h2 id="quick-assign">Quick-assign menu</h2>
+      <p>Use the <strong>⋯</strong> button on a card, or <strong>right-click</strong> the card, for planning actions:</p>
+      <table>
+        <thead>
+          <tr><th>Action</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Set release…</strong></td><td>Assign a release from your Settings list.</td></tr>
+          <tr><td><strong>Clear schedule</strong></td><td>Remove release (Unscheduled).</td></tr>
+          <tr><td><strong>Add to / remove from bucket</strong></td><td>Group initiatives under colored bucket labels (config in Settings).</td></tr>
+          <tr><td><strong>Change status…</strong></td><td>Same type-aware status options as the status pill.</td></tr>
+          <tr><td><strong>Open in Product Forge</strong></td><td>Deep-link to the card editor.</td></tr>
+        </tbody>
+      </table>
+      <p>Press <kbd>Esc</kbd> or click outside to close the menu. Drag still works on the card body; start a drag from the card, not the ⋯ control.</p>
+
+      <!-- Table -->
+      <h2 id="table">Table view</h2>
+      <p>Choose <strong>Table</strong> in the view toggle for a dense, sortable list of <strong>initiatives</strong>.</p>
+      <ol class="steps">
+        <li>Click a column header (Title, Status, Product, Release, Period, Epics, …) to sort; click again to reverse.</li>
+        <li>Use the same filter panel as Card/Timeline—filters apply to all views.</li>
+        <li>Click a row to open the detail drawer; use the status cell to change status without leaving the table.</li>
+      </ol>
+      <div class="callout tip">
+        <div class="label">Tip</div>
+        <p>Table is best for scanning large portfolios. Use Card for drag-and-drop planning, Timeline for duration at a glance.</p>
+      </div>
+
+      <!-- Prefs -->
+      <h2 id="prefs">Saved preferences</h2>
+      <p>
+        Your toolbar choices are written to <code>cards/roadmap.md</code> (shared across desktop and browser modes for that project):
+      </p>
+      <ul>
+        <li>Default view (Card / Timeline / Table)</li>
+        <li>Time granularity (quarterly / monthly)</li>
+        <li>Current year</li>
+        <li>Show stories on/off</li>
+      </ul>
+      <p>Saves are debounced and usually silent on success. Change a control, wait about a second, then reload—your choices should restore.</p>
+
+      <!-- Settings -->
+      <h2 id="settings">Settings (releases &amp; buckets)</h2>
+      <p>Open the gear icon for roadmap configuration:</p>
+      <ul>
+        <li><strong>Releases</strong> — name, start date, end date. Cards schedule by matching the card’s <code>release</code> name to these ranges.</li>
+        <li><strong>Buckets</strong> — named colored groups of initiatives for Card view organization (optional).</li>
+        <li><strong>Swim lanes</strong> — which products appear as lanes in Timeline view.</li>
+      </ul>
+      <div class="callout">
+        <div class="label">Before you drag</div>
+        <p>Define at least one release that covers the periods you plan to use. Without releases, everything stays Unscheduled.</p>
+      </div>
+
+      <!-- Filters -->
+      <h2 id="filters">Filters</h2>
+      <p>
+        Open the filter control to narrow by product, client, module, status, or release.
+        Active filters show a count badge. Clear all from the filter panel footer.
+        Filters apply across Card, Timeline, and Table for the current session.
+      </p>
+
+      <!-- Model -->
+      <h2 id="model">How scheduling works</h2>
+      <p>Keep this mental model in mind:</p>
+      <ol>
+        <li><strong>Settings</strong> defines named releases with date ranges.</li>
+        <li>An initiative’s markdown frontmatter has a <code>release</code> field (the release name).</li>
+        <li>Roadmap places the initiative in any period that <em>overlaps</em> that release’s dates.</li>
+        <li>Dragging or quick-assign changes the name on the card—not the release calendar itself.</li>
+      </ol>
+      <p>
+        Editing a release’s start/end in Settings can move <em>all</em> cards on that release across columns.
+        That is intentional: the calendar is shared configuration.
+      </p>
+
+      <!-- Tips -->
+      <h2 id="tips">Tips &amp; troubleshooting</h2>
+      <table>
+        <thead>
+          <tr><th>Issue</th><th>What to try</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Drop does nothing / error toast</td>
+            <td>Add a release in Settings whose dates cover that period.</td>
+          </tr>
+          <tr>
+            <td>Card appears in two quarters</td>
+            <td>Its release spans both periods—expected. Narrow the release dates or accept multi-period placement.</td>
+          </tr>
+          <tr>
+            <td>Can’t drag an epic</td>
+            <td>Only initiatives are draggable for schedule. Change epic status via the pill or ⋯ menu.</td>
+          </tr>
+          <tr>
+            <td>Open in Product Forge fails</td>
+            <td>Ensure Product Forge is visible for the project and the card file still exists under <code>cards/</code>.</td>
+          </tr>
+          <tr>
+            <td>View didn’t stick after reload</td>
+            <td>Wait a moment after toggling (debounced save), then reload. Confirm you have write access to the project folder.</td>
+          </tr>
+          <tr>
+            <td>Stale data</td>
+            <td>Roadmap auto-refreshes about every 5 seconds; use the refresh control if needed.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout tip">
+        <div class="label">Keyboard</div>
+        <p>
+          <kbd>Esc</kbd> closes the topmost UI layer in order: status/quick menu → Settings modal → detail drawer → filter panel.
+        </p>
+      </div>
+
+      <!-- Checklist -->
+      <h2 id="checklist">Quick checklist (first 5 minutes)</h2>
+      <ol class="steps">
+        <li>Open Roadmap and confirm Card / Timeline / Table all open.</li>
+        <li>In Settings, add or verify a release for the current year.</li>
+        <li>Drag one Unscheduled initiative onto a period—confirm it sticks after refresh.</li>
+        <li>Change its status from the pill; open the drawer; use <strong>Open in Product Forge</strong>.</li>
+        <li>Try Table sort + a filter; switch year and reload to confirm prefs save.</li>
+      </ol>
+
+      <footer>
+        <p>
+          Forge Shell · Roadmap interactive planning (P0/P1) · 2026-07<br />
+          Related design: <code>docs/superpowers/specs/2026-07-12-roadmap-interactive-planning-surface.md</code><br />
+          Open this file in any browser: <code>docs/roadmap-user-guide.html</code>
+        </p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
