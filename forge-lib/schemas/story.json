@@ -19,7 +19,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Ready", "In Progress", "In Review", "Testing", "Done", "Blocked"],
+      "enum": ["Draft", "In Progress", "Completed", "Cancelled", "Superseded", "Submitted", "Approved", "Planning", "Ready", "Complete", "Done", "On Hold", "In Review", "Testing", "Blocked", "Archived"],
       "description": "Current status of the story"
     },
     "product": {

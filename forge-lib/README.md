@@ -81,7 +81,7 @@ All commands return JSON:
 ```json
 {
   "success": false,
-  "error": "Validation error: 'InvalidStatus' is not one of ['Draft', 'Submitted', 'Approved', 'Superseded']"
+  "error": "Validation error: 'InvalidStatus' is not one of ['Draft', 'In Progress', 'Completed', 'Cancelled', 'Superseded']"
 }
 ```
 
@@ -119,13 +119,13 @@ python forge.py card create initiative \
 # Create an epic with parent
 python forge.py card create epic \
   --title "Email Notification Engine" \
-  --data '{"status": "Planning", "product": "webapp", "team": "Platform"}' \
+  --data '{"status": "In Progress", "product": "webapp", "team": "Platform"}' \
   --parent "notification-system-overhaul.md"
 
 # Create a story (sequential numbering: story-001-{slug}.md)
 python forge.py card create story \
   --title "Notification Template Builder" \
-  --data '{"status": "Ready", "estimate": 5}' \
+  --data '{"status": "Draft", "estimate": 5}' \
   --parent "email-notification-engine.md"
 ```
 
@@ -133,9 +133,9 @@ python forge.py card create story \
 
 | Type | Status Values | Filename Pattern |
 |------|--------------|-----------------|
-| initiative | Draft, Submitted, Approved, Superseded | `{slug}.md` |
-| epic | Planning, In Progress, Complete, Cancelled | `{slug}.md` |
-| story | Draft, Ready, In Progress, Done | `story-NNN-{slug}.md` |
+| initiative | Draft, In Progress, Completed, Cancelled, Superseded | `{slug}.md` |
+| epic | Draft, In Progress, Completed, Cancelled, Superseded | `{slug}.md` |
+| story | Draft, In Progress, Completed, Cancelled, Superseded | `story-NNN-{slug}.md` |
 | intake | Draft, Complete, Handed Off | `intake-{product}-{feature}.md` |
 | checkpoint | Current, Superseded, Archived | `checkpoint-YYYY-MM-DD-{slug}.md` |
 | decision | Active, Revised, Reversed | `{slug}.md` |

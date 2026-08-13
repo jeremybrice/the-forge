@@ -4,6 +4,12 @@ Index of design decisions. Each entry links to the full design doc in `docs/plan
 
 **Maintenance:** When creating a new design doc, add an entry here.
 
+## August 2026
+
+| Date | Decision | Scope | Design Doc |
+|------|----------|-------|------------|
+| 2026-08-13 | Shared initiative/epic/story lifecycle; hide closed work by default; downward cascade on close | product-forge, forge-lib, forge-shell | [design](superpowers/specs/2026-08-13-pfl-shared-lifecycle-hide-closed-design.md) |
+
 ## July 2026
 
 | Date | Decision | Scope | Design Doc |

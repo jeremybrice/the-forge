@@ -34,7 +34,7 @@ Return structured content for an Epic card:
 
 - **title**: Descriptive Epic title capturing the scope
 - **frontmatter**: JSON object with these fields:
-  - `status`: "Planning"
+  - `status`: "Draft"
   - `product`: From taxonomy or user input
   - `module`: From taxonomy or null
   - `client`: From taxonomy or null
