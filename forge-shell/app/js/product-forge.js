@@ -779,7 +779,22 @@
      ═══════════════════════════════════════════════════════════════ */
   const FilterPanel = {
     open: false,
+    showClosed: false,
     filters: { initiative_status: [], epic_status: [], story_status: [] },
+
+    loadShowClosed: function () {
+      try {
+        this.showClosed = window.localStorage.getItem('pfl-show-closed') === '1';
+      } catch (e) {
+        this.showClosed = false;
+      }
+    },
+
+    persistShowClosed: function () {
+      try {
+        window.localStorage.setItem('pfl-show-closed', this.showClosed ? '1' : '0');
+      } catch (e) { /* ignore quota / private mode */ }
+    },
 
     getActiveCount() {
       let count = 0;
@@ -1064,7 +1079,8 @@
       let html = '<div class="form-grid">';
       html += this._buildField('title', 'Title', 'text', fm.title, { required: true, fullWidth: true });
 
-      const statuses = STATUS_OPTIONS[type] || [];
+      const statuses = (STATUS_OPTIONS[type] || []).slice();
+      if (fm.status && statuses.indexOf(fm.status) === -1) statuses.unshift(fm.status);
       if (statuses.length > 0) html += this._buildField('status', 'Status', 'select', fm.status, { options: statuses });
 
       /* Release field for initiative and epic types */
@@ -1264,6 +1280,31 @@
     async save() {
       if (!this.currentFilename || !this.originalCard) return;
       var data = this._getFormData();
+      var oldStatus = this.originalCard.frontmatter && this.originalCard.frontmatter.status;
+      var newStatus = data.frontmatter.status;
+      var descendants = [];
+
+      if (oldStatus !== newStatus && H.isTerminalStatus && H.isTerminalStatus(newStatus)) {
+        descendants = H.collectDescendants
+          ? H.collectDescendants(this.originalCard, store.all())
+          : [];
+        if (descendants.length) {
+          var sum = H.summarizeDescendants
+            ? H.summarizeDescendants(descendants)
+            : { epics: 0, stories: descendants.length };
+          var details = sum.epics + ' epics, ' + sum.stories + ' stories → ' + ESC(newStatus) + '<br><br>';
+          descendants.forEach(function (c) {
+            details += '- ' + ESC(c.filename) + '.md<br>';
+          });
+          var ok = await ForgeUtils.Confirm.show(
+            'Close subtree',
+            'This will mark every child with the same status.',
+            details
+          );
+          if (!ok) return;
+        }
+      }
+
       var content = CardParser.serialize(data.frontmatter, data.body);
       var handle = store.fileHandles.get(this.currentFilename);
 
@@ -1276,12 +1317,44 @@
         await ForgeUtils.FS.writeFile(handle, content);
         var card = CardParser.parse(this.currentFilename, content, this.originalCard.dirName);
         store.set(this.currentFilename, card, Date.now(), handle);
+
+        var updated = 0;
+        var skipped = 0;
+        var today = ForgeUtils.todayISO();
+        for (var i = 0; i < descendants.length; i++) {
+          var child = descendants[i];
+          var childHandle = store.fileHandles.get(child.filename);
+          if (!childHandle) {
+            skipped++;
+            continue;
+          }
+          var childFm = Object.assign({}, child.frontmatter, { status: newStatus, updated: today });
+          var childContent = CardParser.serialize(childFm, child.body);
+          try {
+            await ForgeUtils.FS.writeFile(childHandle, childContent);
+            var parsed = CardParser.parse(child.filename, childContent, child.dirName);
+            store.set(child.filename, parsed, Date.now(), childHandle);
+            updated++;
+          } catch (childErr) {
+            skipped++;
+          }
+        }
+
         ctrl._renderTree();
         if (selectedCard === this.currentFilename) {
           detailPanel.renderCard(card);
+        } else if (selectedCard) {
+          var sel = store.get(selectedCard);
+          if (sel) detailPanel.renderCard(sel);
         }
         this.close();
-        ForgeUtils.Toast.show('Card saved successfully', 'success');
+        if (descendants.length) {
+          var msg = 'Card saved; ' + updated + ' children updated';
+          if (skipped) msg += ', ' + skipped + ' skipped';
+          ForgeUtils.Toast.show(msg, skipped ? 'info' : 'success');
+        } else {
+          ForgeUtils.Toast.show('Card saved successfully', 'success');
+        }
       } catch (e) {
         ForgeUtils.Toast.show('Save failed: ' + e.message, 'error');
       }
@@ -1341,6 +1414,8 @@
       }
 
       this._renderLayout(view, rootHandle);
+      FilterPanel.loadShowClosed();
+      this._syncClosedToggle();
       pinStore.load();
       await this._loadCards();
       /* Deep-link from Roadmap (or others): select only after cards load.
@@ -1424,6 +1499,9 @@
               '<span>' + ESC(dirName) + '/cards</span>' +
             '</div>' +
             '<div class="spacer"></div>' +
+            '<button class="btn-icon" data-pfl-action="toggle-closed" title="Show closed work" aria-pressed="false">' +
+              '<i class="fa-solid fa-box-archive"></i>' +
+            '</button>' +
             '<div class="pfl-filter-badge">' +
               '<button class="btn-icon" data-pfl-action="toggle-filter" title="Filter"><i class="fa-solid fa-filter"></i></button>' +
             '</div>' +
@@ -1488,6 +1566,16 @@
           var panel = $q('[data-pfl-filter-panel]');
           if (panel) panel.classList.toggle('open', FilterPanel.open);
           if (FilterPanel.open) ctrl._renderFilterPanel();
+        });
+      }
+
+      var closedBtn = $q('[data-pfl-action="toggle-closed"]');
+      if (closedBtn) {
+        closedBtn.addEventListener('click', function () {
+          FilterPanel.showClosed = !FilterPanel.showClosed;
+          FilterPanel.persistShowClosed();
+          ctrl._syncClosedToggle();
+          ctrl._renderTree();
         });
       }
 
@@ -1633,6 +1721,16 @@
       if (H.excludePinnedFromRecents) {
         filteredRecents = H.excludePinnedFromRecents(filteredRecents, pinStore.list());
       }
+
+      if (!FilterPanel.showClosed && H.pruneClosedHierarchy) {
+        hierarchy = H.pruneClosedHierarchy(hierarchy);
+        var storeGet = function (fn) { return store.get(fn); };
+        if (H.cardHiddenByClosed) {
+          filteredRecents = filteredRecents.filter(function (c) { return !H.cardHiddenByClosed(c, storeGet); });
+          pinnedCards = pinnedCards.filter(function (c) { return !H.cardHiddenByClosed(c, storeGet); });
+        }
+      }
+
       hierarchy.pinned = pinnedCards;
       hierarchy.recents = filteredRecents;
 
@@ -1826,6 +1924,15 @@
           if (panel) panel.classList.remove('open');
         });
       }
+    },
+
+    _syncClosedToggle() {
+      var btn = $q('[data-pfl-action="toggle-closed"]');
+      if (!btn) return;
+      var on = !!FilterPanel.showClosed;
+      btn.classList.toggle('rm-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.title = on ? 'Hide closed work' : 'Show closed work';
     },
 
     _updateFilterBadge() {

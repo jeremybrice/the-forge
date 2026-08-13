@@ -19,7 +19,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Planning", "Ready", "In Progress", "In Review", "Completed", "Cancelled"],
+      "enum": ["Draft", "In Progress", "Completed", "Cancelled", "Superseded", "Submitted", "Approved", "Planning", "Ready", "Complete", "Done", "On Hold", "In Review", "Testing", "Blocked", "Archived"],
       "description": "Current status of the epic"
     },
     "product": {

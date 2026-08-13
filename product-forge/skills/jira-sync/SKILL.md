@@ -142,7 +142,7 @@ When syncing multiple cards:
 
 **Key rule:** Local `status` and Jira status are independent workflows.
 
-- **Local `status`:** Forge-specific workflow (Draft, Ready, In Progress, Done)
+- **Local `status`:** Forge-specific workflow (Draft, In Progress, Completed, Cancelled, Superseded)
 - **Jira status:** Jira-specific workflow (To Do, In Progress, Done, etc.)
 - **`jira_status` field:** Read-only reference to Jira's current status
 

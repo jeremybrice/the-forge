@@ -16,10 +16,11 @@ window.CardData = (function () {
     'release-note': ['title','type','release_date','product','status','version','related_stories','source_conversation','created','updated']
   };
 
+  const SHARED_LIFECYCLE = ['Draft','In Progress','Completed','Cancelled','Superseded'];
   const STATUS_OPTIONS = {
-    initiative: ['Draft','Submitted','Approved','Superseded'],
-    epic: ['Planning','In Progress','Complete','Cancelled'],
-    story: ['Draft','Ready','In Progress','Done'],
+    initiative: SHARED_LIFECYCLE.slice(),
+    epic: SHARED_LIFECYCLE.slice(),
+    story: SHARED_LIFECYCLE.slice(),
     intake: ['Draft','Complete','Handed Off'],
     checkpoint: ['Current','Superseded','Archived'],
     decision: ['Active','Revised','Reversed'],
@@ -44,7 +45,7 @@ window.CardData = (function () {
       'draft': 'var(--status-draft)', 'submitted': 'var(--status-blue)',
       'approved': 'var(--status-green)', 'planning': 'var(--status-blue)',
       'in progress': 'var(--status-blue)', 'ready': 'var(--status-teal)',
-      'complete': 'var(--status-green)', 'done': 'var(--status-green)',
+      'complete': 'var(--status-green)', 'completed': 'var(--status-green)', 'done': 'var(--status-green)',
       'current': 'var(--status-green)', 'active': 'var(--status-green)',
       'cancelled': 'var(--status-gray)', 'superseded': 'var(--status-gray)',
       'archived': 'var(--status-gray)', 'reversed': 'var(--status-gray)',

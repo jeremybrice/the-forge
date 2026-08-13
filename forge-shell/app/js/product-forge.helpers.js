@@ -196,11 +196,139 @@
     return arr.indexOf(fm.status) !== -1;
   }
 
+  var SHARED_LIFECYCLE = ['Draft', 'In Progress', 'Completed', 'Cancelled', 'Superseded'];
+  var CLOSED = {
+    completed: 1, complete: 1, done: 1,
+    cancelled: 1, canceled: 1, superseded: 1, archived: 1
+  };
+  var TERMINAL = {
+    completed: 1, complete: 1, done: 1,
+    cancelled: 1, canceled: 1, superseded: 1
+  };
+
+  function normStatus(status) {
+    return status == null ? '' : String(status).toLowerCase();
+  }
+
+  function isClosedStatus(status) {
+    return !!CLOSED[normStatus(status)];
+  }
+
+  function isTerminalStatus(status) {
+    return !!TERMINAL[normStatus(status)];
+  }
+
+  function isRelatedChild(parentCard, childCard) {
+    if (!parentCard || !childCard) return false;
+    var childFm = childCard.frontmatter || {};
+    var parentFm = parentCard.frontmatter || {};
+    if (childFm.parent === parentCard.filename) return true;
+    return Array.isArray(parentFm.children) && parentFm.children.indexOf(childCard.filename) !== -1;
+  }
+
+  function collectDescendants(rootCard, allCards) {
+    if (!rootCard || !Array.isArray(allCards)) return [];
+    var type = (rootCard.frontmatter || {}).type;
+    var result = [];
+    if (type === 'initiative') {
+      var epics = allCards.filter(function (c) {
+        return (c.frontmatter || {}).type === 'epic' && isRelatedChild(rootCard, c);
+      });
+      result = result.concat(epics);
+      epics.forEach(function (epic) {
+        allCards.forEach(function (c) {
+          if ((c.frontmatter || {}).type === 'story' && isRelatedChild(epic, c)) result.push(c);
+        });
+      });
+    } else if (type === 'epic') {
+      allCards.forEach(function (c) {
+        if ((c.frontmatter || {}).type === 'story' && isRelatedChild(rootCard, c)) result.push(c);
+      });
+    }
+    return result;
+  }
+
+  function hasClosedAncestor(card, storeGet) {
+    if (!card || typeof storeGet !== 'function') return false;
+    var seen = {};
+    var cursor = card;
+    var safety = 16;
+    while (cursor && safety-- > 0) {
+      var parentFn = cursor.frontmatter && cursor.frontmatter.parent;
+      if (!parentFn || seen[parentFn]) break;
+      seen[parentFn] = true;
+      var parent = storeGet(parentFn);
+      if (!parent) break;
+      if (isClosedStatus(parent.frontmatter && parent.frontmatter.status)) return true;
+      cursor = parent;
+    }
+    return false;
+  }
+
+  function cardHiddenByClosed(card, storeGet) {
+    if (!card) return false;
+    if (isClosedStatus(card.frontmatter && card.frontmatter.status)) return true;
+    return hasClosedAncestor(card, storeGet);
+  }
+
+  function pruneClosedHierarchy(hierarchy) {
+    hierarchy = hierarchy || {};
+    function keepEpic(en) {
+      if (isClosedStatus(en.card && en.card.frontmatter && en.card.frontmatter.status)) return null;
+      return {
+        card: en.card,
+        children: (en.children || []).filter(function (s) {
+          return !isClosedStatus((s.frontmatter || s).status);
+        })
+      };
+    }
+    return {
+      tree: (hierarchy.tree || []).filter(function (n) {
+        return !isClosedStatus(n.card && n.card.frontmatter && n.card.frontmatter.status);
+      }).map(function (n) {
+        return {
+          card: n.card,
+          children: (n.children || []).map(keepEpic).filter(Boolean)
+        };
+      }),
+      orphanEpics: (hierarchy.orphanEpics || []).map(keepEpic).filter(Boolean),
+      orphanStories: (hierarchy.orphanStories || []).filter(function (s) {
+        return !isClosedStatus((s.frontmatter || s).status);
+      }),
+      intakes: hierarchy.intakes,
+      checkpoints: hierarchy.checkpoints,
+      decisions: hierarchy.decisions,
+      releaseNotes: hierarchy.releaseNotes,
+      pinned: hierarchy.pinned,
+      recents: hierarchy.recents
+    };
+  }
+
+  function summarizeDescendants(descendants) {
+    var epics = 0;
+    var stories = 0;
+    (descendants || []).forEach(function (c) {
+      var t = (c.frontmatter || {}).type;
+      if (t === 'epic') epics++;
+      else if (t === 'story') stories++;
+    });
+    return { epics: epics, stories: stories };
+  }
+
   return {
     createPinStore: createPinStore,
     rankSearchResults: rankSearchResults,
     excludePinnedFromRecents: excludePinnedFromRecents,
     buildBreadcrumb: buildBreadcrumb,
-    cardMatchesStatusFilters: cardMatchesStatusFilters
+    cardMatchesStatusFilters: cardMatchesStatusFilters,
+    SHARED_LIFECYCLE: SHARED_LIFECYCLE,
+    isClosedStatus: isClosedStatus,
+    isTerminalStatus: isTerminalStatus,
+    isRelatedChild: isRelatedChild,
+    collectDescendants: collectDescendants,
+    hasClosedAncestor: hasClosedAncestor,
+    cardHiddenByClosed: cardHiddenByClosed,
+    pruneClosedHierarchy: pruneClosedHierarchy,
+    summarizeDescendants: summarizeDescendants
   };
 });

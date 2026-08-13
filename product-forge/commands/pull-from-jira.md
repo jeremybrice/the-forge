@@ -233,7 +233,7 @@ The following Jira fields are pulled and mapped to local card fields:
 | `updated`        | (reference only)      | Displayed in diff; not stored in card                    |
 
 **Important notes:**
-- **Jira status does NOT overwrite local status.** Local `status` follows Product Forge enums (e.g., Draft, Planning, In Progress). Jira `status.name` is stored in a separate `jira_status` field for reference.
+- **Jira status does NOT overwrite local status.** Local `status` follows Product Forge enums (e.g., Draft, In Progress, Completed). Jira `status.name` is stored in a separate `jira_status` field for reference.
 - **Estimate is stored in hours.** Jira uses seconds (`timeestimate`). The command converts to hours for readability.
 - **Parent and children are NOT updated.** Jira parent/subtask relationships are out of scope for this command.
 

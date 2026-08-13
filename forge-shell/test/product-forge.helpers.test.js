@@ -218,3 +218,128 @@ test('cardMatchesStatusFilters: intake always matches (no status filter key)', (
     initiative_status: ['active'], epic_status: [], story_status: []
   }), true);
 });
+
+/* ── shared lifecycle ── */
+
+test('SHARED_LIFECYCLE is the five canonical statuses', () => {
+  assert.deepEqual(H.SHARED_LIFECYCLE, [
+    'Draft', 'In Progress', 'Completed', 'Cancelled', 'Superseded'
+  ]);
+});
+
+test('isClosedStatus: canonical terminals and aliases, case-insensitive', () => {
+  ['Completed', 'complete', 'DONE', 'Cancelled', 'canceled', 'Superseded', 'archived'].forEach((s) => {
+    assert.equal(H.isClosedStatus(s), true, s);
+  });
+  ['Draft', 'In Progress', 'Ready', 'Approved', 'Planning', '', null, undefined].forEach((s) => {
+    assert.equal(H.isClosedStatus(s), false, String(s));
+  });
+});
+
+test('isTerminalStatus: Complete/Done cascade; Archived does not', () => {
+  assert.equal(H.isTerminalStatus('Completed'), true);
+  assert.equal(H.isTerminalStatus('Done'), true);
+  assert.equal(H.isTerminalStatus('Complete'), true);
+  assert.equal(H.isTerminalStatus('Cancelled'), true);
+  assert.equal(H.isTerminalStatus('Superseded'), true);
+  assert.equal(H.isTerminalStatus('Archived'), false);
+  assert.equal(H.isTerminalStatus('In Progress'), false);
+});
+
+test('isRelatedChild: parent field or children array', () => {
+  const init = card('ship', 'initiative', 'Ship');
+  const viaParent = card('e1', 'epic', 'E', 'ship');
+  const viaChildren = card('e2', 'epic', 'E2');
+  init.frontmatter.children = ['e2'];
+  assert.equal(H.isRelatedChild(init, viaParent), true);
+  assert.equal(H.isRelatedChild(init, viaChildren), true);
+  assert.equal(H.isRelatedChild(init, card('e3', 'epic', 'E3', 'other')), false);
+});
+
+test('collectDescendants: initiative gathers epics and their stories', () => {
+  const init = card('ship', 'initiative', 'Ship');
+  const epic = card('e1', 'epic', 'E', 'ship');
+  const story = card('s1', 'story', 'S', 'e1');
+  const other = card('s2', 'story', 'Other', 'other-epic');
+  const desc = H.collectDescendants(init, [init, epic, story, other]);
+  assert.deepEqual(desc.map((c) => c.filename).sort(), ['e1', 's1']);
+});
+
+test('collectDescendants: epic gathers stories; story gathers none', () => {
+  const epic = card('e1', 'epic', 'E');
+  epic.frontmatter.children = ['s1'];
+  const story = card('s1', 'story', 'S');
+  assert.deepEqual(H.collectDescendants(epic, [epic, story]).map((c) => c.filename), ['s1']);
+  assert.deepEqual(H.collectDescendants(story, [epic, story]), []);
+});
+
+test('hasClosedAncestor / cardHiddenByClosed walk parent chain', () => {
+  const init = card('ship', 'initiative', 'Ship', null, 'Completed');
+  const epic = card('e1', 'epic', 'E', 'ship', 'In Progress');
+  const story = card('s1', 'story', 'S', 'e1', 'Draft');
+  const map = { ship: init, e1: epic, s1: story };
+  const get = (fn) => map[fn] || null;
+  assert.equal(H.hasClosedAncestor(story, get), true);
+  assert.equal(H.cardHiddenByClosed(story, get), true);
+  assert.equal(H.cardHiddenByClosed(init, get), true);
+  init.frontmatter.status = 'In Progress';
+  assert.equal(H.cardHiddenByClosed(story, get), false);
+  assert.equal(H.cardHiddenByClosed(init, get), false);
+});
+
+test('pruneClosedHierarchy drops a closed initiative and its subtree', () => {
+  const init = card('ship', 'initiative', 'Ship', null, 'Completed');
+  const live = card('live', 'initiative', 'Live', null, 'Draft');
+  const epic = card('e1', 'epic', 'E', 'ship', 'In Progress');
+  const hierarchy = {
+    tree: [
+      { card: init, children: [{ card: epic, children: [] }] },
+      { card: live, children: [] }
+    ],
+    orphanEpics: [],
+    orphanStories: [],
+    intakes: [],
+    checkpoints: [],
+    decisions: [],
+    releaseNotes: []
+  };
+  const pruned = H.pruneClosedHierarchy(hierarchy);
+  assert.equal(pruned.tree.length, 1);
+  assert.equal(pruned.tree[0].card.filename, 'live');
+});
+
+test('pruneClosedHierarchy drops closed epics and stories under a live initiative', () => {
+  const live = card('live', 'initiative', 'Live', null, 'In Progress');
+  const doneEpic = card('e-done', 'epic', 'Done E', 'live', 'Completed');
+  const openEpic = card('e-open', 'epic', 'Open E', 'live', 'Draft');
+  const doneStory = card('s-done', 'story', 'Done S', 'e-open', 'Done');
+  const openStory = card('s-open', 'story', 'Open S', 'e-open', 'Draft');
+  const hierarchy = {
+    tree: [{
+      card: live,
+      children: [
+        { card: doneEpic, children: [] },
+        { card: openEpic, children: [doneStory, openStory] }
+      ]
+    }],
+    orphanEpics: [],
+    orphanStories: [card('orphan-done', 'story', 'OD', null, 'Cancelled')],
+    intakes: [],
+    checkpoints: [],
+    decisions: [],
+    releaseNotes: []
+  };
+  const pruned = H.pruneClosedHierarchy(hierarchy);
+  assert.equal(pruned.tree[0].children.length, 1);
+  assert.equal(pruned.tree[0].children[0].card.filename, 'e-open');
+  assert.equal(pruned.tree[0].children[0].children.length, 1);
+  assert.equal(pruned.tree[0].children[0].children[0].filename, 's-open');
+  assert.equal(pruned.orphanStories.length, 0);
+});
+
+test('summarizeDescendants counts epics and stories', () => {
+  const s = H.summarizeDescendants([
+    card('e1', 'epic'), card('e2', 'epic'), card('s1', 'story')
+  ]);
+  assert.deepEqual(s, { epics: 2, stories: 1 });
+});
