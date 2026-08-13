@@ -308,6 +308,35 @@ test('pruneClosedHierarchy drops a closed initiative and its subtree', () => {
   assert.equal(pruned.tree[0].card.filename, 'live');
 });
 
+test('pruneClosedHierarchy drops closed epics and stories under a live initiative', () => {
+  const live = card('live', 'initiative', 'Live', null, 'In Progress');
+  const doneEpic = card('e-done', 'epic', 'Done E', 'live', 'Completed');
+  const openEpic = card('e-open', 'epic', 'Open E', 'live', 'Draft');
+  const doneStory = card('s-done', 'story', 'Done S', 'e-open', 'Done');
+  const openStory = card('s-open', 'story', 'Open S', 'e-open', 'Draft');
+  const hierarchy = {
+    tree: [{
+      card: live,
+      children: [
+        { card: doneEpic, children: [] },
+        { card: openEpic, children: [doneStory, openStory] }
+      ]
+    }],
+    orphanEpics: [],
+    orphanStories: [card('orphan-done', 'story', 'OD', null, 'Cancelled')],
+    intakes: [],
+    checkpoints: [],
+    decisions: [],
+    releaseNotes: []
+  };
+  const pruned = H.pruneClosedHierarchy(hierarchy);
+  assert.equal(pruned.tree[0].children.length, 1);
+  assert.equal(pruned.tree[0].children[0].card.filename, 'e-open');
+  assert.equal(pruned.tree[0].children[0].children.length, 1);
+  assert.equal(pruned.tree[0].children[0].children[0].filename, 's-open');
+  assert.equal(pruned.orphanStories.length, 0);
+});
+
 test('summarizeDescendants counts epics and stories', () => {
   const s = H.summarizeDescendants([
     card('e1', 'epic'), card('e2', 'epic'), card('s1', 'story')
