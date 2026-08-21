@@ -1,14 +1,14 @@
 # Forge Memory
 
-Organizational memory and taxonomy management for The Forge Marketplace. Enables Claude to decode workplace shorthand, resolve internal language, and maintain validated taxonomy across all plugins.
+Organizational memory and taxonomy management for The Forge. Enables an agent to decode workplace shorthand, resolve internal language, and maintain validated taxonomy across all plugins.
 
 ## Overview
 
-Forge Memory transforms Claude into a workplace collaborator who speaks your internal language:
+Forge Memory turns the agent into a workplace collaborator who speaks your internal language:
 
 ```
 User: "ask todd about PSR for acme"
-              ↓ Claude decodes
+              ↓ Agent decodes
 "Ask Todd Martinez (Finance lead) to prepare the Pipeline Status Report
  for Acme Corp (enterprise tier, 500+ users)"
 ```

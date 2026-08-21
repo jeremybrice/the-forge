@@ -1,8 +1,8 @@
 # Forge Shell
 
-**Desktop visualization app** for browsing project data created by Forge Marketplace plugins. Provides a unified single-page application (SPA) with built-in view controllers for all plugin views. No iframes.
+**Desktop visualization app** for browsing project data created by Forge plugins. Provides a unified single-page application (SPA) with built-in view controllers for all plugin views. No iframes.
 
-> **Note:** Forge Shell is a standalone desktop application, not a Claude Code plugin. Other plugins (Product Forge, Cognitive Forge, etc.) create the content; Forge Shell provides a visual interface for browsing it.
+> **Note:** Forge Shell is a standalone desktop application, not a host skill package. Other plugins (Product Forge, Cognitive Forge, etc.) create the content; Forge Shell provides a visual interface for browsing it.
 
 ## Desktop App Installation
 

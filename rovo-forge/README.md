@@ -322,4 +322,4 @@ Users copy-paste each section into the corresponding Rovo Studio field, eliminat
 
 ## License
 
-Part of The Forge Marketplace v2 ecosystem.
+Part of The Forge plugin suite v2.

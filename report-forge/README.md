@@ -351,7 +351,7 @@ forge report init
 ## Dependencies
 
 - **forge-lib**: Python CLI for all file operations
-- **Claude Agent SDK**: For Task tool (agent spawning)
+- **Host Task / subagent tool**: For agent spawning from report workflow files
 - **Skills**: report-methodology (reasoning guidance)
 
 ## Version
