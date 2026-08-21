@@ -1,0 +1,15 @@
+---
+description: Cursor is source; Grok files are pairs
+alwaysApply: true
+---
+
+# Host pairing
+
+Supported hosts: Cursor and Grok Build only.
+
+- Edit `.cursor/rules/` and `.cursor/skills/`.
+- Update the matching `.grok/rules/` or `.grok/skills/` file in the same change.
+- Grok rules use `.md` with the same stem. Skills stay `SKILL.md`.
+- Every Grok file starts with `Source pair: \`.cursor/...\``.
+- Never treat `.grok/` as source. If a pair disagrees, Cursor wins; rewrite the pair.
+- Do not add Claude, Codex, OpenCode, or other host trees.
