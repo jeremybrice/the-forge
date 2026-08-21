@@ -48,6 +48,8 @@ forge-shell/src-tauri/target/
 # Validation artifacts
 validation-*/
 *.sh
+!.relay/relay.sh
+!install.sh
 
 # Agent state
 .ralph/

@@ -1,0 +1,30 @@
+---
+description: Folder map for The Forge product repo
+alwaysApply: true
+---
+
+# Repo map
+
+This repo is The Forge product: seven plugin folders, `forge-lib`, and Forge Shell.
+
+| Path | What it is |
+|------|------------|
+| `product-forge/` | Card workflow files (`commands/`, `skills/`, `agents/`) |
+| `tasks-forge/` | Task workflow files |
+| `forge-memory/` | Memory workflow files |
+| `cognitive-forge/` | Debate and explore workflow files |
+| `report-forge/` | Report workflow files |
+| `rovo-forge/` | Rovo agent builder workflow files |
+| `audio-forge/` | Recording and transcription workflow files |
+| `forge-lib/` | Python CLI, schemas, templates |
+| `forge-shell/` | Tauri desktop dashboards |
+| `docs/` | Architecture, patterns, specs, plans |
+| `.relay/` | Session handoff core and Cursor/Grok adapters |
+| `.cursor/` | Source host contract |
+| `.grok/` | Grok Build discovery pairs |
+
+Plugin `commands/`, `skills/`, and `agents/` are product source. They are not Cursor commands and not Grok commands.
+
+Live 365 cards, memory, and Kai live in `cowork-database`. Do not write those here.
+
+Leave `.superpowers/`, `.guardian/`, and `.forge/` alone unless a task names them.

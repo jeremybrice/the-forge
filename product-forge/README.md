@@ -1,6 +1,6 @@
 # Product Forge
 
-Product management plugin for Claude Code with orchestrator-agent architecture. Three orchestrator commands detect card types, recruit specialized agents, and handle persistence via forge-lib.
+Product management plugin with orchestrator-agent architecture. Orchestrator workflow files detect card types, recruit specialized agents, and handle persistence via forge-lib.
 
 ## Commands (8)
 
