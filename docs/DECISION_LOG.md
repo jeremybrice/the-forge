@@ -8,6 +8,7 @@ Index of design decisions. Each entry links to the full design doc in `docs/plan
 
 | Date | Decision | Scope | Design Doc |
 |------|----------|-------|------------|
+| 2026-08-21 | Cursor and Grok Build only host contract; delete Claude, Codex, and OpenCode packaging; Relay stays with Cursor-source Grok pairs | repo-wide | [design](superpowers/specs/2026-08-21-cursor-grok-native-repo-design.md) |
 | 2026-08-13 | Shared initiative/epic/story lifecycle; hide closed work by default; downward cascade on close | product-forge, forge-lib, forge-shell | [design](superpowers/specs/2026-08-13-pfl-shared-lifecycle-hide-closed-design.md) |
 
 ## July 2026
