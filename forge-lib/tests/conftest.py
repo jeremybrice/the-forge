@@ -2,6 +2,7 @@
 Shared pytest fixtures and configuration for forge-lib tests.
 """
 
+import os
 import subprocess
 import sys
 
@@ -9,6 +10,28 @@ import pytest
 import tempfile
 import shutil
 from pathlib import Path
+
+_DEFAULT_WHISPER_BIN = "/opt/homebrew/bin/whisper"
+
+
+def pytest_configure(config):
+    """Stub whisper binary when Homebrew path is absent (Linux CI / cloud agents)."""
+    if os.environ.get("FORGE_WHISPER_BIN"):
+        return
+    if Path(_DEFAULT_WHISPER_BIN).exists():
+        return
+    bin_dir = Path(tempfile.mkdtemp(prefix="forge-whisper-"))
+    whisper_path = bin_dir / "whisper"
+    whisper_path.write_text("#!/bin/sh\nexit 0\n")
+    whisper_path.chmod(0o755)
+    os.environ["FORGE_WHISPER_BIN"] = str(whisper_path)
+    config._forge_whisper_dir = bin_dir  # noqa: SLF001 — retain for pytest teardown
+
+
+def pytest_unconfigure(config):
+    bin_dir = getattr(config, "_forge_whisper_dir", None)
+    if bin_dir:
+        shutil.rmtree(bin_dir, ignore_errors=True)
 
 
 @pytest.fixture

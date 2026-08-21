@@ -34,8 +34,21 @@ VALID_SOURCES = {"system", "mic"}
 VALID_TRANSCRIPT_STATUSES = {"pending", "transcribing", "complete", "failed"}
 
 # Path to the whisper binary; overridable via env var for tests / non-Homebrew installs.
-DEFAULT_WHISPER_BIN = os.environ.get("FORGE_WHISPER_BIN", "/opt/homebrew/bin/whisper")
-DEFAULT_WHISPER_MODEL = os.environ.get("FORGE_WHISPER_MODEL", "large-v3-turbo")
+_DEFAULT_WHISPER_BIN = "/opt/homebrew/bin/whisper"
+_DEFAULT_WHISPER_MODEL = "large-v3-turbo"
+
+
+def _whisper_bin() -> str:
+    return os.environ.get("FORGE_WHISPER_BIN", _DEFAULT_WHISPER_BIN)
+
+
+def _whisper_model() -> str:
+    return os.environ.get("FORGE_WHISPER_MODEL", _DEFAULT_WHISPER_MODEL)
+
+
+# Kept for callers/tests that read module-level defaults.
+DEFAULT_WHISPER_BIN = _whisper_bin()
+DEFAULT_WHISPER_MODEL = _whisper_model()
 
 
 # ---------- Filename + duration helpers ----------
@@ -519,11 +532,12 @@ def transcribe_recording(
             "error_code": Optional[str],   # "WHISPER_MISSING", "WHISPER_FAILED", etc.
         }
     """
-    used_model = model or DEFAULT_WHISPER_MODEL
+    used_model = model or _whisper_model()
     fp = _find_recording_by_id(recording_id, directory)
+    whisper_bin = _whisper_bin()
 
-    if not Path(DEFAULT_WHISPER_BIN).exists():
-        fm = _set_status_failed(fp, error=f"Whisper binary not found at {DEFAULT_WHISPER_BIN}")
+    if not Path(whisper_bin).exists():
+        fm = _set_status_failed(fp, error=f"Whisper binary not found at {whisper_bin}")
         return {
             "success": False,
             "recording": fm,
@@ -563,7 +577,7 @@ def transcribe_recording(
                 continue
 
             cmd = [
-                DEFAULT_WHISPER_BIN,
+                whisper_bin,
                 str(audio_abs),
                 "--model", used_model,
                 "--output_dir", str(work_dir),
