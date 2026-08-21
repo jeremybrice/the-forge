@@ -4,7 +4,7 @@
 
 # The Forge
 
-**AI-native product management for Claude Code**
+**AI-native product management for Cursor and Grok Build**
 
 Manage products, track tasks, capture knowledge, debate decisions, generate reports,
 and configure Atlassian agents — all from your terminal.
@@ -20,7 +20,7 @@ and configure Atlassian agents — all from your terminal.
 
 ## What is The Forge?
 
-The Forge is a suite of **7 Claude Code plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
+The Forge is a suite of **7 plugins** backed by a shared **Python data layer** and a **Tauri desktop app** for visual dashboards. It brings structured product management into your AI coding workflow — no context switching, no separate tools.
 
 Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib`) handles all file operations, validation, and indexing. Forge Shell gives you a desktop GUI to browse everything the plugins create.
 
@@ -46,7 +46,7 @@ Plugins handle conversation and workflow. A deterministic Python CLI (`forge-lib
 
 ```mermaid
 graph TB
-    subgraph CC ["Claude Code"]
+    subgraph CC ["Cursor / Grok Build"]
         A["LLM Reasoning Layer"]
     end
 
@@ -105,8 +105,9 @@ cd forge-lib && pip install -r requirements.txt
 # 2. Verify
 python forge.py --help
 
-# 3. Add marketplace to Claude Code
-ln -s /path/to/the-forge ~/.claude/marketplaces/forge
+# 3. Open this repo in Cursor, or start Grok Build here.
+#    Both hosts read AGENTS.md. Cursor source is .cursor/; Grok pairs are .grok/.
+#    Optional Relay refresh: ./install.sh
 
 # 4. Launch Forge Shell (optional)
 cd forge-shell && npm install && npm run tauri dev
@@ -139,5 +140,5 @@ See individual plugin READMEs for detailed workflows and command references.
 ---
 
 <div align="center">
-<sub>Built with Python · Rust · Vanilla JS · Claude Code</sub>
+<sub>Built with Python · Rust · Vanilla JS · Cursor · Grok Build</sub>
 </div>

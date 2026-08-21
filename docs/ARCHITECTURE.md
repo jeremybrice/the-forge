@@ -1,4 +1,6 @@
-# Architecture — The Forge Marketplace v2
+# Architecture — The Forge v2
+
+Supported hosts: Cursor and Grok Build. Plugin `commands/` are workflow files, not host slash-commands.
 
 ## Design Philosophy
 

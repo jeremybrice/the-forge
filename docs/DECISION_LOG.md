@@ -1,4 +1,4 @@
-# Decision Log — The Forge Marketplace v2
+# Decision Log — The Forge v2
 
 Index of design decisions. Each entry links to the full design doc in `docs/plans/`.
 

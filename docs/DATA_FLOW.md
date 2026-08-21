@@ -1,4 +1,4 @@
-# Data Flow — The Forge Marketplace v2
+# Data Flow — The Forge v2
 
 ## Data Ownership Map
 
@@ -8,7 +8,7 @@ All plugins write through forge-lib CLI. Data directories and index files are cr
 |-----------|--------|---------|------------|
 | `cards/` (initiatives/, epics/, stories/, intakes/, checkpoints/, decisions/, release-notes/) | product-forge | forge-shell (product-forge.js, roadmap.js), report-forge | `cards/index.json` |
 | `tasks/` | tasks-forge | forge-shell (tasks.js), report-forge | `tasks/index.json` |
-| `memory/` | forge-memory | forge-shell (memory.js) | None (uses CLAUDE.md) |
+| `memory/` | forge-memory | forge-shell (memory.js) | None (workspace hot cache; historically CLAUDE.md in live workspaces) |
 | `sessions/` (debates/, explorations/) | cognitive-forge | forge-shell (cognitive-forge.js), report-forge | `sessions/index.json` |
 | `reports/` | report-forge | forge-shell (report-forge.js) | `reports/index.json` |
 | `rovo-agents/` ({slug}/agent.md) | rovo-forge | forge-shell (rovo-agent-forge.js) | `rovo-agents/index.json` |

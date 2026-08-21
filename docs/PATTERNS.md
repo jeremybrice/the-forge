@@ -1,4 +1,4 @@
-# Patterns — The Forge Marketplace v2
+# Patterns — The Forge v2
 
 ## Orchestrator Pattern
 
@@ -115,7 +115,7 @@ Each entity type has an `index.json` for fast queries, maintained automatically 
 
 ## File Naming Conventions
 
-See the file naming patterns table in `CLAUDE.md` (lines 49-60) — not duplicated here.
+See the file naming patterns table in `AGENTS.md` — not duplicated here.
 
 **Key rules:**
 - Frontmatter: YAML block at top of every `.md` entity file
