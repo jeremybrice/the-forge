@@ -4,7 +4,12 @@
   "title": "Checkpoint Card Schema",
   "description": "JSON Schema for checkpoint meeting notes and decision records",
   "type": "object",
-  "required": ["title", "type", "source", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -18,7 +23,10 @@
       "description": "Card type identifier"
     },
     "source": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Source of the checkpoint (e.g., Architecture Review Meeting, Sprint Retro)",
       "minLength": 1
     },
@@ -39,6 +47,53 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "checkpoint_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the checkpoint captures (YYYY-MM-DD)"
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Checkpoint currency written by /product-forge/checkpoint (e.g., Current, Superseded)"
+    },
+    "domain": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Domain label written by /product-forge/checkpoint"
+    },
+    "product": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Product from taxonomy"
+    },
+    "module": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Module from taxonomy"
+    },
+    "client": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Client from taxonomy"
+    },
+    "source_conversation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Conversation or session the checkpoint summarizes"
     }
   },
   "additionalProperties": false

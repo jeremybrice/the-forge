@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://theforge.dev/schemas/design-review.json",
+  "title": "Design Review Card Schema",
+  "description": "Frontmatter contract for /cognitive-forge/review-design output stored beside the reviewed spec",
+  "type": "object",
+  "required": [
+    "type",
+    "spec",
+    "date",
+    "agents"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "design-review",
+      "description": "Card type identifier"
+    },
+    "spec": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repo-relative path to the reviewed spec or card"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Review date in YYYY-MM-DD format"
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Review agents that participated (challenger, explorer, decomposer, synthesizer)"
+    },
+    "context_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Context paths supplied to the review"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional display title"
+    }
+  },
+  "additionalProperties": false
+}

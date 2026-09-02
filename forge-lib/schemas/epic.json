@@ -4,7 +4,14 @@
   "title": "Epic Card Schema",
   "description": "JSON Schema for Epic-level feature delivery cards",
   "type": "object",
-  "required": ["title", "type", "status", "product", "description", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "status",
+    "product",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -19,8 +26,18 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "In Progress", "Completed", "Cancelled", "Superseded", "Submitted", "Approved", "Planning", "Ready", "Complete", "Done", "On Hold", "In Review", "Testing", "Blocked", "Archived"],
-      "description": "Current status of the epic"
+      "enum": [
+        "Draft",
+        "Planning",
+        "Ready",
+        "In Progress",
+        "In Review",
+        "Completed",
+        "Cancelled",
+        "Complete",
+        "Superseded"
+      ],
+      "description": "Current status of the epic. Standard done state is 'Complete'; 'Completed' is a legacy spelling kept valid for existing cards."
     },
     "product": {
       "type": "string",
@@ -28,32 +45,50 @@
       "minLength": 1
     },
     "module": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Module from taxonomy",
       "default": null
     },
     "client": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Client from taxonomy",
       "default": null
     },
     "team": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Team responsible for the epic",
       "default": null
     },
     "jira_card": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to Jira epic",
       "default": null
     },
     "parent": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Parent initiative filename (without extension)",
       "default": null
     },
     "children": {
-      "type": "array",
+      "type": [
+        "array",
+        "null"
+      ],
       "description": "List of child story filenames (without extension)",
       "items": {
         "type": "string"
@@ -66,12 +101,18 @@
       "minLength": 1
     },
     "source_intake": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Reference to intake form filename (without extension)",
       "default": null
     },
     "source_conversation": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to planning conversation",
       "default": null
     },
@@ -84,6 +125,183 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "jira_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue key set by the Jira sync commands (e.g., VMS-13472)"
+    },
+    "jira_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue URL set by the Jira sync commands"
+    },
+    "jira_last_synced": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO timestamp of the last push/pull with Jira"
+    },
+    "release": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Roadmap release placement (e.g., 26.08.00, H2 2026)"
+    },
+    "solution_design_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Path or link to the solution design document"
+    },
+    "background_context": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Extended epic writer: problem background"
+    },
+    "epic_scope": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Extended epic writer: scope statement"
+    },
+    "affected_systems": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: systems touched"
+    },
+    "functional_capabilities": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: capability list"
+    },
+    "open_questions": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: unresolved questions"
+    },
+    "out_of_scope": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: explicit exclusions"
+    },
+    "related_epics": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: related epics, either bare filenames or one-key relationship objects ({'Depends On': 'epic-file (note)'})"
+    },
+    "story_breakdown": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: planned story titles"
+    },
+    "success_criteria": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: outcome criteria"
+    },
+    "technical_constraints": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ],
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Extended epic writer: constraints"
     }
   },
   "additionalProperties": false

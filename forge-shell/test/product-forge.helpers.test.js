@@ -223,7 +223,7 @@ test('cardMatchesStatusFilters: intake always matches (no status filter key)', (
 
 test('SHARED_LIFECYCLE is the five canonical statuses', () => {
   assert.deepEqual(H.SHARED_LIFECYCLE, [
-    'Draft', 'In Progress', 'Completed', 'Cancelled', 'Superseded'
+    'Draft', 'In Progress', 'Complete', 'Cancelled', 'Superseded'
   ]);
 });
 

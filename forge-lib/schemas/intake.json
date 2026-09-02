@@ -4,7 +4,14 @@
   "title": "Intake Card Schema",
   "description": "JSON Schema for intake request and requirements gathering cards",
   "type": "object",
-  "required": ["title", "type", "status", "product", "source", "requested_by", "priority", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "status",
+    "product",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -19,8 +26,17 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Submitted", "Under Review", "Approved", "Rejected", "Handed Off", "Completed"],
-      "description": "Current status of the intake"
+      "enum": [
+        "Submitted",
+        "Under Review",
+        "Approved",
+        "Rejected",
+        "Handed Off",
+        "Completed",
+        "Complete",
+        "Draft"
+      ],
+      "description": "Current status of the intake. Standard done state is 'Complete'; 'Completed' is a legacy spelling kept valid for existing cards."
     },
     "product": {
       "type": "string",
@@ -28,33 +44,56 @@
       "minLength": 1
     },
     "module": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Module from taxonomy",
       "default": null
     },
     "client": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Client from taxonomy",
       "default": null
     },
     "team": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Team responsible for the intake",
       "default": null
     },
     "source": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Source of the intake request (e.g., Product Strategy Review, Customer Request)",
       "minLength": 1
     },
     "requested_by": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Person or role who submitted the intake",
       "minLength": 1
     },
     "priority": {
-      "type": "string",
-      "enum": ["High", "Medium", "Low"],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "High",
+        "Medium",
+        "Low",
+        null
+      ],
       "description": "Priority level of the request"
     },
     "generated_initiatives": {
@@ -74,7 +113,10 @@
       "default": []
     },
     "source_conversation": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to intake conversation",
       "default": null
     },
@@ -87,6 +129,20 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Cards spawned from this intake (initiatives, epics, stories)"
+    },
+    "related_decisions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Decision card filenames this intake informed"
     }
   },
   "additionalProperties": false

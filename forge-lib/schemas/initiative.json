@@ -4,7 +4,15 @@
   "title": "Initiative Card Schema",
   "description": "JSON Schema for Initiative-level ROM estimation and strategic scoping cards",
   "type": "object",
-  "required": ["title", "type", "status", "product", "description", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "status",
+    "product",
+    "description",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -19,8 +27,18 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "In Progress", "Completed", "Cancelled", "Superseded", "Submitted", "Approved", "Planning", "Ready", "Complete", "Done", "On Hold", "In Review", "Testing", "Blocked", "Archived"],
-      "description": "Current status of the initiative"
+      "enum": [
+        "Draft",
+        "Planning",
+        "Approved",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled",
+        "Superseded",
+        "Complete"
+      ],
+      "description": "Current status of the initiative. Standard done state is 'Complete'; 'Completed'/'Done' are legacy spellings kept valid for existing cards."
     },
     "product": {
       "type": "string",
@@ -28,49 +46,81 @@
       "minLength": 1
     },
     "module": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Module from taxonomy (e.g., Notifications, Authentication, Billing)",
       "default": null
     },
     "client": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Client from taxonomy (e.g., Acme Corp, Multi-Client, Internal)",
       "default": null
     },
     "team": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Team responsible for the initiative",
       "default": null
     },
     "confidence": {
-      "type": ["string", "null"],
-      "enum": ["High", "Medium", "Low", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "High",
+        "Medium",
+        "Low",
+        null
+      ],
       "description": "Confidence level in the estimate",
       "default": null
     },
     "estimate_hours": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "description": "Estimated hours from engineering estimation session",
       "minimum": 0,
       "default": null
     },
     "jira_card": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to Jira epic or initiative",
       "default": null
     },
     "source_intake": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Reference to intake form filename (without extension)",
       "default": null
     },
     "source_conversation": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to intake document or planning conversation",
       "default": null
     },
     "children": {
-      "type": "array",
+      "type": [
+        "array",
+        "null"
+      ],
       "description": "List of child epic filenames (without extension)",
       "items": {
         "type": "string"
@@ -91,6 +141,34 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "jira_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue key set by the Jira sync commands (e.g., VMS-13472)"
+    },
+    "jira_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue URL set by the Jira sync commands"
+    },
+    "jira_last_synced": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO timestamp of the last push/pull with Jira"
+    },
+    "release": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Roadmap release placement (e.g., 26.08.00, H2 2026)"
     }
   },
   "additionalProperties": false

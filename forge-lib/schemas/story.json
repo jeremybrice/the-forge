@@ -4,7 +4,14 @@
   "title": "Story Card Schema",
   "description": "JSON Schema for Story-level implementation task cards",
   "type": "object",
-  "required": ["title", "type", "status", "product", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "status",
+    "product",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -19,8 +26,21 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "In Progress", "Completed", "Cancelled", "Superseded", "Submitted", "Approved", "Planning", "Ready", "Complete", "Done", "On Hold", "In Review", "Testing", "Blocked", "Archived"],
-      "description": "Current status of the story"
+      "enum": [
+        "Draft",
+        "Ready",
+        "In Progress",
+        "In Review",
+        "Testing",
+        "Done",
+        "Blocked",
+        "Completed",
+        "Replaced",
+        "Superseded",
+        "Complete",
+        "Cancelled"
+      ],
+      "description": "Current status of the story. Standard done state is 'Complete'; 'Completed'/'Done' are legacy spellings kept valid for existing cards."
     },
     "product": {
       "type": "string",
@@ -28,38 +48,82 @@
       "minLength": 1
     },
     "module": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Module from taxonomy",
       "default": null
     },
     "client": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Client from taxonomy",
       "default": null
     },
     "team": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Team responsible for the story",
       "default": null
     },
     "parent": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Parent epic filename (without extension)",
       "default": null
     },
     "story_points": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "description": "Story points estimate (1, 2, 3, 5, 8, 13)",
-      "enum": [1, 2, 3, 5, 8, 13, null],
+      "enum": [
+        1,
+        2,
+        3,
+        5,
+        8,
+        13,
+        null
+      ],
       "default": null
     },
     "jira_card": {
-      "type": ["string", "null"],
-      "description": "Link to Jira story or ticket",
+      "type": [
+        "string",
+        "object",
+        "null"
+      ],
+      "description": "Link to Jira story/ticket or platform-to-ticket mapping",
+      "additionalProperties": {
+        "type": "string"
+      },
       "default": null
     },
+    "labels": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Queryable labels for story categorization",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "source_conversation": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Link to planning conversation",
       "default": null
     },
@@ -72,6 +136,55 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "jira_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue key set by the Jira sync commands (e.g., VMS-13472)"
+    },
+    "jira_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Jira issue URL set by the Jira sync commands"
+    },
+    "jira_last_synced": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO timestamp of the last push/pull with Jira"
+    },
+    "superseded_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Filename of the story that replaced this one"
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional one-paragraph summary carried by some story writers"
+    },
+    "source_intake": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Intake card this story traces back to"
+    },
+    "epic": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Legacy alias of parent (pre-2026-04 writer). Do not write; use parent."
     }
   },
   "additionalProperties": false

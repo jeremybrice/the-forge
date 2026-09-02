@@ -196,7 +196,7 @@
     return arr.indexOf(fm.status) !== -1;
   }
 
-  var SHARED_LIFECYCLE = ['Draft', 'In Progress', 'Completed', 'Cancelled', 'Superseded'];
+  var SHARED_LIFECYCLE = ['Draft', 'In Progress', 'Complete', 'Cancelled', 'Superseded'];
   var CLOSED = {
     completed: 1, complete: 1, done: 1,
     cancelled: 1, canceled: 1, superseded: 1, archived: 1

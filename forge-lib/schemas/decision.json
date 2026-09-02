@@ -4,7 +4,15 @@
   "title": "Decision Card Schema",
   "description": "JSON Schema for architectural and strategic decision records",
   "type": "object",
-  "required": ["title", "type", "status", "product", "decision_date", "created", "updated"],
+  "required": [
+    "title",
+    "type",
+    "status",
+    "product",
+    "decision_date",
+    "created",
+    "updated"
+  ],
   "properties": {
     "title": {
       "type": "string",
@@ -19,7 +27,15 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Proposed", "Under Review", "Approved", "Rejected", "Superseded"],
+      "enum": [
+        "Proposed",
+        "Under Review",
+        "Approved",
+        "Rejected",
+        "Superseded",
+        "Active",
+        "Deferred"
+      ],
       "description": "Current status of the decision"
     },
     "product": {
@@ -28,17 +44,26 @@
       "minLength": 1
     },
     "module": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Module from taxonomy",
       "default": null
     },
     "client": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Client from taxonomy",
       "default": null
     },
     "team": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Team responsible for the decision",
       "default": null
     },
@@ -56,6 +81,31 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "decision_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Decision category written by the forge-decision agent (e.g., Architecture, Scope)"
+    },
+    "stakeholders": {
+      "type": [
+        "string",
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "People or teams party to the decision; string or list"
+    },
+    "source_conversation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Conversation or session the decision came from"
     }
   },
   "additionalProperties": false

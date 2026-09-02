@@ -41,6 +41,31 @@
       "type": "string",
       "format": "date",
       "description": "Last update date in YYYY-MM-DD format"
+    },
+    "files": {
+      "type": ["object", "null"],
+      "description": "Generated Word packages beside this card in cards/release-notes/. Read by forge-lib/scripts/document_artifact_audit.py to pair each docx with its source card.",
+      "properties": {
+        "internal": {"type": ["string", "null"], "description": "Internal release-notes docx filename"},
+        "external": {"type": ["string", "null"], "description": "External release-notes docx filename"}
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "Confluence page or other upstream the notes were generated from"
+    },
+    "status": {
+      "type": ["string", "null"],
+      "description": "Optional publication status (e.g., Published)"
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Module from taxonomy, when the release is module-scoped"
+    },
+    "client": {
+      "type": ["string", "null"],
+      "description": "Client from taxonomy, when the release is client-specific"
     }
   },
   "additionalProperties": false
