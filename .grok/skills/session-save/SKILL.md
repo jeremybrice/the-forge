@@ -23,3 +23,9 @@ Persist a Relay handoff for the next agent.
    `relay-learn` skill, or call `"$PWD/.relay/relay.sh"` `knowledge add` with
    `--dir "$PWD/.session-log"`. If the tool says a lesson is graduation-ready,
    offer graduation in one line. Never graduate without the user's okay.
+5. If `knowledge list` reports counts over cap (or a load warned
+   "(⚠ N ... over cap ...)"), offer `relay-compact` in one line.
+   Never run it unasked.
+
+Do not write `.session-log/relay-instructions.md`. Session start reads
+`.session-log/latest.md` and `.session-log/index.md` only.
