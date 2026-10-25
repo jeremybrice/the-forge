@@ -73,3 +73,12 @@ audio-forge/recordings/index.json
 
 # Git worktrees (local isolated checkouts)
 .worktrees/
+
+# Non-host files written by Relay install (repo supports Cursor and Grok only)
+.claude/
+.opencode/
+.codex/
+opencode.json
+.relay/adapters/claude-code/
+.relay/adapters/codex/
+.relay/adapters/opencode/
